@@ -4,28 +4,29 @@ import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
 import { IconButton } from '@/components/ui/IconButton';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/TextField';
 import { useToast } from '@/components/ui/Toast';
 
 export function SignIn() {
   const { role: roleParam } = useParams<{ role: string }>();
   const role = (roleParam === 'seller' ? 'seller' : 'buyer') as Role;
   const navigate = useNavigate();
-  const { sendPhoneOtp } = useAuth();
+  const { sendEmailOtp } = useAuth();
   const toast = useToast();
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
 
   async function handleSignIn() {
-    const fullPhone = '+91' + phone.replace(/\D/g, '');
-    if (phone.replace(/\D/g, '').length < 10) {
-      toast('Enter a valid 10-digit phone number');
+    const trimmedEmail = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast('Enter a valid email address');
       return;
     }
     setSending(true);
     try {
-      await sendPhoneOtp(fullPhone);
-      navigate('/auth/otp', { state: { phone: fullPhone, role, mode: 'signin' } });
+      await sendEmailOtp(trimmedEmail);
+      navigate('/auth/otp', { state: { email: trimmedEmail, role, mode: 'signin' } });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not send code');
     } finally {
@@ -41,17 +42,14 @@ export function SignIn() {
 
       <div className="mt-6 flex flex-col gap-4">
         <label className="text-[13px] font-bold text-rose-fieldLabel">
-          Phone number
-          <div className="mt-1.5 flex h-[52px] items-center gap-2 rounded-2xl border-[1.5px] border-rose-border bg-white px-3.5">
-            <span className="font-bold text-rose-text">+91</span>
-            <div className="h-5.5 w-px bg-rose-border" />
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="98765 43210"
-              className="flex-1 border-none bg-transparent text-[15px] font-semibold text-rose-text outline-none"
-            />
-          </div>
+          Email address
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mt-1.5 h-[52px]"
+            placeholder="priya@example.com"
+          />
         </label>
 
         <Button full onClick={handleSignIn} disabled={sending}>

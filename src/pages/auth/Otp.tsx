@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { homeFor } from '@/auth/RequireRole';
 
-type OtpState = { phone: string; role: 'buyer' | 'seller'; mode: 'signin' | 'signup'; pending?: PendingSignup };
+type OtpState = { email: string; role: 'buyer' | 'seller'; mode: 'signin' | 'signup'; pending?: PendingSignup };
 
 export function Otp() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { verifyPhoneOtp, sendPhoneOtp } = useAuth();
+  const { verifyEmailOtp, sendEmailOtp } = useAuth();
   const toast = useToast();
   const state = location.state as OtpState | null;
 
@@ -20,7 +20,7 @@ export function Otp() {
   const [verifying, setVerifying] = useState(false);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
-  if (!state?.phone) {
+  if (!state?.email) {
     navigate('/', { replace: true });
     return null;
   }
@@ -41,7 +41,7 @@ export function Otp() {
     if (code.length !== 6) return toast('Enter the 6-digit code');
     setVerifying(true);
     try {
-      await verifyPhoneOtp(otpState.phone, code, otpState.pending);
+      await verifyEmailOtp(otpState.email, code, otpState.pending);
       toast('Signed in successfully');
       navigate(homeFor(otpState.role), { replace: true });
     } catch (e) {
@@ -56,11 +56,11 @@ export function Otp() {
       <IconButton icon="arrow_back" onClick={() => navigate(-1)} />
       <div className="flex flex-1 flex-col justify-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-rose-chip">
-          <Icon name="sms" style={{ fontSize: 32, color: '#D6336C' }} />
+          <Icon name="mail" style={{ fontSize: 32, color: '#D6336C' }} />
         </div>
-        <div className="mt-5 font-serif text-[34px] font-bold">Verify your number</div>
+        <div className="mt-5 font-serif text-[34px] font-bold">Verify your email</div>
         <div className="mt-1.5 text-[15px] text-rose-muted">
-          Enter the 6-digit code sent to <b className="text-rose-text">{otpState.phone}</b>
+          Enter the 6-digit code sent to <b className="text-rose-text">{otpState.email}</b>
         </div>
         <div className="mt-7 flex gap-2.5">
           {digits.map((d, i) => (
@@ -77,7 +77,7 @@ export function Otp() {
         </div>
         <div className="mt-5 text-sm text-rose-muted">
           Didn't get it?{' '}
-          <a onClick={() => sendPhoneOtp(otpState.phone).then(() => toast('Code resent'))} className="cursor-pointer font-bold">
+          <a onClick={() => sendEmailOtp(otpState.email).then(() => toast('Code resent'))} className="cursor-pointer font-bold">
             Resend code
           </a>
         </div>

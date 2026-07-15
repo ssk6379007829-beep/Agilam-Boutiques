@@ -11,27 +11,27 @@ export function SignUp() {
   const { role: roleParam } = useParams<{ role: string }>();
   const role = (roleParam === 'seller' ? 'seller' : 'buyer') as Role;
   const navigate = useNavigate();
-  const { sendPhoneOtp } = useAuth();
+  const { sendEmailOtp } = useAuth();
   const toast = useToast();
 
   const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [city, setCity] = useState('');
   const [boutiqueName, setBoutiqueName] = useState('');
   const [sending, setSending] = useState(false);
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
 
   async function handleSignUp() {
-    const fullPhone = '+91' + phone.replace(/\D/g, '');
+    const trimmedEmail = email.trim();
     if (!fullName.trim()) return toast('Enter your full name');
-    if (phone.replace(/\D/g, '').length < 10) return toast('Enter a valid 10-digit phone number');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return toast('Enter a valid email address');
     if (role === 'seller' && !boutiqueName.trim()) return toast('Enter your boutique name');
 
     setSending(true);
     try {
-      await sendPhoneOtp(fullPhone);
+      await sendEmailOtp(trimmedEmail);
       navigate('/auth/otp', {
-        state: { phone: fullPhone, role, mode: 'signup', pending: { full_name: fullName, role, city, boutiqueName } },
+        state: { email: trimmedEmail, role, mode: 'signup', pending: { full_name: fullName, role, city, boutiqueName } },
       });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not send code');
@@ -53,17 +53,14 @@ export function SignUp() {
         </label>
 
         <label className="text-[13px] font-bold text-rose-fieldLabel">
-          Phone number
-          <div className="mt-1.5 flex h-[52px] items-center gap-2 rounded-2xl border-[1.5px] border-rose-border bg-white px-3.5">
-            <span className="font-bold text-rose-text">+91</span>
-            <div className="h-5.5 w-px bg-rose-border" />
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="98765 43210"
-              className="flex-1 border-none bg-transparent text-[15px] font-semibold text-rose-text outline-none"
-            />
-          </div>
+          Email address
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mt-1.5 h-[52px]"
+            placeholder="priya@example.com"
+          />
         </label>
 
         <label className="text-[13px] font-bold text-rose-fieldLabel">

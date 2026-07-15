@@ -23,8 +23,8 @@ type AuthContextValue = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  sendPhoneOtp: (phone: string) => Promise<void>;
-  verifyPhoneOtp: (phone: string, token: string, pending?: PendingSignup) => Promise<void>;
+  sendEmailOtp: (email: string) => Promise<void>;
+  verifyEmailOtp: (email: string, token: string, pending?: PendingSignup) => Promise<void>;
   adminSignIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -68,13 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function sendPhoneOtp(phone: string) {
-    const { error } = await supabase.auth.signInWithOtp({ phone });
+  async function sendEmailOtp(email: string) {
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
     if (error) throw error;
   }
 
-  async function verifyPhoneOtp(phone: string, token: string, pending?: PendingSignup) {
-    const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' });
+  async function verifyEmailOtp(email: string, token: string, pending?: PendingSignup) {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
     if (error) throw error;
     const user = data.user;
     if (!user) return;
@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: user.id,
         role,
         full_name: pending?.full_name ?? 'New user',
-        phone,
+        email,
         city: pending?.city ?? null,
       });
 
@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, sendPhoneOtp, verifyPhoneOtp, adminSignIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, profile, loading, sendEmailOtp, verifyEmailOtp, adminSignIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
