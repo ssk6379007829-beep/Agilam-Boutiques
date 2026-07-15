@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
+import { homeFor } from '@/auth/RequireRole';
 import { IconButton } from '@/components/ui/IconButton';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/TextField';
@@ -11,9 +12,10 @@ export function SignIn() {
   const { role: roleParam } = useParams<{ role: string }>();
   const role = (roleParam === 'seller' ? 'seller' : 'buyer') as Role;
   const navigate = useNavigate();
-  const { sendEmailOtp } = useAuth();
+  const { signInWithPassword } = useAuth();
   const toast = useToast();
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [sending, setSending] = useState(false);
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
 
@@ -23,12 +25,16 @@ export function SignIn() {
       toast('Enter a valid email address');
       return;
     }
+    if (!password) {
+      toast('Enter your password');
+      return;
+    }
     setSending(true);
     try {
-      await sendEmailOtp(trimmedEmail);
-      navigate('/auth/otp', { state: { email: trimmedEmail, role, mode: 'signin' } });
+      await signInWithPassword(trimmedEmail, password);
+      navigate(homeFor(role), { replace: true });
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not send code');
+      toast(e instanceof Error ? e.message : 'Sign in failed');
     } finally {
       setSending(false);
     }
@@ -52,8 +58,18 @@ export function SignIn() {
           />
         </label>
 
+        <label className="text-[13px] font-bold text-rose-fieldLabel">
+          Password
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="mt-1.5 h-[52px]"
+          />
+        </label>
+
         <Button full onClick={handleSignIn} disabled={sending}>
-          {sending ? 'Sending code…' : 'Send OTP'}
+          {sending ? 'Signing in…' : 'Sign In'}
         </Button>
 
         <div className="mt-1 text-center text-sm text-rose-muted">

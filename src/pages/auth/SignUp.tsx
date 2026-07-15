@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
+import { homeFor } from '@/auth/RequireRole';
 import { IconButton } from '@/components/ui/IconButton';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/TextField';
@@ -11,11 +12,12 @@ export function SignUp() {
   const { role: roleParam } = useParams<{ role: string }>();
   const role = (roleParam === 'seller' ? 'seller' : 'buyer') as Role;
   const navigate = useNavigate();
-  const { sendEmailOtp } = useAuth();
+  const { signUpWithPassword } = useAuth();
   const toast = useToast();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [city, setCity] = useState('');
   const [boutiqueName, setBoutiqueName] = useState('');
   const [sending, setSending] = useState(false);
@@ -25,16 +27,25 @@ export function SignUp() {
     const trimmedEmail = email.trim();
     if (!fullName.trim()) return toast('Enter your full name');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return toast('Enter a valid email address');
+    if (password.length < 6) return toast('Password must be at least 6 characters');
     if (role === 'seller' && !boutiqueName.trim()) return toast('Enter your boutique name');
 
     setSending(true);
     try {
-      await sendEmailOtp(trimmedEmail);
-      navigate('/auth/otp', {
-        state: { email: trimmedEmail, role, mode: 'signup', pending: { full_name: fullName, role, city, boutiqueName } },
+      const { confirmationRequired } = await signUpWithPassword(trimmedEmail, password, {
+        full_name: fullName,
+        role,
+        city,
+        boutiqueName,
       });
+      if (confirmationRequired) {
+        toast('Check your email to confirm your account, then sign in');
+        navigate(`/auth/signin/${role}`);
+      } else {
+        navigate(homeFor(role), { replace: true });
+      }
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not send code');
+      toast(e instanceof Error ? e.message : 'Could not create account');
     } finally {
       setSending(false);
     }
@@ -64,6 +75,17 @@ export function SignUp() {
         </label>
 
         <label className="text-[13px] font-bold text-rose-fieldLabel">
+          Password
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="mt-1.5 h-[52px]"
+            placeholder="At least 6 characters"
+          />
+        </label>
+
+        <label className="text-[13px] font-bold text-rose-fieldLabel">
           City
           <Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5 h-[52px]" placeholder="Coimbatore" />
         </label>
@@ -76,7 +98,7 @@ export function SignUp() {
         )}
 
         <Button full onClick={handleSignUp} disabled={sending} className="mt-1.5">
-          {sending ? 'Sending code…' : 'Create Account'}
+          {sending ? 'Creating account…' : 'Create Account'}
         </Button>
 
         <div className="text-center text-sm text-rose-muted">

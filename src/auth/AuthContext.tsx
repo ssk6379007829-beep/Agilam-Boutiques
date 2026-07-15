@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Role } from '@/types/database';
 
@@ -23,8 +23,8 @@ type AuthContextValue = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  sendEmailOtp: (email: string) => Promise<void>;
-  verifyEmailOtp: (email: string, token: string, pending?: PendingSignup) => Promise<void>;
+  signUpWithPassword: (email: string, password: string, pending: PendingSignup) => Promise<{ confirmationRequired: boolean }>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
   adminSignIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -42,6 +42,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(data ? (data as Profile) : null);
   }
 
+  async function ensureProfile(user: User) {
+    const { data: existing } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
+    if (existing) return;
+
+    const meta = (user.user_metadata ?? {}) as Partial<PendingSignup>;
+    const role: Role = meta.role ?? 'buyer';
+    await supabase.from('profiles').insert({
+      id: user.id,
+      role,
+      full_name: meta.full_name ?? 'New user',
+      email: user.email,
+      city: meta.city ?? null,
+    });
+
+    if (role === 'seller' && meta.boutiqueName) {
+      await supabase.from('boutiques').insert({
+        owner_id: user.id,
+        name: meta.boutiqueName,
+        city: meta.city ?? '',
+        tone: Math.floor(Math.random() * 8),
+      });
+    }
+  }
+
   useEffect(() => {
     let mounted = true;
     supabase.auth
@@ -49,7 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(async ({ data }) => {
         if (!mounted) return;
         setSession(data.session);
-        if (data.session) await loadProfile(data.session.user.id);
+        if (data.session) {
+          await ensureProfile(data.session.user);
+          await loadProfile(data.session.user.id);
+        }
       })
       .catch((e) => console.error('Failed to load Supabase session', e))
       .finally(() => {
@@ -58,8 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       setSession(newSession);
-      if (newSession) await loadProfile(newSession.user.id);
-      else setProfile(null);
+      if (newSession) {
+        await ensureProfile(newSession.user);
+        await loadProfile(newSession.user.id);
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => {
@@ -68,40 +99,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  async function sendEmailOtp(email: string) {
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+  async function signUpWithPassword(email: string, password: string, pending: PendingSignup) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: pending },
+    });
     if (error) throw error;
+    return { confirmationRequired: !data.session };
   }
 
-  async function verifyEmailOtp(email: string, token: string, pending?: PendingSignup) {
-    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+  async function signInWithPassword(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    const user = data.user;
-    if (!user) return;
-
-    const { data: existing } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
-
-    if (!existing) {
-      const role: Role = pending?.role ?? 'buyer';
-      await supabase.from('profiles').insert({
-        id: user.id,
-        role,
-        full_name: pending?.full_name ?? 'New user',
-        email,
-        city: pending?.city ?? null,
-      });
-
-      if (role === 'seller' && pending?.boutiqueName) {
-        await supabase.from('boutiques').insert({
-          owner_id: user.id,
-          name: pending.boutiqueName,
-          city: pending.city ?? '',
-          tone: Math.floor(Math.random() * 8),
-        });
-      }
-    }
-
-    await loadProfile(user.id);
   }
 
   async function adminSignIn(email: string, password: string) {
@@ -118,7 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, sendEmailOtp, verifyEmailOtp, adminSignIn, signOut, refreshProfile }}>
+    <AuthContext.Provider
+      value={{ session, profile, loading, signUpWithPassword, signInWithPassword, adminSignIn, signOut, refreshProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

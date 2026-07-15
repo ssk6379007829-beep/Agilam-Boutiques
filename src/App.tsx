@@ -4,7 +4,6 @@ import { RequireRole } from '@/auth/RequireRole';
 import { Splash } from '@/pages/auth/Splash';
 import { SignIn } from '@/pages/auth/SignIn';
 import { SignUp } from '@/pages/auth/SignUp';
-import { Otp } from '@/pages/auth/Otp';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 
 import { BuyerLayout } from '@/components/layout/BuyerLayout';
@@ -52,7 +51,6 @@ export default function App() {
       <Route path="/" element={<Splash />} />
       <Route path="/auth/signin/:role" element={<SignIn />} />
       <Route path="/auth/signup/:role" element={<SignUp />} />
-      <Route path="/auth/otp" element={<Otp />} />
       <Route path="/admin/login" element={<AdminLogin />} />
 
       <Route
