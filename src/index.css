@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: 'Manrope', system-ui, sans-serif;
+  color: #2A1A20;
+  background: #F6E9EF;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: #D6336C; text-decoration: none; }
+a:hover { color: #B02454; }
+input, textarea, select, button { font-family: inherit; }
+input:focus, textarea:focus { outline: none; }
+
+.no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
+.no-scrollbar { scrollbar-width: none; }
+
+.msymbol {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+}

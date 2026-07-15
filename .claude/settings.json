@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(npm -v)",
+      "Bash(npm create *)",
+      "Bash(npm install *)",
+      "Bash(mkdir -p \"/d/npm-cache\" \"/d/npm-tmp\")",
+      "Bash(npm config *)",
+      "Bash(npx tsc *)",
+      "Bash(xargs grep -l \"GenericTable\")",
+      "Bash(mkdir -p /d/tmp)",
+      "Bash(export TMPDIR=/d/tmp)",
+      "Bash(export TEMP=D:\\\\\\\\tmp)",
+      "Bash(export TMP=D:\\\\\\\\tmp)",
+      "Bash(echo \"set\")",
+      "Bash(TMPDIR=/d/tmp ls -la \"/d/Agilam-AI/Agilam boutique/node_modules/@supabase/\")",
+      "Bash(TMPDIR=/d/tmp find \"/d/Agilam-AI/Agilam boutique/node_modules/@supabase/postgrest-js\" -iname \"*.d.ts\")",
+      "Bash(TMPDIR=/d/tmp find \"/d/Agilam-AI/Agilam boutique/node_modules/@supabase/postgrest-js\" -maxdepth 3)",
+      "Bash(TMPDIR=/d/tmp npx tsc -b)",
+      "Bash(echo \"EXIT CODE: $?\")"
+    ]
+  }
+}
