@@ -64,7 +64,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 px-5 pt-4.5">
+      <div className="grid grid-cols-2 gap-3 px-5 pt-4.5 md:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-[18px] bg-white p-3.5 shadow-soft">
             <div className="flex h-9 w-9 items-center justify-center rounded-[11px]" style={{ background: s.tint }}>

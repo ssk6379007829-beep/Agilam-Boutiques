@@ -94,7 +94,7 @@ export function Results() {
       </div>
 
       <div className="px-5 pb-1.5 pt-1 text-[13px] font-semibold text-rose-muted">{filtered.length} results</div>
-      <div className="grid grid-cols-2 gap-3.5 px-5 pb-6">
+      <div className="grid grid-cols-2 gap-3.5 px-5 pb-6 md:grid-cols-3">
         {filtered.map((p) => (
           <ProductCard
             key={p.id}

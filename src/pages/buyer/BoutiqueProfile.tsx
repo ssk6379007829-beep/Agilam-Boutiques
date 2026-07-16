@@ -68,7 +68,7 @@ export function BoutiqueProfile() {
         </div>
         <div className="mt-4.5 font-serif text-[22px] font-bold">Collections</div>
       </div>
-      <div className="grid grid-cols-2 gap-3.5 px-5 pt-3">
+      <div className="grid grid-cols-2 gap-3.5 px-5 pt-3 md:grid-cols-3">
         {(products ?? []).map((p) => (
           <ProductCard key={p.id} product={p} imageHeight={170} onOpen={() => navigate(`/buyer/product/${p.id}`)} />
         ))}

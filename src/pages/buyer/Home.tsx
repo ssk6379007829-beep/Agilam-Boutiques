@@ -174,7 +174,7 @@ export function Home() {
       </div>
 
       <div className="px-5 pb-3 pt-5.5 font-serif text-[22px] font-bold">Popular Dresses</div>
-      <div className="grid grid-cols-2 gap-3.5 px-5">
+      <div className="grid grid-cols-2 gap-3.5 px-5 md:grid-cols-3">
         {(products ?? []).map((p) => (
           <ProductCard
             key={p.id}

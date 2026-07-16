@@ -26,7 +26,7 @@ export function Wishlist() {
       </div>
 
       {items && items.length > 0 ? (
-        <div className="grid grid-cols-2 gap-3.5 px-5">
+        <div className="grid grid-cols-2 gap-3.5 px-5 md:grid-cols-3">
           {items.map((p) => (
             <ProductCard key={p.id} product={p} wished onToggleWish={(e) => handleRemove(e, p.id)} onOpen={() => navigate(`/buyer/product/${p.id}`)} />
           ))}
