@@ -23,6 +23,26 @@ A multi-boutique marketplace web app — Buyer, Seller (boutique owner), and Adm
    npm run dev
    ```
 
+## Deploy on Vercel
+
+1. Push this repo to GitHub, GitLab, or Bitbucket.
+2. In Vercel, create a new project and import the repository.
+3. Use these build settings:
+   ```
+   Framework Preset: Vite
+   Build Command: npm run build
+   Output Directory: dist
+   Install Command: npm install
+   ```
+4. Add these environment variables in Vercel Project Settings:
+   ```
+   VITE_SUPABASE_URL=your-project-url
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   ```
+5. Deploy the project.
+
+This app uses `BrowserRouter`, so the included `vercel.json` rewrite is required to make direct visits and page refreshes work for routes like `/buyer/home` and `/seller/dashboard`.
+
 ## App structure
 
 - `/` — splash / role entry (Buyer, Boutique Owner, or Platform Admin sign-in)
