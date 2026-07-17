@@ -10,7 +10,7 @@ export function Featured() {
       {featured.map((p) => (
         <div key={p.id} style={css('background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
           <div style={css(`height:150px;background:${TONES[p.tone]};position:relative;`)}>
-            <ImageSlot placeholder={p.title} style={css('position:absolute;inset:0;')} />
+            <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
             <span style={css('position:absolute;left:10px;top:10px;background:#C99A3F;color:#fff;font-size:10px;font-weight:800;padding:3px 9px;border-radius:8px;')}>FEATURED</span>
           </div>
           <div style={css('padding:12px 14px;')}>

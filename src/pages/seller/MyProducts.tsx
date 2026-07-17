@@ -30,7 +30,7 @@ export function MyProducts() {
           return (
             <div key={p.id} style={css('background:#fff;border-radius:16px;padding:10px;display:flex;gap:11px;align-items:center;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
               <div style={css(`width:56px;height:56px;flex:none;border-radius:13px;background:${TONES[p.tone]};position:relative;overflow:hidden;`)}>
-                <ImageSlot style={css('position:absolute;inset:0;')} />
+                <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
               </div>
               <div style={css('flex:1;min-width:0;')}>
                 <div style={css('font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>

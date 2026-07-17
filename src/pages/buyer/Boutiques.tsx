@@ -27,7 +27,7 @@ export function Boutiques() {
         {BOUTIQUES.map((b) => (
           <div key={b.id} onClick={() => navigate(`/buyer/boutique/${b.id}`)} className="agx-lift" style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             <div className="agx-zoom" style={css(`position:relative;aspect-ratio:16/10;background:${TONES[b.tone]};overflow:hidden;`)}>
-              <ImageSlot placeholder={`${b.name} — cover`} style={css('position:absolute;inset:0;')} />
+              <ImageSlot src={b.image} placeholder={`${b.name} — cover`} style={css('position:absolute;inset:0;')} />
               <div style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,8,18,0) 40%,rgba(30,8,18,.55) 100%);pointer-events:none;')} />
               {b.featured && (
                 <div style={css('position:absolute;left:12px;top:12px;display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,#D9B25A,#B0863B);color:#fff;padding:5px 11px;border-radius:999px;box-shadow:0 8px 20px -8px rgba(176,134,59,.8);')}>

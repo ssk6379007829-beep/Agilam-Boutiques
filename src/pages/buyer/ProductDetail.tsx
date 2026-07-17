@@ -66,7 +66,7 @@ export function ProductDetail() {
       <div className="agx-pdp" style={css('max-width:1300px;margin:0 auto;')}>
         <div className="agx-pdp-media" style={css('padding:clamp(16px,2.5vw,28px) 0 clamp(16px,2.5vw,28px) clamp(16px,4vw,44px);')}>
           <div className="agx-zoom" style={css(`position:relative;aspect-ratio:4/5;max-height:78vh;background:${TONES[ap.tone]};overflow:hidden;border-radius:24px;box-shadow:0 24px 54px -34px rgba(107,20,54,.5);`)}>
-            <ImageSlot placeholder={ap.title} style={css('position:absolute;inset:0;')} />
+            <ImageSlot src={ap.image} placeholder={ap.title} style={css('position:absolute;inset:0;')} />
             <button onClick={() => navigate('/buyer/home')} style={css('position:absolute;left:16px;top:16px;width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}>
               <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
             </button>
@@ -83,7 +83,7 @@ export function ProductDetail() {
           <div style={css('display:flex;gap:12px;margin-top:14px;')}>
             {thumbs.map((t) => (
               <div key={t.id} className="agx-zoom" style={css(`flex:1;aspect-ratio:1;border-radius:14px;overflow:hidden;background:${t.toneHex};box-shadow:0 0 0 ${t.ring};cursor:pointer;position:relative;`)}>
-                <ImageSlot style={css('position:absolute;inset:0;')} />
+                <ImageSlot src={ap.image} style={css('position:absolute;inset:0;')} />
               </div>
             ))}
           </div>
@@ -249,7 +249,7 @@ export function ProductDetail() {
           {related.map((p) => (
             <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('flex:none;width:230px;cursor:pointer;')}>
               <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:22px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.6);`)}>
-                <ImageSlot placeholder={p.title} style={css('position:absolute;inset:0;')} />
+                <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
                 {p.featured && (
                   <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,#D9B25A,#B0863B);color:#fff;padding:5px 10px;border-radius:999px;')}>
                     <span className="agx-eyebrow" style={css('font-size:8.5px;letter-spacing:.14em;')}>Featured</span>

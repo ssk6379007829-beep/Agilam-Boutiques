@@ -33,7 +33,7 @@ export function Cart() {
               {items.map((c) => (
                 <div key={c.id} style={css('display:flex;gap:14px;background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:14px;box-shadow:0 14px 32px -28px rgba(107,20,54,.5);')}>
                   <div className="agx-zoom" style={css(`position:relative;width:96px;height:120px;flex:none;border-radius:14px;overflow:hidden;background:${TONES[c.tone]};`)}>
-                    <ImageSlot placeholder={c.title} style={css('position:absolute;inset:0;')} />
+                    <ImageSlot src={c.image} placeholder={c.title} style={css('position:absolute;inset:0;')} />
                   </div>
                   <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;')}>
                     <div style={css('display:flex;justify-content:space-between;gap:10px;')}>

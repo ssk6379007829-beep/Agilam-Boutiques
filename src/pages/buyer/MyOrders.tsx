@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
-import { BUYER_ORDERS, TONES, TRACK_STAGES, fmt } from '@/data/demo';
+import { BUYER_ORDERS, PRODUCTS, TONES, TRACK_STAGES, fmt } from '@/data/demo';
 
 export function MyOrders() {
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ export function MyOrders() {
                 </div>
                 <div style={css('display:flex;gap:14px;margin-top:12px;')}>
                   <div style={css(`position:relative;width:72px;height:90px;flex:none;border-radius:13px;overflow:hidden;background:${TONES[o.tone]};`)}>
-                    <ImageSlot placeholder={o.title} style={css('position:absolute;inset:0;')} />
+                    <ImageSlot src={PRODUCTS.find((x) => x.id === o.pid)?.image} placeholder={o.title} style={css('position:absolute;inset:0;')} />
                   </div>
                   <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;')}>
                     <div style={css('font-weight:800;font-size:15px;line-height:1.2;')}>{o.title}</div>

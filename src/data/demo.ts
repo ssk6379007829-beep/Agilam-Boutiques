@@ -6,6 +6,14 @@
 
 export const TONES = ['#F4D6E2', '#F1DCC7', '#E2DAEF', '#D7E7DE', '#F3DFD0', '#E7D9E6', '#DCE4EF', '#F0DAD4'];
 
+/**
+ * Demo photography. Builds a sized, cropped Unsplash CDN URL from a photo id.
+ * These are free-to-use images used only to populate the demo; `ImageSlot`
+ * falls back to its tinted placeholder if any fail to load.
+ */
+export const img = (id: string, w = 640): string =>
+  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
+
 export type Product = {
   id: string;
   title: string;
@@ -21,17 +29,18 @@ export type Product = {
   featured?: boolean;
   stock: number;
   fabric: string;
+  image: string;
 };
 
 export const PRODUCTS: Product[] = [
-  { id: 'p1', title: 'Rose Zari Silk Saree', price: 4899, cat: 'Sarees', boutique: 'Elegance Boutique', city: 'Coimbatore', color: 'Pink', occasion: 'Wedding', rating: 4.7, reviews: 128, tone: 0, featured: true, stock: 12, fabric: 'Kanchipuram Silk' },
-  { id: 'p2', title: 'Emerald Bridal Lehenga', price: 12999, cat: 'Lehengas', boutique: 'Pinky’s Boutique', city: 'Madurai', color: 'Green', occasion: 'Bridal', rating: 4.9, reviews: 96, tone: 3, featured: true, stock: 4, fabric: 'Velvet' },
-  { id: 'p3', title: 'Blush Georgette Gown', price: 6499, cat: 'Gowns', boutique: 'Trendz Wardrobe', city: 'Chennai', color: 'Pink', occasion: 'Reception', rating: 4.6, reviews: 74, tone: 0, stock: 8, fabric: 'Georgette' },
-  { id: 'p4', title: 'Mustard Cotton Kurti', price: 1899, cat: 'Kurtis', boutique: 'Style Studio', city: 'Salem', color: 'Yellow', occasion: 'Casual', rating: 4.5, reviews: 203, tone: 1, stock: 24, fabric: 'Cotton' },
-  { id: 'p5', title: 'Lavender Anarkali Gown', price: 5299, cat: 'Gowns', boutique: 'Elegance Boutique', city: 'Coimbatore', color: 'Purple', occasion: 'Party', rating: 4.8, reviews: 61, tone: 2, stock: 6, fabric: 'Net' },
-  { id: 'p6', title: 'Maroon Kanjivaram Saree', price: 8999, cat: 'Sarees', boutique: 'Trendz Wardrobe', city: 'Chennai', color: 'Red', occasion: 'Festive', rating: 4.7, reviews: 154, tone: 7, featured: true, stock: 9, fabric: 'Silk' },
-  { id: 'p7', title: 'Peach Party Lehenga', price: 7499, cat: 'Lehengas', boutique: 'Style Studio', city: 'Salem', color: 'Peach', occasion: 'Party', rating: 4.4, reviews: 47, tone: 4, stock: 0, fabric: 'Organza' },
-  { id: 'p8', title: 'Teal Silk Kurti Set', price: 2499, cat: 'Kurtis', boutique: 'Pinky’s Boutique', city: 'Madurai', color: 'Teal', occasion: 'Festive', rating: 4.6, reviews: 88, tone: 3, stock: 15, fabric: 'Art Silk' },
+  { id: 'p1', title: 'Rose Zari Silk Saree', price: 4899, cat: 'Sarees', boutique: 'Elegance Boutique', city: 'Coimbatore', color: 'Pink', occasion: 'Wedding', rating: 4.7, reviews: 128, tone: 0, featured: true, stock: 12, fabric: 'Kanchipuram Silk', image: img('1618901185975-d59f7091bcfe') },
+  { id: 'p2', title: 'Emerald Bridal Lehenga', price: 12999, cat: 'Lehengas', boutique: 'Pinky’s Boutique', city: 'Madurai', color: 'Green', occasion: 'Bridal', rating: 4.9, reviews: 96, tone: 3, featured: true, stock: 4, fabric: 'Velvet', image: img('1746372283841-dbb3838f9935') },
+  { id: 'p3', title: 'Blush Georgette Gown', price: 6499, cat: 'Gowns', boutique: 'Trendz Wardrobe', city: 'Chennai', color: 'Pink', occasion: 'Reception', rating: 4.6, reviews: 74, tone: 0, stock: 8, fabric: 'Georgette', image: img('1679006831648-7c9ea12e5807') },
+  { id: 'p4', title: 'Mustard Cotton Kurti', price: 1899, cat: 'Kurtis', boutique: 'Style Studio', city: 'Salem', color: 'Yellow', occasion: 'Casual', rating: 4.5, reviews: 203, tone: 1, stock: 24, fabric: 'Cotton', image: img('1727430228383-aa1fb59db8bf') },
+  { id: 'p5', title: 'Lavender Anarkali Gown', price: 5299, cat: 'Gowns', boutique: 'Elegance Boutique', city: 'Coimbatore', color: 'Purple', occasion: 'Party', rating: 4.8, reviews: 61, tone: 2, stock: 6, fabric: 'Net', image: img('1617627143750-d86bc21e42bb') },
+  { id: 'p6', title: 'Maroon Kanjivaram Saree', price: 8999, cat: 'Sarees', boutique: 'Trendz Wardrobe', city: 'Chennai', color: 'Red', occasion: 'Festive', rating: 4.7, reviews: 154, tone: 7, featured: true, stock: 9, fabric: 'Silk', image: img('1610030469983-98e550d6193c') },
+  { id: 'p7', title: 'Peach Party Lehenga', price: 7499, cat: 'Lehengas', boutique: 'Style Studio', city: 'Salem', color: 'Peach', occasion: 'Party', rating: 4.4, reviews: 47, tone: 4, stock: 0, fabric: 'Organza', image: img('1668371679302-a8ec781e876e') },
+  { id: 'p8', title: 'Teal Silk Kurti Set', price: 2499, cat: 'Kurtis', boutique: 'Pinky’s Boutique', city: 'Madurai', color: 'Teal', occasion: 'Festive', rating: 4.6, reviews: 88, tone: 3, stock: 15, fabric: 'Art Silk', image: img('1641699862936-be9f49b1c38d') },
 ];
 
 export type Boutique = {
@@ -47,23 +56,24 @@ export type Boutique = {
   featured?: boolean;
   products: number;
   desc: string;
+  image: string;
 };
 
 export const BOUTIQUES: Boutique[] = [
-  { id: 'b1', name: 'Elegance Boutique', city: 'Coimbatore', area: 'RS Puram, Coimbatore', insta: 'elegance.boutique', rating: 4.7, reviews: 128, tone: 0, verified: true, featured: true, products: 64, desc: 'Handpicked bridal & festive wear crafted by Coimbatore’s finest artisans.' },
-  { id: 'b2', name: 'Trendz Wardrobe', city: 'Chennai', area: 'T. Nagar, Chennai', insta: 'trendz.wardrobe', rating: 4.6, reviews: 96, tone: 7, verified: true, products: 120, desc: 'Contemporary ethnic fusion for the modern woman.' },
-  { id: 'b3', name: 'Pinky’s Boutique', city: 'Madurai', area: 'KK Nagar, Madurai', insta: 'pinkys.boutique', rating: 4.9, reviews: 212, tone: 2, verified: true, featured: true, products: 88, desc: 'Luxury bridal lehengas and heirloom sarees.' },
-  { id: 'b4', name: 'Style Studio', city: 'Salem', area: 'Fairlands, Salem', insta: 'style.studio', rating: 4.4, reviews: 54, tone: 4, verified: false, products: 41, desc: 'Everyday elegance in kurtis, gowns and daily wear.' },
-  { id: 'b5', name: 'Silk Symphony', city: 'Coimbatore', area: 'Gandhipuram, Coimbatore', insta: 'silk.symphony', rating: 4.8, reviews: 171, tone: 3, verified: true, products: 97, desc: 'Pure silk sarees, direct from the loom.' },
+  { id: 'b1', name: 'Elegance Boutique', city: 'Coimbatore', area: 'RS Puram, Coimbatore', insta: 'elegance.boutique', rating: 4.7, reviews: 128, tone: 0, verified: true, featured: true, products: 64, desc: 'Handpicked bridal & festive wear crafted by Coimbatore’s finest artisans.', image: img('1441984904996-e0b6ba687e04', 800) },
+  { id: 'b2', name: 'Trendz Wardrobe', city: 'Chennai', area: 'T. Nagar, Chennai', insta: 'trendz.wardrobe', rating: 4.6, reviews: 96, tone: 7, verified: true, products: 120, desc: 'Contemporary ethnic fusion for the modern woman.', image: img('1555529771-835f59fc5efe', 800) },
+  { id: 'b3', name: 'Pinky’s Boutique', city: 'Madurai', area: 'KK Nagar, Madurai', insta: 'pinkys.boutique', rating: 4.9, reviews: 212, tone: 2, verified: true, featured: true, products: 88, desc: 'Luxury bridal lehengas and heirloom sarees.', image: img('1521335629791-ce4aec67dd15', 800) },
+  { id: 'b4', name: 'Style Studio', city: 'Salem', area: 'Fairlands, Salem', insta: 'style.studio', rating: 4.4, reviews: 54, tone: 4, verified: false, products: 41, desc: 'Everyday elegance in kurtis, gowns and daily wear.', image: img('1525562723836-dca67a71d5f1', 800) },
+  { id: 'b5', name: 'Silk Symphony', city: 'Coimbatore', area: 'Gandhipuram, Coimbatore', insta: 'silk.symphony', rating: 4.8, reviews: 171, tone: 3, verified: true, products: 97, desc: 'Pure silk sarees, direct from the loom.', image: img('1595991209266-5ff5a3a2f008', 800) },
 ];
 
 export const CATEGORIES = [
-  { name: 'Sarees', icon: 'checkroom', slotId: 'cat-sarees', toneHex: '#F3D3DF' },
-  { name: 'Lehengas', icon: 'apparel', slotId: 'cat-lehengas', toneHex: '#EAD6E8' },
-  { name: 'Gowns', icon: 'woman', slotId: 'cat-gowns', toneHex: '#E6D8EC' },
-  { name: 'Kurtis', icon: 'styler', slotId: 'cat-kurtis', toneHex: '#F1DAD0' },
-  { name: 'Bridal', icon: 'diamond', slotId: 'cat-bridal', toneHex: '#F0CBD6' },
-  { name: 'More', icon: 'grid_view', slotId: 'cat-more', toneHex: '#E3DCEC' },
+  { name: 'Sarees', icon: 'checkroom', slotId: 'cat-sarees', toneHex: '#F3D3DF', image: img('1616756141603-6d37d5cde2a2') },
+  { name: 'Lehengas', icon: 'apparel', slotId: 'cat-lehengas', toneHex: '#EAD6E8', image: img('1619715613791-89d35b51ff81') },
+  { name: 'Gowns', icon: 'woman', slotId: 'cat-gowns', toneHex: '#E6D8EC', image: img('1609748340041-f5d61e061ebc') },
+  { name: 'Kurtis', icon: 'styler', slotId: 'cat-kurtis', toneHex: '#F1DAD0', image: img('1610030469668-8e9f641aaf27') },
+  { name: 'Bridal', icon: 'diamond', slotId: 'cat-bridal', toneHex: '#F0CBD6', image: img('1649930055986-ca57250a7fd4') },
+  { name: 'More', icon: 'grid_view', slotId: 'cat-more', toneHex: '#E3DCEC', image: img('1610189025857-f42fe6e8dd91') },
 ];
 
 export const COLORS = [
@@ -78,6 +88,15 @@ export const COLORS = [
 
 export const OCCASIONS = ['Bridal', 'Wedding', 'Reception', 'Festive', 'Party', 'Casual'];
 export const SORTS = ['Latest', 'Price: Low to High', 'Price: High to Low', 'Popularity'];
+
+/** Home page customer reviews (v2 design "What shoppers say" section). */
+export type HomeReview = { name: string; city: string; rating: number; tone: number; text: string };
+
+export const HOME_REVIEWS: HomeReview[] = [
+  { name: 'Anitha R', city: 'Chennai', rating: 5, tone: 0, text: 'The zari work is even more stunning in person. The drape fell beautifully at my sister’s wedding — so many compliments!' },
+  { name: 'Meena K', city: 'Coimbatore', rating: 5, tone: 2, text: 'Rich colour and premium silk. The boutique answered every question on chat before I ordered. Highly recommend Agilam.' },
+  { name: 'Divya S', city: 'Madurai', rating: 4, tone: 4, text: 'Lovely saree and true to the photos. Delivery took a little longer than expected but the quality more than made up for it.' },
+];
 
 export type Thread = { id: string; name: string; last: string; time: string; unread: number; online: boolean; tone: number };
 

@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { BUYER_ORDERS, TONES, TRACK_STAGES } from '@/data/demo';
+import { BUYER_ORDERS, PRODUCTS, TONES, TRACK_STAGES } from '@/data/demo';
 
 const STEP_TIMES = ['15 Jul, 10:24 AM', '15 Jul, 11:40 AM', '16 Jul, 9:10 AM', '16 Jul, 6:30 PM', 'Today, 8:05 AM', '—'];
 
@@ -35,7 +35,7 @@ export function TrackOrder() {
           <div style={css('position:absolute;top:-60px;right:-30px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(244,217,166,.22),transparent 70%);')} />
           <div style={css('display:flex;gap:15px;position:relative;')}>
             <div style={css(`position:relative;width:78px;height:98px;flex:none;border-radius:15px;overflow:hidden;background:${TONES[order.tone]};box-shadow:0 12px 26px -12px rgba(0,0,0,.4);`)}>
-              <ImageSlot placeholder={order.title} style={css('position:absolute;inset:0;')} />
+              <ImageSlot src={PRODUCTS.find((x) => x.id === order.pid)?.image} placeholder={order.title} style={css('position:absolute;inset:0;')} />
             </div>
             <div style={css('flex:1;min-width:0;')}>
               <div className="agx-eyebrow" style={css('font-size:9px;color:#F4D9A6;')}>{order.id}</div>

@@ -51,20 +51,8 @@ export function Results() {
                 Ethnic Wear <span style={css("font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:#8A7078;letter-spacing:0;")}>· {results.length} pieces</span>
               </div>
             </div>
-            {/* Below 780px the sidebar is hidden; this opens the filter sheet. */}
-            <button
-              className="agx-filter-btn"
-              onClick={() => navigate('/buyer/filter')}
-              style={css('align-items:center;gap:7px;background:#fff;border:1.5px solid #F0D8E2;border-radius:14px;padding:10px 16px;font-size:13px;font-weight:800;color:#B02454;cursor:pointer;font-family:inherit;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
-            >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>tune</span>
-              Filters
-              {activeChips.length > 0 && (
-                <span style={css('min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#D6336C;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;')}>{activeChips.length}</span>
-              )}
-            </button>
-
-            <div style={css('display:flex;align-items:center;gap:10px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:14px;padding:6px 8px 6px 14px;')}>
+            {/* Desktop sort chips — hidden on mobile in favour of the action bar. */}
+            <div className="agx-res-sortbar" style={css('display:flex;align-items:center;gap:10px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:14px;padding:6px 8px 6px 14px;')}>
               <span className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;white-space:nowrap;')}>Sort</span>
               <div className="agx-scroll" style={css('display:flex;align-items:center;gap:6px;overflow-x:auto;max-width:100%;')}>
                 {SORTS.map((x) => {
@@ -159,7 +147,7 @@ export function Results() {
               {results.map((p) => (
                 <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>
                   <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.6);`)}>
-                    <ImageSlot placeholder={p.title} style={css('position:absolute;inset:0;')} />
+                    <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
                     <button onClick={(e: MouseEvent) => { e.stopPropagation(); toggleWish(p.id); }} style={css('position:absolute;right:9px;top:9px;width:36px;height:36px;border-radius:12px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(0,0,0,.3);')}>
                       <span style={css(`font-family:'Material Symbols Outlined';font-size:19px;color:${wishlist[p.id] ? '#D6336C' : '#B79AA6'};`)}>{wishlist[p.id] ? 'favorite' : 'favorite_border'}</span>
                     </button>
@@ -192,6 +180,27 @@ export function Results() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* MOBILE FILTER / SORT BAR — floats above the dock on small screens. */}
+        <div className="agx-mob-actionbar" style={css('position:fixed;left:0;right:0;bottom:96px;z-index:20;justify-content:center;gap:12px;padding:0 16px;pointer-events:none;')}>
+          <button
+            onClick={() => navigate('/buyer/filter')}
+            style={css('pointer-events:auto;flex:1;max-width:200px;height:52px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid #F0D8E2;border-radius:16px;background:#fff;color:#B02454;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 16px 34px -14px rgba(107,20,54,.55);')}
+          >
+            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>tune</span>
+            Filter
+            {activeChips.length > 0 && (
+              <span style={css('min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;')}>{activeChips.length}</span>
+            )}
+          </button>
+          <button
+            onClick={() => navigate('/buyer/filter')}
+            style={css('pointer-events:auto;flex:1;max-width:200px;height:52px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 16px 34px -14px rgba(214,51,108,.75);')}
+          >
+            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>swap_vert</span>
+            Sort
+          </button>
         </div>
       </div>
     </div>

@@ -26,7 +26,7 @@ export function Wishlist() {
           {items.map((p) => (
             <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>
               <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.6);`)}>
-                <ImageSlot placeholder={p.title} style={css('position:absolute;inset:0;')} />
+                <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
                 <button onClick={(e: MouseEvent) => { e.stopPropagation(); toggleWish(p.id); }} style={css('position:absolute;right:10px;top:10px;width:36px;height:36px;border-radius:12px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(0,0,0,.3);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>favorite</span>
                 </button>

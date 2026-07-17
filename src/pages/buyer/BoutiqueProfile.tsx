@@ -20,7 +20,7 @@ export function BoutiqueProfile() {
   return (
     <div style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:#fff;')}>
       <div className="agx-zoom" style={css(`position:relative;height:clamp(340px,48vw,580px);background:${TONES[ab.tone]};overflow:hidden;`)}>
-        <ImageSlot placeholder={`${ab.name} — cover`} style={css('position:absolute;inset:0;')} />
+        <ImageSlot src={ab.image} placeholder={`${ab.name} — cover`} style={css('position:absolute;inset:0;')} />
         <div style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,8,18,.34) 0%,rgba(30,8,18,0) 26%,rgba(30,8,18,0) 42%,rgba(30,8,18,.82) 100%);pointer-events:none;')} />
         <button onClick={() => navigate('/buyer/boutiques')} style={css('position:absolute;left:clamp(16px,3vw,44px);top:22px;width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.5);')}>
           <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
@@ -112,7 +112,7 @@ export function BoutiqueProfile() {
           {boutiqueProducts.map((p) => (
             <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift agx-reveal" style={css('cursor:pointer;')}>
               <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.6);`)}>
-                <ImageSlot placeholder={p.title} style={css('position:absolute;inset:0;')} />
+                <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
                 <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#2FA36B;")}>star</span>{p.rating}
                 </div>

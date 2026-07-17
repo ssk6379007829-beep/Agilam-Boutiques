@@ -85,12 +85,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @keyframes agxLogoIn{ 0%{ opacity:0; transform:scale(.86) translateY(10px); } 100%{ opacity:1; transform:scale(1) translateY(0); } }
 @keyframes agxBar{ 0%{ transform:translateX(-130%); } 100%{ transform:translateX(340%); } }
 
-/* Results: the filter sidebar goes static below 780px, so offer the bottom
-   sheet instead at that width. */
-.agx-filter-btn { display: none; }
-@media (max-width: 780px) {
-  .agx-filter-btn { display: flex !important; }
-  .agx-filters { display: none !important; }
+/* Results filters: sticky sidebar + top sort chips on desktop; on mobile
+   (≤959px) both are hidden and replaced by a floating Filter / Sort action
+   bar that opens the bottom sheet — matches the v2 design. */
+.agx-mob-actionbar { display: none; }
+@media (max-width: 959px) {
+  .agx-res-aside { display: none !important; }
+  .agx-res-sortbar { display: none !important; }
+  .agx-mob-actionbar { display: flex !important; }
 }
 
 /* Auth swap: the design draws both a desktop split-panel and a mobile card
