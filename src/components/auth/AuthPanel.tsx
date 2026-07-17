@@ -33,7 +33,7 @@ export function AuthPanel({
         <div style={css('position:absolute;left:-90px;bottom:-90px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.05);')} />
 
         <div style={css('position:relative;display:flex;align-items:center;gap:12px;')}>
-          <img src="/agilam-logo.png" alt="Agilam Boutiques" style={css('width: 70px; height: 61px; border-radius: 14px; object-fit: contain; background: #fff; padding: 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25)')} />
+          <img src="/agilam-logo.jpg" alt="Agilam Boutiques" style={css('width: 70px; height: 61px; border-radius: 14px; object-fit: contain; background: #fff; padding: 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25)')} />
           <div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;")}>Agilam Boutiques</div>
             <div style={css("font-family:'Playfair Display',serif;font-style:italic;font-size:17px;opacity:.95;")}>All Boutiques. One Place.</div>

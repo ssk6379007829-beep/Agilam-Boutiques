@@ -30,7 +30,7 @@ export function MobileAuthCard({
 
         <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;margin-top:20px;')}>
           {showLogo && (
-            <img src="/agilam-logo.png" alt="Agilam" style={css('width:72px;height:72px;border-radius:22px;object-fit:contain;background:#fff;padding:12px;box-shadow:0 18px 40px -20px rgba(107,20,54,.55);')} />
+            <img src="/agilam-logo.jpg" alt="Agilam" style={css('width:72px;height:72px;border-radius:22px;object-fit:contain;background:#fff;padding:12px;box-shadow:0 18px 40px -20px rgba(107,20,54,.55);')} />
           )}
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:33px;margin-top:16px;line-height:1.05;")}>{heading}</div>
           <div style={css('color:#8A7078;font-size:14.5px;margin-top:6px;')}>{sub}</div>

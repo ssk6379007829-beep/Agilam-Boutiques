@@ -26,7 +26,7 @@ export function Loading() {
       style={css('min-height:100vh;background:radial-gradient(120% 95% at 50% 42%,#FBEDE9 0%,#F3D8D8 52%,#E9C4CA 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;')}
     >
       <img
-        src="/agilam-logo.png"
+        src="/agilam-logo.jpg"
         alt="Agilam Boutiques"
         style={css('width:min(72vw,380px);border-radius:34px;box-shadow:0 34px 90px -34px rgba(142,28,68,.45);animation:agxLogoIn 1s cubic-bezier(.2,.7,.2,1) both;')}
       />
