@@ -26,9 +26,13 @@ export function Loading() {
       style={css('min-height:100vh;background:radial-gradient(120% 95% at 50% 42%,#FBEDE9 0%,#F3D8D8 52%,#E9C4CA 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;')}
     >
       <img
-        src="/agilam-logo.png"
+        src="/agilam-loading.png"
         alt="Agilam Boutiques"
-        style={css('width:min(64vw,340px);border-radius:34px;box-shadow:0 34px 90px -34px rgba(142,28,68,.45);animation:agxLogoIn 1s cubic-bezier(.2,.7,.2,1) both;')}
+        onError={(e) => {
+          // Fall back to the shared logo until the loading artwork is added.
+          if (!e.currentTarget.src.endsWith('/agilam-logo.png')) e.currentTarget.src = '/agilam-logo.png';
+        }}
+        style={css('width:min(72vw,380px);border-radius:34px;box-shadow:0 34px 90px -34px rgba(142,28,68,.45);animation:agxLogoIn 1s cubic-bezier(.2,.7,.2,1) both;')}
       />
       <div style={css('margin-top:36px;width:132px;height:4px;border-radius:4px;background:rgba(142,28,68,.14);overflow:hidden;')}>
         <div style={css('width:38%;height:100%;border-radius:4px;background:linear-gradient(90deg,#D6336C,#8E1C44);animation:agxBar 1.3s ease-in-out infinite;')} />

@@ -78,6 +78,26 @@ export function AppShell({ tabs, profileTo }: { tabs: TabDef[]; profileTo: strin
             >
               <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>account_circle</span>
             </button>
+
+            {/* Mobile profile — the desktop search/profile are hidden below 960px. */}
+            <button
+              onClick={() => navigate(profileTo)}
+              className="agx-only-mobile"
+              style={css('width:44px;height:44px;flex:none;margin-left:auto;border-radius:13px;border:1px solid #EFDCE4;background:#fff;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>account_circle</span>
+            </button>
+          </div>
+
+          {/* Mobile search row — below the logo/profile row, full width. */}
+          <div className="agx-only-mobile agx-app-header" style={css('padding:0 16px 12px;')}>
+            <div style={css('flex:1;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #EFDCE4;border-radius:14px;padding:0 14px;height:44px;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}>
+              <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:20px;")}>search</span>
+              <input
+                placeholder="Search boutiques &amp; styles"
+                style={css('border:none;background:none;flex:1;font-size:13.5px;font-weight:600;color:#241019;min-width:0;')}
+              />
+            </div>
           </div>
         </header>
 
