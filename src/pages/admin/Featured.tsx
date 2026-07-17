@@ -1,28 +1,24 @@
-import { useAsync } from '@/hooks/useAsync';
-import { fetchFeaturedProducts } from '@/data/products';
-import { toneHex } from '@/lib/tokens';
-import { fmtInr } from '@/lib/tokens';
+import { css } from '@/lib/css';
+import { ImageSlot } from '@/components/ui/ImageSlot';
+import { PRODUCTS, TONES, fmt } from '@/data/demo';
 
 export function Featured() {
-  const { data: products } = useAsync(fetchFeaturedProducts, []);
+  const featured = PRODUCTS.filter((p) => p.featured);
 
   return (
-    <div className="grid grid-cols-3 gap-4">
-      {(products ?? []).map((p) => (
-        <div key={p.id} className="overflow-hidden rounded-[18px] bg-white shadow-soft">
-          <div className="relative h-[150px]" style={{ background: toneHex(p.tone) }}>
-            {p.image_url && <img src={p.image_url} className="h-full w-full object-cover" />}
-            <span className="absolute left-2.5 top-2.5 rounded-lg bg-gold px-2.5 py-1 text-[10px] font-extrabold text-white">FEATURED</span>
+    <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:16px;')}>
+      {featured.map((p) => (
+        <div key={p.id} style={css('background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+          <div style={css(`height:150px;background:${TONES[p.tone]};position:relative;`)}>
+            <ImageSlot placeholder={p.title} style={css('position:absolute;inset:0;')} />
+            <span style={css('position:absolute;left:10px;top:10px;background:#C99A3F;color:#fff;font-size:10px;font-weight:800;padding:3px 9px;border-radius:8px;')}>FEATURED</span>
           </div>
-          <div className="p-3.5">
-            <div className="text-sm font-bold">{p.title}</div>
-            <div className="text-xs text-rose-muted">
-              {p.boutique?.name} · {fmtInr(p.price)}
-            </div>
+          <div style={css('padding:12px 14px;')}>
+            <div style={css('font-weight:700;font-size:14px;')}>{p.title}</div>
+            <div style={css('font-size:12px;color:#8A7078;')}>{p.boutique} · {fmt(p.price)}</div>
           </div>
         </div>
       ))}
-      {products?.length === 0 && <div className="col-span-3 py-8 text-center text-sm text-rose-muted">No featured listings yet.</div>}
     </div>
   );
 }

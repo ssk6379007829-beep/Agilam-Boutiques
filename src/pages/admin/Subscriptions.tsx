@@ -1,57 +1,41 @@
-import { useAsync } from '@/hooks/useAsync';
-import { fetchAllSubscriptionsAdmin } from '@/data/subscriptions';
-import { statusStyle } from '@/lib/tokens';
+import { css } from '@/lib/css';
+import { SUBSCRIPTIONS } from '@/data/adminDemo';
+
+const GRID = 'display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr;';
 
 export function Subscriptions() {
-  const { data: subs } = useAsync(fetchAllSubscriptionsAdmin, []);
-
-  const active = (subs ?? []).filter((s) => s.status === 'active');
-  const recurring = active.reduce((sum, s) => sum + Number(s.price), 0);
-  const featuredCount = (subs ?? []).filter((s) => s.plan === 'featured').length;
-
   return (
     <div>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="rounded-[18px] bg-white p-5 shadow-soft">
-          <div className="text-[13px] font-bold text-rose-muted">Active subscriptions</div>
-          <div className="font-serif text-[34px] font-bold">{active.length}</div>
-          <div className="text-xs font-bold text-good">₹{recurring.toLocaleString('en-IN')} / mo recurring</div>
+      <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:16px;')}>
+        <div style={css('background:#fff;border-radius:18px;padding:20px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+          <div style={css('color:#8A7078;font-size:13px;font-weight:700;')}>Active subscriptions</div>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:34px;")}>218</div>
+          <div style={css('font-size:12px;color:#218456;font-weight:700;')}>₹65,182 / mo recurring</div>
         </div>
-        <div className="rounded-[18px] bg-white p-5 shadow-soft">
-          <div className="text-[13px] font-bold text-rose-muted">Commission rate</div>
-          <div className="font-serif text-[34px] font-bold">8%</div>
-          <div className="text-xs font-bold text-rose-muted">per completed order</div>
+        <div style={css('background:#fff;border-radius:18px;padding:20px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+          <div style={css('color:#8A7078;font-size:13px;font-weight:700;')}>Commission rate</div>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:34px;")}>8%</div>
+          <div style={css('font-size:12px;color:#8A7078;font-weight:700;')}>per completed order</div>
         </div>
-        <div className="rounded-[18px] p-5 text-white shadow-[0_16px_36px_-26px_rgba(158,117,36,.9)]" style={{ background: 'linear-gradient(150deg,#C99A3F,#9E7524)' }}>
-          <div className="text-[13px] font-bold opacity-90">Featured upgrades</div>
-          <div className="font-serif text-[34px] font-bold">{featuredCount}</div>
-          <div className="text-xs font-bold opacity-90">₹799 / mo each</div>
+        <div style={css('background:linear-gradient(150deg,#C99A3F,#9E7524);color:#fff;border-radius:18px;padding:20px;box-shadow:0 16px 36px -26px rgba(158,117,36,.9);')}>
+          <div style={css('font-size:13px;font-weight:700;opacity:.9;')}>Featured upgrades</div>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:34px;")}>37</div>
+          <div style={css('font-size:12px;font-weight:700;opacity:.9;')}>₹799 / mo each</div>
         </div>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-[18px] bg-white shadow-soft">
-        <div className="grid grid-cols-[2fr_1.2fr_1fr_1fr] bg-rose-chipAlt px-5 py-3.5 text-xs font-extrabold text-rose-muted">
-          <span>BOUTIQUE</span>
-          <span>PLAN</span>
-          <span>RENEWAL</span>
-          <span>STATUS</span>
+      <div style={css('background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);margin-top:16px;')}>
+        <div style={css(`${GRID}padding:14px 20px;background:#F7EAF0;font-size:12px;font-weight:800;color:#8A7078;`)}>
+          <span>BOUTIQUE</span><span>PLAN</span><span>RENEWAL</span><span>STATUS</span>
         </div>
-        {(subs ?? []).map((s) => {
-          const st = statusStyle(s.status.charAt(0).toUpperCase() + s.status.slice(1));
-          return (
-            <div key={s.id} className="grid grid-cols-[2fr_1.2fr_1fr_1fr] items-center border-t border-rose-borderSoft px-5 py-3.5">
-              <span className="text-[13.5px] font-bold">{s.boutique?.name}</span>
-              <span className="text-[13px] capitalize text-rose-label">{s.plan}</span>
-              <span className="text-[13px] text-rose-label">{s.renewal_date ? new Date(s.renewal_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</span>
-              <span>
-                <span className="rounded-lg px-2.5 py-1 text-[11px] font-extrabold capitalize" style={{ background: st.bg, color: st.fg }}>
-                  {s.status}
-                </span>
-              </span>
-            </div>
-          );
-        })}
-        {subs?.length === 0 && <div className="px-5 py-8 text-center text-sm text-rose-muted">No subscriptions yet.</div>}
+        {SUBSCRIPTIONS.map((su) => (
+          <div key={su.name} style={css(`${GRID}padding:14px 20px;align-items:center;border-top:1px solid #F5E4EC;`)}>
+            <span style={css('font-weight:700;font-size:13.5px;')}>{su.name}</span>
+            <span style={css('font-size:13px;color:#6B5560;')}>{su.plan}</span>
+            <span style={css('font-size:13px;color:#6B5560;')}>{su.renewal}</span>
+            <span><span style={css(`font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;background:${su.bg};color:${su.fg};`)}>{su.status}</span></span>
+          </div>
+        ))}
       </div>
     </div>
   );

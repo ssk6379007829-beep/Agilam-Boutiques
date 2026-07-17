@@ -1,46 +1,54 @@
+import { type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/auth/AuthContext';
-import { useAsync } from '@/hooks/useAsync';
-import { fetchWishlist, toggleWishlist } from '@/data/wishlist';
-import { Icon } from '@/components/ui/Icon';
-import { IconButton } from '@/components/ui/IconButton';
-import { ProductCard } from '@/components/buyer/ProductCard';
+import { css } from '@/lib/css';
+import { ImageSlot } from '@/components/ui/ImageSlot';
+import { useShop } from '@/state/ShopContext';
+import { PRODUCTS, TONES, fmt } from '@/data/demo';
 
 export function Wishlist() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
-  const { data: items, reload } = useAsync(() => (profile ? fetchWishlist(profile.id) : Promise.resolve([])), [profile?.id]);
+  const { wishlist, toggleWish } = useShop();
 
-  async function handleRemove(e: React.MouseEvent, id: string) {
-    e.stopPropagation();
-    if (!profile) return;
-    await toggleWishlist(profile.id, id, true);
-    reload();
-  }
+  const items = PRODUCTS.filter((p) => wishlist[p.id]);
 
   return (
-    <div className="min-h-full bg-rose-card pb-5">
-      <div className="flex items-center gap-2.5 px-5 pb-3 pt-1.5">
-        <IconButton icon="arrow_back" onClick={() => navigate(-1)} />
-        <div className="font-serif text-[26px] font-bold">Wishlist</div>
+    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+      <div style={css('display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:4px 0 6px;')}>
+        <div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Saved by you</div>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(27px,3.2vw,42px);line-height:1.1;padding-bottom:2px;margin-top:6px;letter-spacing:-.01em;")}>Wishlist</div>
+        </div>
+        {items.length > 0 && <span style={css('color:#8A7078;font-size:13.5px;font-weight:600;')}>{Object.keys(wishlist).length} pieces saved</span>}
       </div>
 
-      {items && items.length > 0 ? (
-        <div className="grid grid-cols-2 gap-3.5 px-5 md:grid-cols-3">
+      {items.length > 0 ? (
+        <div className="agx-rgrid" style={css('margin-top:20px;')}>
           {items.map((p) => (
-            <ProductCard key={p.id} product={p} wished onToggleWish={(e) => handleRemove(e, p.id)} onOpen={() => navigate(`/buyer/product/${p.id}`)} />
+            <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>
+              <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.6);`)}>
+                <ImageSlot placeholder={p.title} style={css('position:absolute;inset:0;')} />
+                <button onClick={(e: MouseEvent) => { e.stopPropagation(); toggleWish(p.id); }} style={css('position:absolute;right:10px;top:10px;width:36px;height:36px;border-radius:12px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(0,0,0,.3);')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>favorite</span>
+                </button>
+                <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#2FA36B;")}>star</span>{p.rating}
+                </div>
+              </div>
+              <div style={css('padding:11px 2px 0;')}>
+                <div style={css('font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
+                <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:19px;margin-top:2px;")}>{fmt(p.price)}</div>
+              </div>
+            </div>
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center px-7 py-14 text-center">
-          <div className="flex h-[74px] w-[74px] items-center justify-center rounded-3xl bg-rose-chip">
-            <Icon name="favorite_border" style={{ fontSize: 38, color: '#D6336C' }} />
+        <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:80px 30px;')}>
+          <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,#FCE0EC,#F7CFDF);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:#B02454;")}>favorite_border</span>
           </div>
-          <div className="mt-4 font-serif text-2xl font-bold">Your wishlist is empty</div>
-          <div className="mt-1.5 text-sm text-rose-muted">Tap the heart on any piece to save it here.</div>
-          <button onClick={() => navigate('/buyer/home')} className="mt-4 rounded-xl border-none bg-rose-primaryDark px-5 py-2.5 font-bold text-white">
-            Browse collections
-          </button>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:20px;")}>Your wishlist is empty</div>
+          <div style={css('color:#8A7078;font-size:14.5px;margin-top:8px;max-width:340px;line-height:1.55;')}>Tap the heart on any piece and it lands here — your personal edit, ready when you are.</div>
+          <button onClick={() => navigate('/buyer/home')} style={css('margin-top:20px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:14px;padding:13px 24px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>Browse collections</button>
         </div>
       )}
     </div>

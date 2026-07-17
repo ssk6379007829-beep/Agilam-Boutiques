@@ -3,10 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
 import { homeFor } from '@/auth/RequireRole';
-import { IconButton } from '@/components/ui/IconButton';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/TextField';
+import { css } from '@/lib/css';
+import { AuthPanel, PasswordField, type LoginRole } from '@/components/auth/AuthPanel';
+import { MobileAuthCard } from '@/components/auth/MobileAuthCard';
 import { useToast } from '@/components/ui/Toast';
+
+const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#2A1A20;';
+const labelStyle = 'font-size:13px;font-weight:700;color:#7A5C67;';
 
 export function SignUp() {
   const { role: roleParam } = useParams<{ role: string }>();
@@ -21,7 +24,14 @@ export function SignUp() {
   const [city, setCity] = useState('');
   const [boutiqueName, setBoutiqueName] = useState('');
   const [sending, setSending] = useState(false);
+
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
+
+  const onRoleChange = (r: LoginRole) => {
+    if (r === 'buyer') navigate('/buyer/home');
+    else if (r === 'admin') navigate('/admin/login');
+    else navigate('/auth/signup/seller');
+  };
 
   async function handleSignUp() {
     const trimmedEmail = email.trim();
@@ -51,63 +61,61 @@ export function SignUp() {
     }
   }
 
-  return (
-    <div className="mx-auto flex h-[100dvh] max-w-[520px] flex-col overflow-y-auto bg-rose-card px-6 py-4 pb-9">
-      <IconButton icon="arrow_back" onClick={() => navigate(`/auth/signin/${role}`)} />
-      <div className="mt-5 font-serif text-[36px] font-bold leading-[1.05]">Create account</div>
-      <div className="mt-1.5 text-[15px] text-rose-muted">Join as a {roleWord}</div>
+  // Shared between the mobile card and the desktop split-panel.
+  const fields = (
+    <>
+      <label style={css(labelStyle)}>
+        Full name
+        <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Priya Sharma" style={css(fieldStyle)} />
+      </label>
 
-      <div className="mt-5 flex flex-col gap-3.5">
-        <label className="text-[13px] font-bold text-rose-fieldLabel">
-          Full name
-          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5 h-[52px]" placeholder="Priya Sharma" />
+      <label style={css(labelStyle)}>
+        Email address
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="priya@example.com" style={css(fieldStyle)} />
+      </label>
+
+      <PasswordField value={password} onChange={setPassword} />
+
+      <label style={css(labelStyle)}>
+        City
+        <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Coimbatore" style={css(fieldStyle)} />
+      </label>
+
+      {role === 'seller' && (
+        <label style={css(labelStyle)}>
+          Boutique name
+          <input value={boutiqueName} onChange={(e) => setBoutiqueName(e.target.value)} placeholder="Elegance Boutique" style={css(fieldStyle)} />
         </label>
+      )}
 
-        <label className="text-[13px] font-bold text-rose-fieldLabel">
-          Email address
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1.5 h-[52px]"
-            placeholder="priya@example.com"
-          />
-        </label>
+      <button
+        onClick={handleSignUp}
+        disabled={sending}
+        style={css('width:100%;height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);display:flex;align-items:center;justify-content:center;gap:8px;')}
+      >
+        {sending ? 'Creating account…' : 'Create Account'}
+        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
+      </button>
 
-        <label className="text-[13px] font-bold text-rose-fieldLabel">
-          Password
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1.5 h-[52px]"
-            placeholder="At least 6 characters"
-          />
-        </label>
-
-        <label className="text-[13px] font-bold text-rose-fieldLabel">
-          City
-          <Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5 h-[52px]" placeholder="Coimbatore" />
-        </label>
-
-        {role === 'seller' && (
-          <label className="text-[13px] font-bold text-rose-fieldLabel">
-            Boutique name
-            <Input value={boutiqueName} onChange={(e) => setBoutiqueName(e.target.value)} className="mt-1.5 h-[52px]" placeholder="Elegance Boutique" />
-          </label>
-        )}
-
-        <Button full onClick={handleSignUp} disabled={sending} className="mt-1.5">
-          {sending ? 'Creating account…' : 'Create Account'}
-        </Button>
-
-        <div className="text-center text-sm text-rose-muted">
-          Have an account?{' '}
-          <a onClick={() => navigate(`/auth/signin/${role}`)} className="cursor-pointer font-bold">
-            Sign in
-          </a>
-        </div>
+      <div style={css('text-align:center;font-size:14px;color:#8A7078;')}>
+        Have an account? <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/auth/signin/${role}`); }} style={css('font-weight:700;')}>Sign in</a>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      <div className="agx-auth-mobile">
+        <MobileAuthCard heading="Create account" sub={`Join as a ${roleWord}`} onBack={() => navigate(`/auth/signin/${role}`)}>
+          {fields}
+        </MobileAuthCard>
+      </div>
+
+      <div className="agx-auth-desktop">
+        <AuthPanel role={role as LoginRole} onRoleChange={onRoleChange} heading="Create account">
+          <div style={css('margin-top:22px;display:flex;flex-direction:column;gap:15px;')}>{fields}</div>
+        </AuthPanel>
+      </div>
+    </>
   );
 }

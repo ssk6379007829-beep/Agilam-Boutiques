@@ -1,102 +1,65 @@
-import { useEffect, useRef, useState } from 'react';
-import { fetchMessages, sendMessage, subscribeToMessages } from '@/data/chat';
-import type { MessageRow } from '@/data/types';
-import { Icon } from '@/components/ui/Icon';
-import { IconButton } from '@/components/ui/IconButton';
-import { useToast } from '@/components/ui/Toast';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { css } from '@/lib/css';
+import { CHAT_THREAD } from '@/data/demo';
+import { useShop } from '@/state/ShopContext';
 
-export function ChatView({
-  conversationId,
-  peerName,
-  viewerId,
-  onBack,
-}: {
-  conversationId: string;
-  peerName: string;
-  viewerId: string;
-  onBack: () => void;
-}) {
-  const [messages, setMessages] = useState<MessageRow[]>([]);
-  const [text, setText] = useState('');
-  const toast = useToast();
-  const bottomRef = useRef<HTMLDivElement>(null);
+type Bubble = { me: boolean; text: string; time: string };
 
-  useEffect(() => {
-    fetchMessages(conversationId).then(setMessages);
-    const unsubscribe = subscribeToMessages(conversationId, (msg) => setMessages((prev) => [...prev, msg]));
-    return unsubscribe;
-  }, [conversationId]);
+/** Conversation view, shared by the buyer and seller chats. */
+export function ChatView({ name, backTo }: { name: string; backTo: string }) {
+  const navigate = useNavigate();
+  const { showToast } = useShop();
+  const [thread, setThread] = useState<Bubble[]>(CHAT_THREAD);
+  const [draft, setDraft] = useState('');
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length]);
-
-  async function handleSend() {
-    if (!text.trim()) return;
-    const body = text.trim();
-    setText('');
-    await sendMessage(conversationId, viewerId, body);
-  }
+  const send = () => {
+    const text = draft.trim();
+    if (!text) return;
+    const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    setThread((t) => [...t, { me: true, text, time }]);
+    setDraft('');
+    showToast('Message sent');
+  };
 
   return (
-    <div className="flex h-full min-h-full flex-col bg-rose-card">
-      <div className="flex flex-none items-center gap-2.5 border-b border-rose-borderMid bg-white px-4 py-2">
-        <IconButton icon="arrow_back" onClick={onBack} size={38} iconSize={18} bg="#FDEEF4" />
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-chip font-serif font-bold text-black/55">
-          {peerName?.[0]}
-        </div>
-        <div className="flex-1">
-          <div className="text-[14.5px] font-extrabold">{peerName}</div>
-          <div className="text-xs font-semibold text-good">● Online</div>
-        </div>
-        <button
-          onClick={() => toast('Opening WhatsApp…')}
-          className="flex items-center gap-1.5 rounded-xl border-none bg-[#25A566] px-3 py-2 text-xs font-bold text-white"
-        >
-          <Icon name="chat_bubble" className="text-base" />
-          WhatsApp
+    <div style={css('min-height:100%;height:100%;background:#FBF6F2;display:flex;flex-direction:column;')}>
+      <div style={css('flex:none;background:#fff;padding:8px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #F3DFE8;')}>
+        <button onClick={() => navigate(backTo)} style={css('width:38px;height:38px;border-radius:11px;border:none;background:#FBF6F2;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
         </button>
+        <div style={css("width:40px;height:40px;border-radius:12px;background:#F4D6E2;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.55);")}>{name[0]}</div>
+        <div style={css('flex:1;')}>
+          <div style={css('font-weight:800;font-size:14.5px;')}>{name}</div>
+          <div style={css('font-size:12px;color:#2FA36B;font-weight:600;')}>● Online</div>
+        </div>
       </div>
-      <div className="no-scrollbar flex flex-1 flex-col gap-2.5 overflow-y-auto p-4">
-        {messages.map((m) => {
-          const mine = m.sender_id === viewerId;
-          return (
-            <div
-              key={m.id}
-              className="max-w-[78%] px-3.5 py-2.5 text-[13.5px] leading-snug shadow-[0_6px_16px_-12px_rgba(107,20,54,.5)]"
-              style={{
-                alignSelf: mine ? 'flex-end' : 'flex-start',
-                background: mine ? '#D6336C' : '#fff',
-                color: mine ? '#fff' : '#2A1A20',
-                borderRadius: mine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-              }}
-            >
-              {m.body}
-              <div className="mt-0.5 text-right text-[10px] opacity-60">
-                {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
-          );
-        })}
-        {messages.length === 0 && <div className="pt-6 text-center text-sm text-rose-muted">Say hello 👋</div>}
-        <div ref={bottomRef} />
+
+      <div className="agx-scroll" style={css('flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;')}>
+        <div style={css('align-self:center;background:#F4DDE8;color:#8A7078;font-size:11px;font-weight:700;padding:4px 12px;border-radius:10px;')}>Today</div>
+        {thread.map((c, i) => (
+          <div
+            key={i}
+            style={css(`max-width:78%;align-self:${c.me ? 'flex-end' : 'flex-start'};background:${c.me ? '#D6336C' : '#fff'};color:${c.me ? '#fff' : '#2A1A20'};padding:10px 13px;border-radius:${c.me ? '16px 16px 4px 16px' : '16px 16px 16px 4px'};font-size:13.5px;line-height:1.4;box-shadow:0 6px 16px -12px rgba(107,20,54,.5);`)}
+          >
+            {c.text}
+            <div style={css('font-size:10px;opacity:.6;margin-top:3px;text-align:right;')}>{c.time}</div>
+          </div>
+        ))}
       </div>
-      <div className="flex flex-none items-center gap-2.5 border-t border-rose-borderMid bg-white px-3.5 py-2.5">
-        <div className="flex h-[46px] flex-1 items-center gap-2 rounded-2xl bg-rose-card px-3.5">
+
+      <div style={css('flex:none;background:#fff;padding:10px 14px 16px;display:flex;gap:10px;align-items:center;border-top:1px solid #F3DFE8;')}>
+        <div style={css('flex:1;display:flex;align-items:center;gap:8px;background:#FBF6F2;border-radius:14px;padding:0 14px;height:46px;')}>
           <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && send()}
             placeholder="Message…"
-            className="flex-1 border-none bg-transparent text-sm outline-none"
+            style={css('border:none;background:none;flex:1;font-size:14px;')}
           />
         </div>
-        <button
-          onClick={handleSend}
-          className="flex h-[46px] w-[46px] items-center justify-center rounded-2xl border-none"
-          style={{ background: 'linear-gradient(135deg,#D6336C,#B02454)' }}
-        >
-          <Icon name="send" className="text-white" />
+        <button onClick={send} style={css('width:46px;height:46px;border-radius:14px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:#fff;")}>send</span>
         </button>
       </div>
     </div>

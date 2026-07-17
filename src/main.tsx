@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '@/auth/AuthContext';
+import { ShopProvider } from '@/state/ShopContext';
 import { ToastProvider } from '@/components/ui/Toast';
 import { supabaseConfigError } from '@/lib/supabase';
 import App from './App';
@@ -29,9 +30,11 @@ createRoot(document.getElementById('root')!).render(
     ) : (
       <BrowserRouter>
         <AuthProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
+          <ShopProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </ShopProvider>
         </AuthProvider>
       </BrowserRouter>
     )}

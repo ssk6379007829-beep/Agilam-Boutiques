@@ -1,43 +1,26 @@
-import { useAsync } from '@/hooks/useAsync';
-import { fetchAllBoutiquesAdmin } from '@/data/boutiques';
-import { Avatar } from '@/components/ui/Avatar';
-import { toneHex } from '@/lib/tokens';
+import { css } from '@/lib/css';
+import { BOUTIQUES, TONES } from '@/data/demo';
+
+const GRID = 'display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr;';
 
 export function BoutiquesTable() {
-  const { data: boutiques } = useAsync(fetchAllBoutiquesAdmin, []);
-
   return (
-    <div className="overflow-hidden rounded-[18px] bg-white shadow-soft">
-      <div className="grid grid-cols-[2fr_1.2fr_1fr_1fr_1fr] bg-rose-chipAlt px-5 py-3.5 text-xs font-extrabold text-rose-muted">
-        <span>BOUTIQUE</span>
-        <span>CITY</span>
-        <span>STYLES</span>
-        <span>RATING</span>
-        <span>STATUS</span>
+    <div style={css('background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+      <div style={css(`${GRID}padding:14px 20px;background:#F7EAF0;font-size:12px;font-weight:800;color:#8A7078;`)}>
+        <span>BOUTIQUE</span><span>CITY</span><span>STYLES</span><span>RATING</span><span>STATUS</span>
       </div>
-      {(boutiques ?? []).map((b) => (
-        <div key={b.id} className="grid grid-cols-[2fr_1.2fr_1fr_1fr_1fr] items-center border-t border-rose-borderSoft px-5 py-3.5">
-          <div className="flex items-center gap-2.5">
-            <Avatar name={b.name} size={36} radius={11} tone={toneHex(b.tone)} fontSize={15} />
-            <span className="text-[13.5px] font-bold">{b.name}</span>
+      {BOUTIQUES.map((b) => (
+        <div key={b.id} style={css(`${GRID}padding:14px 20px;align-items:center;border-top:1px solid #F5E4EC;`)}>
+          <div style={css('display:flex;align-items:center;gap:10px;')}>
+            <div style={css(`width:36px;height:36px;border-radius:11px;background:${TONES[b.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.5);`)}>{b.name[0]}</div>
+            <span style={css('font-weight:700;font-size:13.5px;')}>{b.name}</span>
           </div>
-          <span className="text-[13px] text-rose-label">{b.city}</span>
-          <span className="text-[13px] text-rose-label">{b.reviews_count}</span>
-          <span className="text-[13px] font-bold text-rose-primaryDark">⭐ {b.rating}</span>
-          <span>
-            <span
-              className="rounded-lg px-2.5 py-1 text-[11px] font-extrabold capitalize"
-              style={{
-                background: b.status === 'approved' ? '#E5F3EC' : b.status === 'rejected' ? '#FBE3E3' : '#FBF0DA',
-                color: b.status === 'approved' ? '#218456' : b.status === 'rejected' ? '#C0392B' : '#B8860B',
-              }}
-            >
-              {b.status}
-            </span>
-          </span>
+          <span style={css('font-size:13px;color:#6B5560;')}>{b.city}</span>
+          <span style={css('font-size:13px;color:#6B5560;')}>{b.products}</span>
+          <span style={css('font-size:13px;font-weight:700;color:#B02454;')}>⭐ {b.rating}</span>
+          <span><span style={css('font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;background:#E5F3EC;color:#218456;')}>Active</span></span>
         </div>
       ))}
-      {boutiques?.length === 0 && <div className="px-5 py-8 text-center text-sm text-rose-muted">No boutiques yet.</div>}
     </div>
   );
 }

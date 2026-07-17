@@ -1,82 +1,47 @@
-import { useState } from 'react';
-import { useAsync } from '@/hooks/useAsync';
-import { fetchAllBoutiquesAdmin, setBoutiqueStatus } from '@/data/boutiques';
-import { Icon } from '@/components/ui/Icon';
-import { Avatar } from '@/components/ui/Avatar';
-import { statusStyle, toneHex } from '@/lib/tokens';
-import { useToast } from '@/components/ui/Toast';
+import { css } from '@/lib/css';
+import { useShop } from '@/state/ShopContext';
+import { APPROVAL_TABS } from '@/data/adminDemo';
+import { APPROVALS, TONES, statusStyle } from '@/data/demo';
 
-const TABS = ['pending', 'approved', 'rejected'] as const;
+const GRID = 'display:grid;grid-template-columns:2fr 1.2fr 1.4fr 1fr 1.4fr;';
 
 export function Approvals() {
-  const { data: boutiques, reload } = useAsync(fetchAllBoutiquesAdmin, []);
-  const toast = useToast();
-  const [tab, setTab] = useState<(typeof TABS)[number]>('pending');
-
-  const counts = TABS.map((t) => (boutiques ?? []).filter((b) => b.status === t).length);
-  const filtered = (boutiques ?? []).filter((b) => b.status === tab);
-
-  async function decide(id: string, status: 'approved' | 'rejected') {
-    await setBoutiqueStatus(id, status);
-    toast(status === 'approved' ? 'Boutique approved' : 'Boutique rejected');
-    reload();
-  }
+  const { showToast } = useShop();
 
   return (
     <div>
-      <div className="mb-4 flex gap-2.5">
-        {TABS.map((t) => (
-          <div
-            key={t}
-            onClick={() => setTab(t)}
-            className="cursor-pointer rounded-full px-4 py-2 text-[13px] font-bold capitalize"
-            style={{ background: tab === t ? '#B02454' : '#fff', color: tab === t ? '#fff' : '#6B5560' }}
-          >
-            {t} · {counts[TABS.indexOf(t)]}
-          </div>
+      <div style={css('display:flex;gap:9px;margin-bottom:16px;')}>
+        {APPROVAL_TABS.map((t) => (
+          <div key={t.label} style={css(`padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;background:${t.bg};color:${t.fg};`)}>{t.label}</div>
         ))}
       </div>
-      <div className="overflow-hidden rounded-[18px] bg-white shadow-soft">
-        <div className="grid grid-cols-[2fr_1.2fr_1.4fr_1fr_1.4fr] bg-rose-chipAlt px-5 py-3.5 text-xs font-extrabold tracking-wide text-rose-muted">
-          <span>BOUTIQUE</span>
-          <span>CITY</span>
-          <span>OWNER</span>
-          <span>STATUS</span>
-          <span className="text-right">ACTION</span>
+
+      <div style={css('background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+        <div style={css(`${GRID}padding:14px 20px;background:#F7EAF0;font-size:12px;font-weight:800;color:#8A7078;letter-spacing:.04em;`)}>
+          <span>BOUTIQUE</span><span>CITY</span><span>OWNER</span><span>STATUS</span><span style={css('text-align:right;')}>ACTION</span>
         </div>
-        {filtered.map((b) => {
-          const st = statusStyle(b.status.charAt(0).toUpperCase() + b.status.slice(1));
+        {APPROVALS.map((a) => {
+          const st = statusStyle(a.status);
           return (
-            <div key={b.id} className="grid grid-cols-[2fr_1.2fr_1.4fr_1fr_1.4fr] items-center border-t border-rose-borderSoft px-5 py-3.5">
-              <div className="flex items-center gap-2.5">
-                <Avatar name={b.name} size={36} radius={11} tone={toneHex(b.tone)} fontSize={15} />
-                <span className="text-[13.5px] font-bold">{b.name}</span>
+            <div key={a.name} style={css(`${GRID}padding:14px 20px;align-items:center;border-top:1px solid #F5E4EC;`)}>
+              <div style={css('display:flex;align-items:center;gap:10px;')}>
+                <div style={css(`width:36px;height:36px;border-radius:11px;background:${TONES[a.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.5);`)}>{a.name[0]}</div>
+                <span style={css('font-weight:700;font-size:13.5px;')}>{a.name}</span>
               </div>
-              <span className="text-[13px] text-rose-label">{b.city}</span>
-              <span className="text-[13px] text-rose-label">—</span>
-              <span>
-                <span className="rounded-lg px-2.5 py-1 text-[11px] font-extrabold" style={{ background: st.bg, color: st.fg }}>
-                  {b.status}
-                </span>
-              </span>
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => decide(b.id, 'rejected')}
-                  className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border-[1.5px] border-rose-dangerBorder bg-white text-rose-danger"
-                >
-                  <Icon name="close" className="text-lg" />
+              <span style={css('font-size:13px;color:#6B5560;')}>{a.city}</span>
+              <span style={css('font-size:13px;color:#6B5560;')}>{a.owner}</span>
+              <span><span style={css(`font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{a.status}</span></span>
+              <div style={css('display:flex;gap:8px;justify-content:flex-end;')}>
+                <button onClick={() => showToast(`${a.name} rejected`)} style={css('width:34px;height:34px;border-radius:10px;border:1.5px solid #E7A7B4;background:#fff;color:#D6455A;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
                 </button>
-                <button
-                  onClick={() => decide(b.id, 'approved')}
-                  className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] border-none bg-[#218456] text-white"
-                >
-                  <Icon name="check" className="text-lg" />
+                <button onClick={() => showToast(`${a.name} approved`)} style={css('width:34px;height:34px;border-radius:10px;border:none;background:#218456;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>check</span>
                 </button>
               </div>
             </div>
           );
         })}
-        {filtered.length === 0 && <div className="px-5 py-8 text-center text-sm text-rose-muted">Nothing here.</div>}
       </div>
     </div>
   );

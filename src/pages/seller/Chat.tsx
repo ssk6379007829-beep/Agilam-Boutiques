@@ -1,16 +1,10 @@
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '@/auth/AuthContext';
-import { useAsync } from '@/hooks/useAsync';
-import { fetchConversationPeerName } from '@/data/chat';
+import { useParams } from 'react-router-dom';
 import { ChatView } from '@/components/chat/ChatView';
+import { SELLER_MSGS } from '@/data/demo';
 
 export function Chat() {
-  const { id = '' } = useParams();
-  const navigate = useNavigate();
-  const { profile } = useAuth();
-  const { data: peerName } = useAsync(() => fetchConversationPeerName(id, 'seller'), [id]);
+  const { id } = useParams();
+  const thread = SELLER_MSGS.find((m) => m.id === id);
 
-  if (!profile) return null;
-
-  return <ChatView conversationId={id} peerName={peerName ?? '…'} viewerId={profile.id} onBack={() => navigate('/seller/messages')} />;
+  return <ChatView name={thread?.name ?? 'Priya Sharma'} backTo="/seller/messages" />;
 }

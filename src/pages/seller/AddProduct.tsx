@@ -1,107 +1,71 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMyBoutique } from '@/hooks/useMyBoutique';
-import { createProduct } from '@/data/products';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { Icon } from '@/components/ui/Icon';
-import { Input, TextArea } from '@/components/ui/TextField';
-import { Button } from '@/components/ui/Button';
-import { useToast } from '@/components/ui/Toast';
+import { css } from '@/lib/css';
+import { useShop } from '@/state/ShopContext';
+
+const ADD_FIELDS = [
+  { label: 'Product title', value: 'Rose Zari Silk Saree', ph: 'e.g. Rose Zari Silk Saree' },
+  { label: 'Category', value: 'Sarees', ph: 'Sarees' },
+  { label: 'Colour', value: 'Pink', ph: 'Pink' },
+  { label: 'Occasion', value: 'Wedding', ph: 'Wedding' },
+  { label: 'Fabric', value: 'Kanchipuram Silk', ph: 'Silk' },
+];
+
+const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 
 export function AddProduct() {
   const navigate = useNavigate();
-  const toast = useToast();
-  const { boutique } = useMyBoutique();
+  const { showToast } = useShop();
 
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Sarees');
-  const [color, setColor] = useState('');
-  const [occasion, setOccasion] = useState('');
-  const [fabric, setFabric] = useState('');
-  const [price, setPrice] = useState('4899');
-  const [stock, setStock] = useState('12');
-  const [description, setDescription] = useState('Handcrafted Kanchipuram silk saree with intricate zari border.');
-  const [saving, setSaving] = useState(false);
-
-  async function handlePublish() {
-    if (!boutique) return;
-    if (!title.trim()) return toast('Enter a product title');
-    setSaving(true);
-    try {
-      await createProduct({
-        boutique_id: boutique.id,
-        title: title.trim(),
-        category,
-        color,
-        occasion,
-        fabric,
-        price: Number(price) || 0,
-        stock: Number(stock) || 0,
-        tone: Math.floor(Math.random() * 8),
-      });
-      toast('Product published');
-      navigate('/seller/products');
-    } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not publish product');
-    } finally {
-      setSaving(false);
-    }
-  }
+  const publish = () => {
+    showToast('Product published');
+    navigate('/seller/products');
+  };
 
   return (
-    <div className="min-h-full bg-rose-card pb-6">
-      <ScreenHeader title="Add New Product" onBack={() => navigate('/seller/products')} size={24} />
-      <div className="flex flex-col gap-3.5 px-5">
-        <div className="flex gap-2.5">
-          <div className="flex h-24 w-24 flex-none flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-[#E6BCCF] bg-white">
-            <Icon name="add_a_photo" className="text-2xl" style={{ color: '#D6336C' }} />
-            <span className="text-[10px] font-bold text-rose-mutedSoft">Upload</span>
+    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:24px;')}>
+      <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
+        <button onClick={() => navigate('/seller/products')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:#fff;box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
+        </button>
+        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Add New Product</div>
+      </div>
+
+      <div style={css('padding:6px 20px 0;display:flex;flex-direction:column;gap:14px;')}>
+        <div style={css('display:flex;gap:10px;')}>
+          <div style={css('width:96px;height:96px;flex:none;border-radius:16px;border:2px dashed #E6BCCF;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;')}>
+            <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>add_a_photo</span>
+            <span style={css('font-size:10px;color:#B79AA6;font-weight:700;')}>Upload</span>
           </div>
-          <div className="relative h-24 flex-1 overflow-hidden rounded-2xl bg-rose-chip">
-            <div className="absolute bottom-1.5 left-2 font-mono text-[9px] text-black/40">product photo</div>
+          <div style={css('flex:1;height:96px;border-radius:16px;background:#F4D6E2;position:relative;overflow:hidden;')}>
+            <div style={css('position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.3) 0 1px,transparent 1px 14px);')} />
+            <div style={css("position:absolute;left:8px;bottom:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:rgba(42,26,32,.5);")}>product photo</div>
           </div>
         </div>
 
-        <label className="text-[13px] font-bold text-rose-fieldLabel">
-          Product title
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1.5" placeholder="e.g. Rose Zari Silk Saree" />
-        </label>
-        <label className="text-[13px] font-bold text-rose-fieldLabel">
-          Category
-          <Input value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1.5" />
-        </label>
-        <label className="text-[13px] font-bold text-rose-fieldLabel">
-          Colour
-          <Input value={color} onChange={(e) => setColor(e.target.value)} className="mt-1.5" placeholder="Pink" />
-        </label>
-        <label className="text-[13px] font-bold text-rose-fieldLabel">
-          Occasion
-          <Input value={occasion} onChange={(e) => setOccasion(e.target.value)} className="mt-1.5" placeholder="Wedding" />
-        </label>
-        <label className="text-[13px] font-bold text-rose-fieldLabel">
-          Fabric
-          <Input value={fabric} onChange={(e) => setFabric(e.target.value)} className="mt-1.5" placeholder="Kanchipuram Silk" />
-        </label>
-
-        <div className="flex gap-3">
-          <label className="flex-1 text-[13px] font-bold text-rose-fieldLabel">
-            Price (₹)
-            <Input value={price} onChange={(e) => setPrice(e.target.value)} className="mt-1.5" type="number" />
+        {ADD_FIELDS.map((fl) => (
+          <label key={fl.label} style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+            {fl.label}
+            <input defaultValue={fl.value} placeholder={fl.ph} style={css(inputStyle)} />
           </label>
-          <label className="flex-1 text-[13px] font-bold text-rose-fieldLabel">
-            Stock
-            <Input value={stock} onChange={(e) => setStock(e.target.value)} className="mt-1.5" type="number" />
+        ))}
+
+        <div style={css('display:flex;gap:12px;')}>
+          <label style={css('flex:1;font-size:13px;font-weight:700;color:#7A5C67;')}>
+            Price (₹)<input defaultValue="4899" style={css(inputStyle)} />
+          </label>
+          <label style={css('flex:1;font-size:13px;font-weight:700;color:#7A5C67;')}>
+            Stock<input defaultValue="12" style={css(inputStyle)} />
           </label>
         </div>
 
-        <label className="text-[13px] font-bold text-rose-fieldLabel">
+        <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
           Description
-          <TextArea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mt-1.5" />
+          <textarea rows={3} defaultValue="Handcrafted Kanchipuram silk saree with intricate zari border." style={css('width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;resize:none;')} />
         </label>
 
-        <Button full onClick={handlePublish} disabled={saving} className="mt-1">
-          {saving ? 'Publishing…' : 'Publish Product'}
-        </Button>
+        <button onClick={publish} style={css('width:100%;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>
+          Publish Product
+        </button>
       </div>
     </div>
   );

@@ -1,39 +1,34 @@
-import { useAsync } from '@/hooks/useAsync';
-import { fetchCategoryStats, fetchRevenueByCity } from '@/data/admin';
+import { css } from '@/lib/css';
+import { CAT_STATS, CITY_BARS } from '@/data/adminDemo';
 
 export function Reports() {
-  const { data: catStats } = useAsync(fetchCategoryStats, []);
-  const { data: cityBars } = useAsync(fetchRevenueByCity, []);
-
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <div className="rounded-[18px] bg-white p-5 shadow-soft">
-        <div className="text-[15px] font-extrabold">Orders by category</div>
-        <div className="mt-4.5 flex flex-col gap-3">
-          {(catStats ?? []).map((c) => (
+    <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:16px;')}>
+      <div style={css('background:#fff;border-radius:18px;padding:20px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+        <div style={css('font-weight:800;font-size:15px;')}>Orders by category</div>
+        <div style={css('display:flex;flex-direction:column;gap:12px;margin-top:18px;')}>
+          {CAT_STATS.map((c) => (
             <div key={c.name}>
-              <div className="mb-1.5 flex justify-between text-[13px] font-bold">
-                <span>{c.name}</span>
-                <span className="text-rose-primaryDark">{c.pct}%</span>
+              <div style={css('display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:5px;')}>
+                <span>{c.name}</span><span style={css('color:#B02454;')}>{c.pct}%</span>
               </div>
-              <div className="h-[9px] overflow-hidden rounded-full bg-rose-borderMid">
-                <div className="h-full rounded-full" style={{ width: `${c.pct}%`, background: 'linear-gradient(90deg,#E7719F,#D6336C)' }} />
+              <div style={css('height:9px;border-radius:5px;background:#F3DFE8;overflow:hidden;')}>
+                <div style={css(`height:100%;width:${c.pct}%;border-radius:5px;background:linear-gradient(90deg,#E7719F,#D6336C);`)} />
               </div>
             </div>
           ))}
-          {catStats?.length === 0 && <div className="text-sm text-rose-muted">No product data yet.</div>}
         </div>
       </div>
-      <div className="rounded-[18px] bg-white p-5 shadow-soft">
-        <div className="text-[15px] font-extrabold">Revenue by city</div>
-        <div className="mt-5 flex h-[220px] items-end gap-3">
-          {(cityBars ?? []).map((b) => (
-            <div key={b.d} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
-              <div className="w-full rounded-t-[7px] rounded-b-[3px]" style={{ background: 'linear-gradient(180deg,#E7719F,#B02454)', height: b.h }} />
-              <span className="text-[11px] font-bold text-rose-muted">{b.d}</span>
+
+      <div style={css('background:#fff;border-radius:18px;padding:20px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+        <div style={css('font-weight:800;font-size:15px;')}>Revenue by city</div>
+        <div style={css('display:flex;align-items:flex-end;gap:12px;height:220px;margin-top:20px;')}>
+          {CITY_BARS.map((b) => (
+            <div key={b.d} style={css('flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;justify-content:flex-end;height:100%;')}>
+              <div style={css(`width:100%;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#E7719F,#B02454);height:${b.h};`)} />
+              <span style={css('font-size:11px;color:#8A7078;font-weight:700;')}>{b.d}</span>
             </div>
           ))}
-          {cityBars?.length === 0 && <div className="text-sm text-rose-muted">No order data yet.</div>}
         </div>
       </div>
     </div>

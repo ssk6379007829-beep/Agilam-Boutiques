@@ -1,36 +1,33 @@
 import { useNavigate } from 'react-router-dom';
-import { useMyBoutique } from '@/hooks/useMyBoutique';
-import { useAsync } from '@/hooks/useAsync';
-import { fetchCustomersForBoutique } from '@/data/orders';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { Avatar } from '@/components/ui/Avatar';
-import { fmtInr, toneHex } from '@/lib/tokens';
+import { css } from '@/lib/css';
+import { CUSTOMERS, TONES, fmt } from '@/data/demo';
 
 export function Customers() {
   const navigate = useNavigate();
-  const { boutique } = useMyBoutique();
-  const { data: customers } = useAsync(() => (boutique ? fetchCustomersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
 
   return (
-    <div className="min-h-full bg-rose-card pb-5">
-      <ScreenHeader title="Customers" onBack={() => navigate('/seller/profile')} />
-      <div className="flex flex-col gap-2.5 px-5">
-        {(customers ?? []).map((c) => (
-          <div key={c.buyer_id} className="flex items-center gap-2.5 rounded-2xl bg-white p-3 shadow-card">
-            <Avatar name={c.name} size={48} radius={14} tone={toneHex(c.tone)} fontSize={20} />
-            <div className="flex-1">
-              <div className="text-sm font-extrabold">{c.name}</div>
-              <div className="text-xs text-rose-muted">
-                {c.city} · {c.orders} orders
-              </div>
+    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+      <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
+        <button onClick={() => navigate('/seller/profile')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:#fff;box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
+        </button>
+        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Customers</div>
+      </div>
+
+      <div style={css('display:flex;flex-direction:column;gap:10px;padding:4px 20px 0;')}>
+        {CUSTOMERS.map((c) => (
+          <div key={c.name} style={css('background:#fff;border-radius:16px;padding:12px;display:flex;gap:11px;align-items:center;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
+            <div style={css(`width:48px;height:48px;flex:none;border-radius:14px;background:${TONES[c.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:rgba(42,26,32,.5);`)}>{c.name[0]}</div>
+            <div style={css('flex:1;')}>
+              <div style={css('font-weight:800;font-size:14px;')}>{c.name}</div>
+              <div style={css('font-size:12px;color:#8A7078;')}>{c.city} · {c.orders} orders</div>
             </div>
-            <div className="text-right">
-              <div className="text-sm font-extrabold text-rose-primaryDark">{fmtInr(c.spent)}</div>
-              <div className="text-[11px] text-rose-mutedSoft">lifetime</div>
+            <div style={css('text-align:right;')}>
+              <div style={css('font-weight:800;color:#B02454;font-size:14px;')}>{fmt(c.spent)}</div>
+              <div style={css('font-size:11px;color:#B79AA6;')}>lifetime</div>
             </div>
           </div>
         ))}
-        {customers?.length === 0 && <div className="pt-8 text-center text-sm text-rose-muted">No customers yet.</div>}
       </div>
     </div>
   );

@@ -1,16 +1,15 @@
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '@/auth/AuthContext';
-import { useAsync } from '@/hooks/useAsync';
-import { fetchConversationPeerName } from '@/data/chat';
+import { useParams } from 'react-router-dom';
 import { ChatView } from '@/components/chat/ChatView';
+import { BOUTIQUES, MESSAGES } from '@/data/demo';
 
 export function Chat() {
-  const { id = '' } = useParams();
-  const navigate = useNavigate();
-  const { profile } = useAuth();
-  const { data: peerName } = useAsync(() => fetchConversationPeerName(id, 'buyer'), [id]);
+  const { id } = useParams();
 
-  if (!profile) return null;
+  // Chats are opened either from the inbox (thread id) or from a product /
+  // boutique page (boutique id), so resolve the name from both sources.
+  const thread = MESSAGES.find((m) => m.id === id);
+  const boutique = BOUTIQUES.find((b) => b.id === id);
+  const name = thread?.name ?? boutique?.name ?? 'Elegance Boutique';
 
-  return <ChatView conversationId={id} peerName={peerName ?? '…'} viewerId={profile.id} onBack={() => navigate('/buyer/messages')} />;
+  return <ChatView name={name} backTo="/buyer/messages" />;
 }

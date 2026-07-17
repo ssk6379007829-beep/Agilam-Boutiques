@@ -1,31 +1,25 @@
-import { useAsync } from '@/hooks/useAsync';
-import { fetchCustomersAdmin } from '@/data/orders';
-import { Avatar } from '@/components/ui/Avatar';
-import { fmtInr, toneHex } from '@/lib/tokens';
+import { css } from '@/lib/css';
+import { CUSTOMERS, TONES, fmt } from '@/data/demo';
+
+const GRID = 'display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr;';
 
 export function CustomersAdmin() {
-  const { data: customers } = useAsync(fetchCustomersAdmin, []);
-
   return (
-    <div className="overflow-hidden rounded-[18px] bg-white shadow-soft">
-      <div className="grid grid-cols-[2fr_1.2fr_1fr_1fr] bg-rose-chipAlt px-5 py-3.5 text-xs font-extrabold text-rose-muted">
-        <span>CUSTOMER</span>
-        <span>CITY</span>
-        <span>ORDERS</span>
-        <span>SPENT</span>
+    <div style={css('background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+      <div style={css(`${GRID}padding:14px 20px;background:#F7EAF0;font-size:12px;font-weight:800;color:#8A7078;`)}>
+        <span>CUSTOMER</span><span>CITY</span><span>ORDERS</span><span>SPENT</span>
       </div>
-      {(customers ?? []).map((c) => (
-        <div key={c.buyer_id} className="grid grid-cols-[2fr_1.2fr_1fr_1fr] items-center border-t border-rose-borderSoft px-5 py-3.5">
-          <div className="flex items-center gap-2.5">
-            <Avatar name={c.name} size={36} radius={11} tone={toneHex(c.tone)} fontSize={15} />
-            <span className="text-[13.5px] font-bold">{c.name}</span>
+      {CUSTOMERS.map((c) => (
+        <div key={c.name} style={css(`${GRID}padding:14px 20px;align-items:center;border-top:1px solid #F5E4EC;`)}>
+          <div style={css('display:flex;align-items:center;gap:10px;')}>
+            <div style={css(`width:36px;height:36px;border-radius:11px;background:${TONES[c.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.5);`)}>{c.name[0]}</div>
+            <span style={css('font-weight:700;font-size:13.5px;')}>{c.name}</span>
           </div>
-          <span className="text-[13px] text-rose-label">{c.city}</span>
-          <span className="text-[13px] text-rose-label">{c.orders}</span>
-          <span className="text-[13px] font-bold text-rose-primaryDark">{fmtInr(c.spent)}</span>
+          <span style={css('font-size:13px;color:#6B5560;')}>{c.city}</span>
+          <span style={css('font-size:13px;color:#6B5560;')}>{c.orders}</span>
+          <span style={css('font-size:13px;font-weight:700;color:#B02454;')}>{fmt(c.spent)}</span>
         </div>
       ))}
-      {customers?.length === 0 && <div className="px-5 py-8 text-center text-sm text-rose-muted">No customers yet.</div>}
     </div>
   );
 }

@@ -2,22 +2,108 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ------------------------------------------------------------------
+   Ported verbatim from the `Agilam Boutiques v2.dc.html` design file.
+   Keep these rules byte-identical to the design so the UI matches it
+   exactly; screen markup relies on the `agx-*` class names below.
+   ------------------------------------------------------------------ */
+
 * { box-sizing: border-box; }
-html, body, #root { margin: 0; padding: 0; height: 100%; }
-body {
-  font-family: 'Manrope', system-ui, sans-serif;
-  color: #2A1A20;
-  background: #F6E9EF;
-  -webkit-font-smoothing: antialiased;
-}
+html, body { margin: 0; padding: 0; }
+body { font-family: 'Manrope', system-ui, sans-serif; color: #241019; letter-spacing: -0.005em; -webkit-font-smoothing: antialiased; background: #FBF6F2; }
 a { color: #D6336C; text-decoration: none; }
 a:hover { color: #B02454; }
+::-webkit-scrollbar { width: 0; height: 0; }
+.agx-scroll { scrollbar-width: none; }
 input, textarea, select, button { font-family: inherit; }
 input:focus, textarea:focus { outline: none; }
+@keyframes agx-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+@keyframes agx-sheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes agx-fade { from { opacity: 0; } to { opacity: 1; } }
+.agx-app { width: 100%; max-width: 1440px; margin: 0 auto; }
+.agx-nav-scroll { overflow-x: auto; }
+.agx-pgrid { display: grid; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 640px) { .agx-pgrid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .agx-pgrid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1200px) { .agx-pgrid { grid-template-columns: repeat(5, 1fr); } }
+@media (min-width: 1560px) { .agx-pgrid { grid-template-columns: repeat(6, 1fr); } }
+@media (max-width: 720px) { .agx-hide-sm { display: none !important; } }
+.agx-rgrid { display: grid; gap: 18px; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 620px) { .agx-rgrid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .agx-rgrid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1200px) { .agx-rgrid { grid-template-columns: repeat(5, 1fr); } }
+@media (max-width: 780px) { .agx-filters { width: 100% !important; position: static !important; } }
+.agx-cart-grid { grid-template-columns: 1fr; }
+@media (min-width: 840px) { .agx-cart-grid { grid-template-columns: minmax(0,1fr) 350px; } }
+.agx-an-grid { grid-template-columns: 1fr; }
+@media (min-width: 900px) { .agx-an-grid { grid-template-columns: 1.4fr 1fr; } }
+@media (max-width: 839px) { .agx-cart-sticky { position: static !important; } }
+/* ---------- v2 elevation system ---------- */
+.agx-eyebrow { font-family:'IBM Plex Mono',monospace; font-weight:600; letter-spacing:.24em; text-transform:uppercase; }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:2.5px solid #C7275E; outline-offset:2px; border-radius:10px; }
+.agx-lift { transition: transform .4s cubic-bezier(.2,.7,.2,1), box-shadow .4s ease; }
+.agx-lift:hover { transform: translateY(-6px); box-shadow: 0 30px 60px -34px rgba(107,20,54,.55) !important; }
+.agx-zoom { overflow:hidden; }
+.agx-zoom > .agx-zoomable, .agx-zoom image-slot { transition: transform .8s cubic-bezier(.2,.7,.2,1); }
+.agx-zoom:hover .agx-zoomable, .agx-zoom:hover image-slot { transform: scale(1.06); }
+@keyframes agx-rise { from { opacity:0; transform: translateY(18px); } to { opacity:1; transform:none; } }
+@keyframes agx-pop { 0%{transform:scale(1);} 45%{transform:scale(1.4);} 100%{transform:scale(1);} }
+.agx-reveal { animation: agx-rise .55s cubic-bezier(.2,.7,.2,1) both; }
+.agx-reveal-2 { animation: agx-rise .55s .08s cubic-bezier(.2,.7,.2,1) both; }
+.agx-reveal-3 { animation: agx-rise .55s .16s cubic-bezier(.2,.7,.2,1) both; }
+.agx-shimmer { background:linear-gradient(100deg,#F1E5EC 30%,#F9F0F4 50%,#F1E5EC 70%); background-size:400px 100%; animation:agx-shimmer 1.3s linear infinite; }
+/* responsive nav: horizontal top nav on desktop, floating dock on mobile */
+.agx-topnav { display:none; }
+.agx-only-desktop { display:none; }
+.agx-only-mobile { display:flex; }
+@media (min-width:960px){
+  .agx-only-desktop{ display:flex; }
+  .agx-app-main{ padding-left:44px !important; padding-right:44px !important; padding-bottom:96px !important; }
+  .agx-app-header{ padding-left:44px !important; padding-right:44px !important; }
+  .agx-only-mobile{ display:none !important; }
+}
+@media (max-width:959px){ .agx-topnav{ display:none !important; } }
+@media (max-width:640px){
+  .agx-dock{ bottom:14px !important; gap:2px !important; padding:5px !important; border-radius:22px !important; }
+  .agx-dock button{ min-width:0 !important; padding:7px 11px !important; gap:2px !important; border-radius:16px !important; }
+  .agx-dock button span[style*="font-size:23px"]{ font-size:20px !important; }
+  .agx-dock button span[style*="font-size:11px"]{ font-size:9.5px !important; }
+}
+.agx-blend-root{ margin-top:-16px; }
+.agx-pdp { display:grid; grid-template-columns:1fr; }
+@media (min-width:900px){ .agx-pdp{ grid-template-columns:1.05fr .95fr; align-items:start; } .agx-pdp-media{ position:sticky; top:76px; } .agx-ord-grid{ grid-template-columns:1fr 1fr; } .agx-reviews{ grid-template-columns:340px 1fr; } }
+/* results: fixed-height region — only the grid + filter options scroll */
+@media (min-width:960px){
+  .agx-results-root{ height:calc(100vh - 71px); margin-top:-16px; margin-bottom:-96px; overflow:hidden; }
+  .agx-results-inner{ height:100%; display:flex; flex-direction:column; padding-bottom:0 !important; }
+  .agx-res-body{ flex:1; min-height:0; }
+  .agx-res-aside{ position:static !important; max-height:none !important; height:100%; display:flex; flex-direction:column; overflow:hidden !important; padding-bottom:6px !important; }
+  .agx-res-aside-scroll{ flex:1; min-height:0; overflow-y:auto; margin-right:-6px; padding-right:6px; }
+  .agx-res-grid{ height:100%; overflow-y:auto; margin-right:-6px; padding-right:6px; padding-bottom:24px; }
+}
+@media (prefers-reduced-motion: reduce){ *{ animation-duration:.001ms !important; transition:none !important; } .agx-lift:hover{ transform:none; } .agx-zoom:hover .agx-zoomable{ transform:none; } }
+@keyframes agxLogoIn{ 0%{ opacity:0; transform:scale(.86) translateY(10px); } 100%{ opacity:1; transform:scale(1) translateY(0); } }
+@keyframes agxBar{ 0%{ transform:translateX(-130%); } 100%{ transform:translateX(340%); } }
 
-.no-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
-.no-scrollbar { scrollbar-width: none; }
+/* Results: the filter sidebar goes static below 780px, so offer the bottom
+   sheet instead at that width. */
+.agx-filter-btn { display: none; }
+@media (max-width: 780px) {
+  .agx-filter-btn { display: flex !important; }
+  .agx-filters { display: none !important; }
+}
 
+/* Auth swap: the design draws both a desktop split-panel and a mobile card
+   sign-in / sign-up. Show one or the other at the same 720px breakpoint the
+   design uses for `agx-hide-sm`. */
+.agx-auth-desktop { display: flex; }
+.agx-auth-mobile { display: none; }
+@media (max-width: 720px) {
+  .agx-auth-desktop { display: none !important; }
+  .agx-auth-mobile { display: flex !important; }
+}
+
+/* Material Symbols helper — the design sets font-family inline per <span>. */
 .msymbol {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;

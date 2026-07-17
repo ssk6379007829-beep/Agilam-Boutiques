@@ -1,67 +1,48 @@
 import { useNavigate } from 'react-router-dom';
-import { useMyBoutique } from '@/hooks/useMyBoutique';
-import { useAsync } from '@/hooks/useAsync';
-import { fetchOrdersForBoutique } from '@/data/orders';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { Icon } from '@/components/ui/Icon';
-import { fmtInr } from '@/lib/tokens';
+import { css } from '@/lib/css';
 
-const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const REVENUE_BARS = [
+  { d: 'M', h: '46%' }, { d: 'T', h: '62%' }, { d: 'W', h: '38%' }, { d: 'T', h: '78%' },
+  { d: 'F', h: '92%' }, { d: 'S', h: '70%' }, { d: 'S', h: '54%' },
+];
 
 export function Earnings() {
   const navigate = useNavigate();
-  const { boutique } = useMyBoutique();
-  const { data: orders } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
-
-  const rows = orders ?? [];
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const thisMonth = rows.filter((o) => new Date(o.created_at) >= monthStart);
-  const totalRevenue = thisMonth.reduce((s, o) => s + Number(o.total), 0);
-  const ordersPaid = rows.filter((o) => o.status === 'shipped' || o.status === 'delivered').length;
-  const pendingPayout = rows.filter((o) => o.status === 'pending').reduce((s, o) => s + Number(o.total), 0);
-
-  const dayTotals = new Array(7).fill(0);
-  rows.forEach((o) => {
-    const d = new Date(o.created_at);
-    const daysAgo = Math.floor((now.getTime() - d.getTime()) / (24 * 3600 * 1000));
-    if (daysAgo >= 0 && daysAgo < 7) dayTotals[6 - daysAgo] += Number(o.total);
-  });
-  const max = Math.max(...dayTotals, 1);
 
   return (
-    <div className="min-h-full bg-rose-card pb-5">
-      <ScreenHeader title="Earnings" onBack={() => navigate('/seller/profile')} />
-      <div
-        className="mx-5 rounded-[20px] p-5 text-white shadow-[0_18px_40px_-22px_rgba(176,36,84,.9)]"
-        style={{ background: 'linear-gradient(150deg,#D6336C,#B02454)' }}
-      >
-        <div className="text-[13px] opacity-85">Total revenue · This month</div>
-        <div className="mt-1 font-serif text-[42px] font-bold leading-none">{fmtInr(totalRevenue)}</div>
-        <div className="mt-2 flex items-center gap-1.5 text-[13px]">
-          <Icon name="trending_up" className="text-[17px]" />
-          Live totals from your orders
+    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
+      <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
+        <button onClick={() => navigate('/seller/profile')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:#fff;box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
+        </button>
+        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Earnings</div>
+      </div>
+
+      <div style={css('margin:4px 20px 0;border-radius:20px;background:linear-gradient(150deg,#D6336C,#B02454);color:#fff;padding:20px;box-shadow:0 18px 40px -22px rgba(176,36,84,.9);')}>
+        <div style={css('font-size:13px;opacity:.85;')}>Total revenue · This month</div>
+        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:42px;line-height:1;margin-top:4px;")}>₹1,84,700</div>
+        <div style={css('display:flex;gap:6px;align-items:center;margin-top:8px;font-size:13px;')}>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>trending_up</span>+18% vs last month
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 px-5 pt-4">
-        <div className="rounded-2xl bg-white p-3.5 shadow-soft">
-          <div className="text-xs font-bold text-rose-muted">Orders paid</div>
-          <div className="font-serif text-[26px] font-bold">{ordersPaid}</div>
+
+      <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 20px 0;')}>
+        <div style={css('background:#fff;border-radius:16px;padding:14px;box-shadow:0 12px 28px -22px rgba(107,20,54,.6);')}>
+          <div style={css('font-size:12px;color:#8A7078;font-weight:700;')}>Orders paid</div>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>42</div>
         </div>
-        <div className="rounded-2xl bg-white p-3.5 shadow-soft">
-          <div className="text-xs font-bold text-rose-muted">Pending payout</div>
-          <div className="font-serif text-[26px] font-bold text-gold">{fmtInr(pendingPayout)}</div>
+        <div style={css('background:#fff;border-radius:16px;padding:14px;box-shadow:0 12px 28px -22px rgba(107,20,54,.6);')}>
+          <div style={css('font-size:12px;color:#8A7078;font-weight:700;')}>Pending payout</div>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;color:#C99A3F;")}>₹23,400</div>
         </div>
       </div>
-      <div className="px-5 pb-3 pt-5 font-serif text-xl font-bold">Weekly revenue</div>
-      <div className="mx-5 flex h-[150px] items-end gap-2.5 rounded-[18px] bg-white p-4 shadow-soft">
-        {dayTotals.map((v, i) => (
-          <div key={i} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
-            <div
-              className="w-full rounded-t-[7px] rounded-b-[3px]"
-              style={{ background: 'linear-gradient(180deg,#E7719F,#D6336C)', height: `${Math.max(6, (v / max) * 100)}%` }}
-            />
-            <span className="text-[10.5px] font-bold text-rose-mutedSoft">{DAY_LABELS[i]}</span>
+
+      <div style={css("padding:20px 20px 10px;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Weekly revenue</div>
+      <div style={css('margin:0 20px;background:#fff;border-radius:18px;padding:18px 16px;box-shadow:0 12px 28px -22px rgba(107,20,54,.6);display:flex;align-items:flex-end;gap:10px;height:150px;')}>
+        {REVENUE_BARS.map((b, i) => (
+          <div key={i} style={css('flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%;')}>
+            <div style={css(`width:100%;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#E7719F,#D6336C);height:${b.h};`)} />
+            <span style={css('font-size:10.5px;color:#B79AA6;font-weight:700;')}>{b.d}</span>
           </div>
         ))}
       </div>

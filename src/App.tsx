@@ -1,9 +1,11 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { RequireRole } from '@/auth/RequireRole';
 
+import { Loading } from '@/pages/Loading';
 import { Splash } from '@/pages/auth/Splash';
 import { SignIn } from '@/pages/auth/SignIn';
 import { SignUp } from '@/pages/auth/SignUp';
+import { Otp } from '@/pages/auth/Otp';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 
 import { BuyerLayout } from '@/components/layout/BuyerLayout';
@@ -13,6 +15,14 @@ import { Boutiques } from '@/pages/buyer/Boutiques';
 import { BoutiqueProfile } from '@/pages/buyer/BoutiqueProfile';
 import { ProductDetail } from '@/pages/buyer/ProductDetail';
 import { Wishlist } from '@/pages/buyer/Wishlist';
+import { FilterSheet } from '@/pages/buyer/FilterSheet';
+import { Cart } from '@/pages/buyer/Cart';
+import { Checkout } from '@/pages/buyer/Checkout';
+import { Payment } from '@/pages/buyer/Payment';
+import { OrderConfirmation } from '@/pages/buyer/OrderConfirmation';
+import { MyOrders } from '@/pages/buyer/MyOrders';
+import { TrackOrder } from '@/pages/buyer/TrackOrder';
+import { Coupons } from '@/pages/buyer/Coupons';
 import { Messages as BuyerMessages } from '@/pages/buyer/Messages';
 import { Chat as BuyerChat } from '@/pages/buyer/Chat';
 import { Profile as BuyerProfile } from '@/pages/buyer/Profile';
@@ -28,6 +38,7 @@ import { Notifications } from '@/pages/seller/Notifications';
 import { Messages as SellerMessages } from '@/pages/seller/Messages';
 import { Chat as SellerChat } from '@/pages/seller/Chat';
 import { Earnings } from '@/pages/seller/Earnings';
+import { Analytics } from '@/pages/seller/Analytics';
 import { BoutiqueProfileEdit } from '@/pages/seller/BoutiqueProfileEdit';
 import { Subscription } from '@/pages/seller/Subscription';
 import { ProfileHub } from '@/pages/seller/ProfileHub';
@@ -48,26 +59,32 @@ import { Ads } from '@/pages/admin/Ads';
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Splash />} />
+      <Route path="/" element={<Loading />} />
+      <Route path="/splash" element={<Splash />} />
       <Route path="/auth/signin/:role" element={<SignIn />} />
       <Route path="/auth/signup/:role" element={<SignUp />} />
+      <Route path="/auth/otp/:role" element={<Otp />} />
       <Route path="/admin/login" element={<AdminLogin />} />
 
-      <Route
-        path="/buyer"
-        element={
-          <RequireRole role="buyer">
-            <BuyerLayout />
-          </RequireRole>
-        }
-      >
+      {/* Buyers browse without signing in — the design treats the buyer app as
+          the public surface and only gates the seller/admin consoles. */}
+      <Route path="/buyer" element={<BuyerLayout />}>
         <Route index element={<Navigate to="home" replace />} />
         <Route path="home" element={<Home />} />
         <Route path="results" element={<Results />} />
+        {/* The sheet is a fixed overlay, so keep the results grid behind it. */}
+        <Route path="filter" element={<><Results /><FilterSheet /></>} />
         <Route path="boutiques" element={<Boutiques />} />
         <Route path="boutique/:id" element={<BoutiqueProfile />} />
         <Route path="product/:id" element={<ProductDetail />} />
         <Route path="wishlist" element={<Wishlist />} />
+        <Route path="cart" element={<Cart />} />
+        <Route path="checkout" element={<Checkout />} />
+        <Route path="payment" element={<Payment />} />
+        <Route path="order-confirmation" element={<OrderConfirmation />} />
+        <Route path="orders" element={<MyOrders />} />
+        <Route path="orders/:id/track" element={<TrackOrder />} />
+        <Route path="coupons" element={<Coupons />} />
         <Route path="messages" element={<BuyerMessages />} />
         <Route path="chat/:id" element={<BuyerChat />} />
         <Route path="profile" element={<BuyerProfile />} />
@@ -92,6 +109,7 @@ export default function App() {
         <Route path="messages" element={<SellerMessages />} />
         <Route path="chat/:id" element={<SellerChat />} />
         <Route path="earnings" element={<Earnings />} />
+        <Route path="analytics" element={<Analytics />} />
         <Route path="boutique" element={<BoutiqueProfileEdit />} />
         <Route path="subscription" element={<Subscription />} />
         <Route path="profile" element={<ProfileHub />} />

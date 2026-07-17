@@ -1,131 +1,199 @@
-import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/auth/AuthContext';
-import { useAsync } from '@/hooks/useAsync';
-import { fetchProducts, type ProductFilters } from '@/data/products';
-import { fetchWishlistIds, toggleWishlist } from '@/data/wishlist';
-import { Icon } from '@/components/ui/Icon';
-import { IconButton } from '@/components/ui/IconButton';
-import { ProductCard } from '@/components/buyer/ProductCard';
-import { FilterSheet } from '@/components/buyer/FilterSheet';
-import { useToast } from '@/components/ui/Toast';
+import { type MouseEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { css } from '@/lib/css';
+import { ImageSlot } from '@/components/ui/ImageSlot';
+import { useShop } from '@/state/ShopContext';
+import { COLORS, OCCASIONS, PRODUCTS, SORTS, TONES, fmt } from '@/data/demo';
+
+const FILTER_CATS = ['Sarees', 'Lehengas', 'Gowns', 'Kurtis', 'Bridal'];
+const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
 export function Results() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { profile } = useAuth();
-  const toast = useToast();
-  const initialCategory = (location.state as { category?: string } | null)?.category;
+  const { filters, setFilters, toggleFilter, setSort, setMaxPrice, resetFilters, wishlist, toggleWish } = useShop();
 
-  const [filters, setFilters] = useState<ProductFilters>({
-    maxPrice: 10000,
-    categories: initialCategory ? [initialCategory] : [],
-    colors: [],
-    occasions: [],
-    sort: 'Latest',
-  });
-  const [query, setQuery] = useState('');
-  const [showFilter, setShowFilter] = useState(false);
-  const [wished, setWished] = useState<Set<string>>(new Set());
+  let results = PRODUCTS.filter(
+    (p) =>
+      p.price <= filters.maxPrice &&
+      (filters.cats.length === 0 || filters.cats.includes(p.cat)) &&
+      (filters.colors.length === 0 || filters.colors.includes(p.color)) &&
+      (filters.occasions.length === 0 || filters.occasions.includes(p.occasion)),
+  );
+  if (filters.sort === 'Price: Low to High') results = [...results].sort((a, b) => a.price - b.price);
+  else if (filters.sort === 'Price: High to Low') results = [...results].sort((a, b) => b.price - a.price);
+  else if (filters.sort === 'Popularity') results = [...results].sort((a, b) => b.reviews - a.reviews);
 
-  const { data: results } = useAsync(() => fetchProducts(filters), [JSON.stringify(filters)]);
-  const filtered = (results ?? []).filter((p) => p.title.toLowerCase().includes(query.toLowerCase()));
+  const activeChips: { key: string; label: string; remove: () => void }[] = [];
+  if (filters.maxPrice < 10000) activeChips.push({ key: 'price', label: 'Under ' + fmt(filters.maxPrice), remove: () => setFilters({ ...filters, maxPrice: 10000 }) });
+  filters.cats.forEach((c) => activeChips.push({ key: 'cat:' + c, label: c, remove: () => toggleFilter('cats', c) }));
+  filters.colors.forEach((c) => activeChips.push({ key: 'color:' + c, label: c, remove: () => toggleFilter('colors', c) }));
+  filters.occasions.forEach((c) => activeChips.push({ key: 'occ:' + c, label: c, remove: () => toggleFilter('occasions', c) }));
 
-  useEffect(() => {
-    if (profile) fetchWishlistIds(profile.id).then(setWished);
-  }, [profile]);
+  const pricePlus = filters.maxPrice >= 10000 ? '+' : '';
 
-  async function handleToggleWish(e: React.MouseEvent, id: string) {
-    e.stopPropagation();
-    if (!profile) return;
-    const isWished = wished.has(id);
-    setWished((prev) => {
-      const next = new Set(prev);
-      isWished ? next.delete(id) : next.add(id);
-      return next;
-    });
-    await toggleWishlist(profile.id, id, isWished);
-    toast(isWished ? 'Removed from wishlist' : 'Added to wishlist');
-  }
-
-  const activeChips: { key: string; label: string }[] = [];
-  if ((filters.maxPrice ?? 10000) < 10000) activeChips.push({ key: 'price', label: `Under ₹${filters.maxPrice}` });
-  filters.categories?.forEach((c) => activeChips.push({ key: 'cat:' + c, label: c }));
-  filters.colors?.forEach((c) => activeChips.push({ key: 'color:' + c, label: c }));
-  filters.occasions?.forEach((c) => activeChips.push({ key: 'occ:' + c, label: c }));
+  const stockFg = (stock: number) => (stock === 0 ? '#D6455A' : stock <= 5 ? '#C99A3F' : '#2FA36B');
+  const stockLabel = (stock: number) => (stock === 0 ? 'Out of stock' : stock <= 5 ? `Low · ${stock} left` : 'In stock');
 
   return (
-    <div className="relative min-h-full bg-rose-card">
-      <div className="sticky top-0 z-[5] bg-rose-card px-5 pb-3 pt-1.5">
-        <div className="flex items-center gap-2.5">
-          <IconButton icon="arrow_back" onClick={() => navigate('/buyer/home')} />
-          <div className="flex h-11 flex-1 items-center gap-2 rounded-2xl bg-white px-3 shadow-card">
-            <Icon name="search" className="text-[20px] text-rose-mutedSoft" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ethnic wear"
-              className="flex-1 border-none bg-transparent text-sm font-semibold outline-none"
-            />
+    <div className="agx-results-root" style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:#fff;')}>
+      <div className="agx-results-inner" style={css('max-width:1480px;margin:0 auto;padding:14px clamp(16px,4vw,44px) 140px;')}>
+        <div style={css('flex:none;')}>
+          <div style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:#8A7078;')}>
+            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/home'); }} style={css('color:#8A7078;')}>Home</a>
+            <span>/</span>
+            <span style={css('color:#241019;font-weight:700;')}>Ethnic Wear</span>
           </div>
-          <button
-            onClick={() => setShowFilter(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-xl border-none"
-            style={{ background: 'linear-gradient(135deg,#D6336C,#B02454)' }}
-          >
-            <Icon name="tune" className="text-[20px] text-white" />
-          </button>
-        </div>
-        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto">
-          <div className="flex flex-none items-center gap-1.5 rounded-full bg-rose-primaryDark px-3 py-1.5 text-[12.5px] font-bold text-white">
-            <Icon name="tune" className="text-[15px]" />
-            Sort: {filters.sort}
-          </div>
-          {activeChips.map((ch) => (
-            <div
-              key={ch.key}
-              className="flex flex-none items-center gap-1.5 rounded-full border border-rose-border bg-white px-3 py-1.5 text-[12.5px] font-bold text-rose-primaryDark"
-            >
-              {ch.label}
-              <Icon name="close" className="text-[15px]" />
+
+          <div style={css('display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:12px;')}>
+            <div>
+              <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>The edit</div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.2vw,42px);line-height:1.06;letter-spacing:-.01em;margin-top:6px;")}>
+                Ethnic Wear <span style={css("font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:#8A7078;letter-spacing:0;")}>· {results.length} pieces</span>
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
+            {/* Below 780px the sidebar is hidden; this opens the filter sheet. */}
+            <button
+              className="agx-filter-btn"
+              onClick={() => navigate('/buyer/filter')}
+              style={css('align-items:center;gap:7px;background:#fff;border:1.5px solid #F0D8E2;border-radius:14px;padding:10px 16px;font-size:13px;font-weight:800;color:#B02454;cursor:pointer;font-family:inherit;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>tune</span>
+              Filters
+              {activeChips.length > 0 && (
+                <span style={css('min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#D6336C;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;')}>{activeChips.length}</span>
+              )}
+            </button>
 
-      <div className="px-5 pb-1.5 pt-1 text-[13px] font-semibold text-rose-muted">{filtered.length} results</div>
-      <div className="grid grid-cols-2 gap-3.5 px-5 pb-6 md:grid-cols-3">
-        {filtered.map((p) => (
-          <ProductCard
-            key={p.id}
-            product={p}
-            showBoutique
-            wished={wished.has(p.id)}
-            onToggleWish={(e) => handleToggleWish(e, p.id)}
-            onOpen={() => navigate(`/buyer/product/${p.id}`)}
-          />
-        ))}
-      </div>
-
-      {filtered.length === 0 && (
-        <div className="flex flex-col items-center px-7 py-10 text-center">
-          <div className="flex h-[74px] w-[74px] items-center justify-center rounded-3xl bg-rose-chip">
-            <Icon name="search_off" style={{ fontSize: 38, color: '#D6336C' }} />
+            <div style={css('display:flex;align-items:center;gap:10px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:14px;padding:6px 8px 6px 14px;')}>
+              <span className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;white-space:nowrap;')}>Sort</span>
+              <div className="agx-scroll" style={css('display:flex;align-items:center;gap:6px;overflow-x:auto;max-width:100%;')}>
+                {SORTS.map((x) => {
+                  const on = filters.sort === x;
+                  return (
+                    <button key={x} onClick={() => setSort(x)} style={css(`border:1.5px solid ${on ? '#B02454' : '#E4CDD8'};background:${on ? '#B02454' : '#fff'};color:${on ? '#fff' : '#6B5560'};border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;`)}>
+                      {x}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-          <div className="mt-4 font-serif text-2xl font-bold">No matches found</div>
-          <div className="mt-1.5 text-sm text-rose-muted">Try widening your price range or clearing a filter.</div>
-          <button
-            onClick={() => setFilters({ maxPrice: 10000, categories: [], colors: [], occasions: [], sort: 'Latest' })}
-            className="mt-4 rounded-xl border-none bg-rose-primaryDark px-5 py-2.5 font-bold text-white"
-          >
-            Reset filters
-          </button>
-        </div>
-      )}
 
-      {showFilter && (
-        <FilterSheet filters={filters} onChange={setFilters} onClose={() => setShowFilter(false)} resultsCount={filtered.length} />
-      )}
+          {activeChips.length > 0 && (
+            <div style={css('display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:16px;')}>
+              <span className="agx-eyebrow" style={css('font-size:9.5px;color:#8A7078;')}>Filtering by</span>
+              {activeChips.map((c) => (
+                <button key={c.key} onClick={c.remove} style={css('display:flex;align-items:center;gap:6px;background:#FCE0EC;border:1px solid #F3C6D8;color:#B02454;border-radius:999px;padding:7px 10px 7px 13px;font-size:12.5px;font-weight:700;cursor:pointer;')}>
+                  {c.label}<span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>close</span>
+                </button>
+              ))}
+              <button onClick={resetFilters} style={css('border:none;background:none;color:#8A7078;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;')}>Clear all</button>
+            </div>
+          )}
+        </div>
+
+        <div className="agx-res-body" style={css('display:flex;gap:36px;align-items:flex-start;margin-top:22px;')}>
+          <aside className="agx-filters agx-res-aside" style={css('width:266px;flex:none;position:sticky;top:78px;max-height:calc(100vh - 104px);overflow-y:auto;padding:20px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:20px;')}>
+            <div style={css('flex:none;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #EFE3E9;padding-bottom:14px;')}>
+              <div className="agx-eyebrow" style={css('font-size:11px;color:#241019;')}>Filters</div>
+              <button onClick={resetFilters} style={css('border:none;background:none;color:#D6336C;font-weight:700;font-size:12px;cursor:pointer;')}>Clear all</button>
+            </div>
+
+            <div className="agx-res-aside-scroll agx-scroll">
+              <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
+                <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Price</div>
+                <div style={css('display:flex;justify-content:space-between;font-size:12.5px;color:#8A7078;font-weight:700;margin-top:12px;')}>
+                  <span>₹0</span><span style={css('color:#B02454;')}>{fmt(filters.maxPrice)}{pricePlus}</span>
+                </div>
+                <input type="range" min={0} max={10000} step={100} value={filters.maxPrice} onChange={(e) => setMaxPrice(+e.target.value)} style={css('width:100%;accent-color:#D6336C;margin-top:8px;')} />
+              </div>
+
+              <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
+                <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Category</div>
+                <div style={css('display:flex;flex-direction:column;gap:6px;margin-top:14px;')}>
+                  {FILTER_CATS.map((c) => {
+                    const on = filters.cats.includes(c);
+                    return (
+                      <label key={c} onClick={() => toggleFilter('cats', c)} style={css('display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:#4B3840;cursor:pointer;')}>
+                        <span style={css(`width:19px;height:19px;flex:none;border-radius:5px;border:1.5px solid ${on ? '#D6336C' : '#CBB0BC'};background:${on ? '#D6336C' : '#fff'};display:flex;align-items:center;justify-content:center;`)}>
+                          <span style={css(`font-family:'Material Symbols Outlined';font-size:14px;color:#fff;opacity:${on ? 1 : 0};`)}>check</span>
+                        </span>{c}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
+                <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Colour</div>
+                <div style={css('display:flex;flex-wrap:wrap;gap:14px;margin-top:15px;')}>
+                  {COLORS.map((c) => (
+                    <button key={c.name} onClick={() => toggleFilter('colors', c.name)} style={css('display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;cursor:pointer;')}>
+                      <span style={css(`width:34px;height:34px;border-radius:50%;background:${c.hex};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px #EAD3DE'};`)} />
+                      <span style={css('font-size:11px;font-weight:700;color:#6B5560;')}>{c.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={css('padding:18px 0 4px;')}>
+                <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Occasion</div>
+                <div style={css('display:flex;flex-direction:column;gap:6px;margin-top:14px;')}>
+                  {OCCASIONS.map((o) => {
+                    const on = filters.occasions.includes(o);
+                    return (
+                      <label key={o} onClick={() => toggleFilter('occasions', o)} style={css('display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:#4B3840;cursor:pointer;')}>
+                        <span style={css(`width:19px;height:19px;flex:none;border-radius:5px;border:1.5px solid ${on ? '#D6336C' : '#CBB0BC'};background:${on ? '#D6336C' : '#fff'};display:flex;align-items:center;justify-content:center;`)}>
+                          <span style={css(`font-family:'Material Symbols Outlined';font-size:14px;color:#fff;opacity:${on ? 1 : 0};`)}>check</span>
+                        </span>{o}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <div className="agx-res-grid" style={css('flex:1;min-width:0;')}>
+            <div className="agx-rgrid">
+              {results.map((p) => (
+                <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>
+                  <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.6);`)}>
+                    <ImageSlot placeholder={p.title} style={css('position:absolute;inset:0;')} />
+                    <button onClick={(e: MouseEvent) => { e.stopPropagation(); toggleWish(p.id); }} style={css('position:absolute;right:9px;top:9px;width:36px;height:36px;border-radius:12px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(0,0,0,.3);')}>
+                      <span style={css(`font-family:'Material Symbols Outlined';font-size:19px;color:${wishlist[p.id] ? '#D6336C' : '#B79AA6'};`)}>{wishlist[p.id] ? 'favorite' : 'favorite_border'}</span>
+                    </button>
+                    <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 9px;font-size:11.5px;font-weight:800;color:#241019;box-shadow:0 4px 12px rgba(0,0,0,.16);')}>
+                      <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#2FA36B;")}>star</span>{p.rating}
+                      <span style={css('width:1px;height:11px;background:#D9C4CE;')} />
+                      <span style={css('color:#8A7078;font-weight:700;')}>{reviewsF(p.reviews)}</span>
+                    </div>
+                  </div>
+                  <div style={css('padding:11px 2px 0;')}>
+                    <div style={css('font-size:14px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
+                    <div style={css('font-size:12.5px;color:#8A7078;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.boutique}</div>
+                    <div style={css('display:flex;align-items:center;gap:8px;margin-top:6px;')}>
+                      <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:18px;")}>{fmt(p.price)}</span>
+                      <span style={css(`font-size:11px;font-weight:800;color:${stockFg(p.stock)};`)}>{stockLabel(p.stock)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {results.length === 0 && (
+              <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:70px 30px;')}>
+                <div style={css('width:74px;height:74px;border-radius:24px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:#D6336C;")}>search_off</span>
+                </div>
+                <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:16px;")}>No matches found</div>
+                <div style={css('color:#8A7078;font-size:14px;margin-top:6px;')}>Try widening your price range or clearing a filter.</div>
+                <button onClick={resetFilters} style={css('margin-top:16px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:11px 20px;font-weight:700;cursor:pointer;')}>Reset filters</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

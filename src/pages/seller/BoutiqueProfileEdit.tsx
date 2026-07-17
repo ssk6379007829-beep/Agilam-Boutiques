@@ -1,77 +1,50 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMyBoutique } from '@/hooks/useMyBoutique';
-import { updateBoutique } from '@/data/boutiques';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { Icon } from '@/components/ui/Icon';
-import { Input, TextArea } from '@/components/ui/TextField';
-import { Button } from '@/components/ui/Button';
-import { useToast } from '@/components/ui/Toast';
+import { css } from '@/lib/css';
+import { useShop } from '@/state/ShopContext';
+
+const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
+const labelStyle = 'font-size:13px;font-weight:700;color:#7A5C67;';
 
 export function BoutiqueProfileEdit() {
   const navigate = useNavigate();
-  const toast = useToast();
-  const { boutique, reload } = useMyBoutique();
-  const [name, setName] = useState('');
-  const [city, setCity] = useState('');
-  const [description, setDescription] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (boutique) {
-      setName(boutique.name);
-      setCity(boutique.city);
-      setDescription(boutique.description);
-    }
-  }, [boutique]);
-
-  if (!boutique) return null;
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      await updateBoutique(boutique!.id, { name, city, description });
-      toast('Boutique updated');
-      reload();
-    } finally {
-      setSaving(false);
-    }
-  }
+  const { showToast } = useShop();
 
   return (
-    <div className="min-h-full bg-rose-card pb-6">
-      <ScreenHeader title="Boutique Profile" onBack={() => navigate('/seller/profile')} size={23} />
-      <div className="px-5">
-        <div className="relative flex h-[110px] items-center justify-center overflow-hidden rounded-2xl bg-rose-chip">
-          <span className="rounded-lg bg-white/70 px-2.5 py-1 font-mono text-[11px] text-black/50">cover image · tap to change</span>
+    <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:24px;')}>
+      <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
+        <button onClick={() => navigate('/seller/profile')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:#fff;box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
+        </button>
+        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;")}>Boutique Profile</div>
+      </div>
+
+      <div style={css('padding:4px 20px 0;')}>
+        <div style={css('height:110px;border-radius:16px;background:#F4D6E2;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;')}>
+          <div style={css('position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.3) 0 1px,transparent 1px 16px);')} />
+          <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(42,26,32,.5);background:rgba(255,255,255,.7);padding:4px 10px;border-radius:8px;")}>cover image · tap to change</span>
         </div>
-        <div className="relative -mt-6 flex items-center gap-3 pl-1.5">
-          <div className="flex h-[70px] w-[70px] items-center justify-center rounded-[20px] border-[3px] border-rose-card bg-[#E2DAEF] font-serif text-[28px] font-bold text-black/50">
-            {boutique.name[0]}
+
+        <div style={css('display:flex;align-items:center;gap:12px;margin-top:-24px;padding-left:6px;position:relative;')}>
+          <div style={css("width:70px;height:70px;border-radius:20px;background:#E2DAEF;border:3px solid #FBF6F2;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:28px;color:rgba(42,26,32,.5);")}>E</div>
+          <div style={css('display:flex;align-items:center;gap:5px;background:#E5F3EC;color:#2FA36B;padding:5px 11px;border-radius:9px;font-weight:800;font-size:12px;margin-top:24px;')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>verified</span>Verified
           </div>
-          {boutique.verified && (
-            <div className="mt-6 flex items-center gap-1.5 rounded-lg bg-good/10 px-2.5 py-1.5 text-xs font-extrabold text-good" style={{ background: '#E5F3EC' }}>
-              <Icon name="verified" className="text-base" />
-              Verified
-            </div>
-          )}
         </div>
-        <div className="mt-4 flex flex-col gap-3.5">
-          <label className="text-[13px] font-bold text-rose-fieldLabel">
-            Boutique name
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" />
+
+        <div style={css('display:flex;flex-direction:column;gap:14px;margin-top:16px;')}>
+          <label style={css(labelStyle)}>
+            Boutique name<input defaultValue="Elegance Boutique" style={css(inputStyle)} />
           </label>
-          <label className="text-[13px] font-bold text-rose-fieldLabel">
-            City
-            <Input value={city} onChange={(e) => setCity(e.target.value)} className="mt-1.5" />
+          <label style={css(labelStyle)}>
+            City<input defaultValue="Coimbatore" style={css(inputStyle)} />
           </label>
-          <label className="text-[13px] font-bold text-rose-fieldLabel">
+          <label style={css(labelStyle)}>
             Description
-            <TextArea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mt-1.5" />
+            <textarea rows={3} defaultValue="Handpicked bridal & festive wear crafted by Coimbatore's finest artisans." style={css('width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;resize:none;')} />
           </label>
-          <Button full onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save changes'}
-          </Button>
+          <button onClick={() => showToast('Boutique profile saved')} style={css('width:100%;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>
+            Save changes
+          </button>
         </div>
       </div>
     </div>
