@@ -95,16 +95,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .agx-mob-actionbar { display: flex !important; }
 }
 
-/* Auth swap: the design draws both a desktop split-panel and a mobile card
-   sign-in / sign-up. Show one or the other at the same 720px breakpoint the
-   design uses for `agx-hide-sm`. */
-.agx-auth-desktop { display: flex; }
-.agx-auth-mobile { display: none; }
-@media (max-width: 720px) {
-  .agx-auth-desktop { display: none !important; }
-  .agx-auth-mobile { display: flex !important; }
-}
-
 /* Material Symbols helper — the design sets font-family inline per <span>. */
 .msymbol {
   font-family: 'Material Symbols Outlined';

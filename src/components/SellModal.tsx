@@ -23,13 +23,12 @@ export function SellModal() {
   return (
     <div
       onClick={closeSellModal}
-      style={css('position:fixed;inset:0;z-index:210;background:rgba(40,10,22,.5);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;')}
+      style={css('position:fixed;inset:0;z-index:210;background:rgba(40,10,22,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;')}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={css('width:100%;max-width:460px;background:#fff;border-radius:28px 28px 0 0;padding:14px 24px 32px;box-shadow:0 -24px 70px -24px rgba(107,20,54,.55);')}
+        style={css('width:100%;max-width:460px;margin:auto;background:#fff;border-radius:28px;padding:24px 24px 28px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}
       >
-        <div style={css('width:44px;height:5px;border-radius:5px;background:#EFDCE4;margin:0 auto 18px;')} />
         <div style={css('width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 16px 34px -16px rgba(214,51,108,.8);')}>
           <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:30px;")}>storefront</span>
         </div>

@@ -67,7 +67,7 @@ export async function payWithRazorpay({
   description,
   receipt,
   prefill,
-}: PayArgs): Promise<{ paymentId: string; orderId: string }> {
+}: PayArgs): Promise<{ paymentId: string; orderId: string; signature: string }> {
   await loadCheckout();
   if (!window.Razorpay) throw new Error('Payment gateway unavailable');
 
@@ -121,7 +121,11 @@ export async function payWithRazorpay({
           });
           const data = await verifyRes.json().catch(() => ({}));
           if (verifyRes.ok && data.verified) {
-            resolve({ paymentId: resp.razorpay_payment_id, orderId: resp.razorpay_order_id });
+            resolve({
+              paymentId: resp.razorpay_payment_id,
+              orderId: resp.razorpay_order_id,
+              signature: resp.razorpay_signature,
+            });
           } else {
             reject(new Error(data.error || 'We could not verify your payment.'));
           }

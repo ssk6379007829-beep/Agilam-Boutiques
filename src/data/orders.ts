@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { OrderWithDetails } from './types';
 
-const SELECT = `*, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, title, price, qty, size, color)`;
+const SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, guest_name, guest_phone, guest_city, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, title, price, qty, size, color)`;
 
 export async function fetchOrdersForBuyer(buyerId: string): Promise<OrderWithDetails[]> {
   const { data, error } = await supabase.from('orders').select(SELECT).eq('buyer_id', buyerId).order('created_at', { ascending: false });
@@ -59,33 +59,44 @@ export interface CustomerStat {
   tone: number;
 }
 
+const CUSTOMER_SELECT = 'buyer_id, total, guest_name, guest_phone, guest_city, buyer:profiles!orders_buyer_id_fkey(full_name, city)';
+
+type CustomerRow = {
+  buyer_id: string | null;
+  total: number;
+  guest_name: string | null;
+  guest_phone: string | null;
+  guest_city: string | null;
+  buyer: { full_name: string; city: string | null } | null;
+};
+
 export async function fetchCustomersForBoutique(boutiqueId: string): Promise<CustomerStat[]> {
-  const { data, error } = await supabase
-    .from('orders')
-    .select('buyer_id, total, buyer:profiles!orders_buyer_id_fkey(full_name, city)')
-    .eq('boutique_id', boutiqueId);
+  const { data, error } = await supabase.from('orders').select(CUSTOMER_SELECT).eq('boutique_id', boutiqueId);
   if (error) throw error;
-  return aggregateCustomers((data ?? []) as unknown as { buyer_id: string; total: number; buyer: { full_name: string; city: string | null } }[]);
+  return aggregateCustomers((data ?? []) as unknown as CustomerRow[]);
 }
 
 export async function fetchCustomersAdmin(): Promise<CustomerStat[]> {
-  const { data, error } = await supabase.from('orders').select('buyer_id, total, buyer:profiles!orders_buyer_id_fkey(full_name, city)');
+  const { data, error } = await supabase.from('orders').select(CUSTOMER_SELECT);
   if (error) throw error;
-  return aggregateCustomers((data ?? []) as unknown as { buyer_id: string; total: number; buyer: { full_name: string; city: string | null } }[]);
+  return aggregateCustomers((data ?? []) as unknown as CustomerRow[]);
 }
 
-function aggregateCustomers(rows: { buyer_id: string; total: number; buyer: { full_name: string; city: string | null } }[]): CustomerStat[] {
+function aggregateCustomers(rows: CustomerRow[]): CustomerStat[] {
   const map = new Map<string, CustomerStat>();
   rows.forEach((r, i) => {
-    const existing = map.get(r.buyer_id);
+    // Registered buyers group by id; anonymous guests by phone (falling back to
+    // name) so two different guests aren't merged under a null buyer_id.
+    const key = r.buyer_id ?? `guest:${r.guest_phone ?? r.guest_name ?? i}`;
+    const existing = map.get(key);
     if (existing) {
       existing.orders += 1;
       existing.spent += Number(r.total);
     } else {
-      map.set(r.buyer_id, {
-        buyer_id: r.buyer_id,
-        name: r.buyer?.full_name ?? 'Customer',
-        city: r.buyer?.city ?? null,
+      map.set(key, {
+        buyer_id: key,
+        name: r.buyer?.full_name ?? r.guest_name ?? 'Customer',
+        city: r.buyer?.city ?? r.guest_city ?? null,
         orders: 1,
         spent: Number(r.total),
         tone: i % 8,

@@ -4,7 +4,8 @@ import { useShop } from '@/state/ShopContext';
 
 export function OrderConfirmation() {
   const navigate = useNavigate();
-  const { lastOrderId } = useShop();
+  const { lastOrderId, guest } = useShop();
+  const firstName = guest.name.trim().split(/\s+/)[0] || 'there';
 
   // The design tracks the previous order (#AGL-2481), which is the one that has
   // live tracking stages attached.
@@ -17,7 +18,7 @@ export function OrderConfirmation() {
           <span style={css("font-family:'Material Symbols Outlined';font-size:56px;color:#fff;")}>check</span>
         </div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:34px;line-height:1.05;margin-top:22px;")}>Order confirmed!</div>
-        <div style={css('color:#5C4650;font-size:15px;margin-top:8px;line-height:1.55;')}>Thank you, Priya. Your boutique has been notified and will start preparing your order.</div>
+        <div style={css('color:#5C4650;font-size:15px;margin-top:8px;line-height:1.55;')}>Thank you, {firstName}. Your boutique has been notified and will start preparing your order.</div>
 
         <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:20px;padding:18px;margin-top:22px;box-shadow:0 16px 36px -28px rgba(107,20,54,.5);display:flex;align-items:center;justify-content:space-between;')}>
           <div style={css('text-align:left;')}>
@@ -34,7 +35,7 @@ export function OrderConfirmation() {
             <span style={css("font-family:'Material Symbols Outlined';color:#2FA36B;")}>sms</span>
             <div style={css('flex:1;')}>
               <div style={css('font-weight:800;font-size:13.5px;')}>SMS confirmation sent</div>
-              <div style={css('color:#8A7078;font-size:12px;')}>to +91 98765 43210</div>
+              <div style={css('color:#8A7078;font-size:12px;')}>to +91 {guest.phone}</div>
             </div>
             <span style={css("font-family:'Material Symbols Outlined';color:#2FA36B;font-size:20px;")}>check_circle</span>
           </div>

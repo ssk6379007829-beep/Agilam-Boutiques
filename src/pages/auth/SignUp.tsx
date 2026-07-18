@@ -4,8 +4,7 @@ import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
 import { homeFor } from '@/auth/RequireRole';
 import { css } from '@/lib/css';
-import { AuthPanel, PasswordField, type LoginRole } from '@/components/auth/AuthPanel';
-import { MobileAuthCard } from '@/components/auth/MobileAuthCard';
+import { AuthModal, RoleTabs, PasswordField, type LoginRole } from '@/components/auth/AuthModal';
 import { useToast } from '@/components/ui/Toast';
 
 const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#2A1A20;';
@@ -26,6 +25,7 @@ export function SignUp() {
   const [sending, setSending] = useState(false);
 
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
+  const roleIcon = role === 'seller' ? 'storefront' : 'shopping_bag';
 
   const onRoleChange = (r: LoginRole) => {
     if (r === 'buyer') navigate('/buyer/home');
@@ -61,9 +61,15 @@ export function SignUp() {
     }
   }
 
-  // Shared between the mobile card and the desktop split-panel.
-  const fields = (
-    <>
+  return (
+    <AuthModal
+      icon={roleIcon}
+      heading="Create account"
+      sub={`Join Agilam as a ${roleWord}.`}
+      onBack={() => navigate(`/auth/signin/${role}`)}
+    >
+      <RoleTabs role={role as LoginRole} onRoleChange={onRoleChange} />
+
       <label style={css(labelStyle)}>
         Full name
         <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Priya Sharma" style={css(fieldStyle)} />
@@ -100,22 +106,6 @@ export function SignUp() {
       <div style={css('text-align:center;font-size:14px;color:#8A7078;')}>
         Have an account? <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/auth/signin/${role}`); }} style={css('font-weight:700;')}>Sign in</a>
       </div>
-    </>
-  );
-
-  return (
-    <>
-      <div className="agx-auth-mobile">
-        <MobileAuthCard heading="Create account" sub={`Join as a ${roleWord}`} onBack={() => navigate(`/auth/signin/${role}`)}>
-          {fields}
-        </MobileAuthCard>
-      </div>
-
-      <div className="agx-auth-desktop">
-        <AuthPanel role={role as LoginRole} onRoleChange={onRoleChange} heading="Create account">
-          <div style={css('margin-top:22px;display:flex;flex-direction:column;gap:15px;')}>{fields}</div>
-        </AuthPanel>
-      </div>
-    </>
+    </AuthModal>
   );
 }

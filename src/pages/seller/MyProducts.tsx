@@ -120,8 +120,8 @@ export function MyProducts() {
       </div>
 
       {editing && (
-        <div onClick={closeEdit} style={css('position:fixed;inset:0;z-index:50;background:rgba(42,16,25,.42);display:flex;align-items:flex-end;justify-content:center;')}>
-          <div onClick={(e) => e.stopPropagation()} style={css('width:100%;max-width:520px;background:#FBF6F2;border-radius:22px 22px 0 0;padding:18px 20px 24px;box-shadow:0 -18px 40px -20px rgba(107,20,54,.5);')}>
+        <div onClick={closeEdit} style={css('position:fixed;inset:0;z-index:50;background:rgba(42,16,25,.42);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;')}>
+          <div onClick={(e) => e.stopPropagation()} style={css('width:100%;max-width:520px;margin:auto;background:#FBF6F2;border-radius:22px;padding:18px 20px 24px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}>
             <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;")}>Edit product</div>
               <button onClick={closeEdit} style={css('width:36px;height:36px;border-radius:11px;border:none;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>

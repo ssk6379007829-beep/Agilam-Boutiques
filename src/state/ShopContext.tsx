@@ -20,7 +20,22 @@ export type Filters = {
 export type CartLine = { qty: number; size: string };
 export type Cart = Record<string, CartLine>;
 
+export type Guest = { name: string; phone: string; city: string; address: string };
+export type PaymentInfo = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
 export const DEFAULT_FILTERS: Filters = { maxPrice: 10000, cats: [], colors: [], occasions: [], sort: 'Latest' };
+
+// Prefilled with the design's sample shopper; the checkout form lets the buyer edit it.
+export const DEFAULT_GUEST: Guest = {
+  name: 'Priya Sharma',
+  phone: '9876543210',
+  city: 'Coimbatore',
+  address: '14, Lakshmi Nagar, Saibaba Colony',
+};
 
 type ShopValue = {
   wishlist: Record<string, boolean>;
@@ -52,8 +67,16 @@ type ShopValue = {
   payMethod: string;
   setPayMethod: (m: string) => void;
 
+  guest: Guest;
+  setGuest: (patch: Partial<Guest>) => void;
+
   lastOrderId: string;
-  placeOrder: () => string;
+  /**
+   * Creates the real order(s) server-side (one per boutique) and returns the
+   * primary order number. Pass the verified Razorpay payment for online orders,
+   * or `null` for Cash on Delivery. Throws with a user-facing message on failure.
+   */
+  placeOrder: (payment: PaymentInfo | null) => Promise<string>;
 
   toast: string | null;
   showToast: (msg: string) => void;
@@ -81,6 +104,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [payMethod, setPayMethod] = useState('cod');
+  const [guest, setGuestState] = useState<Guest>(DEFAULT_GUEST);
   const [lastOrderId, setLastOrderId] = useState('#AGL-2481');
   const [toast, setToast] = useState<string | null>(null);
   const [sellModal, setSellModal] = useState(false);
@@ -191,14 +215,35 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const total = useMemo(() => Math.max(0, subtotal - discount) + shipFee, [subtotal, discount, shipFee]);
 
-  const placeOrder = useCallback(() => {
-    const oid = '#AGL-2482';
+  const setGuest = useCallback((patch: Partial<Guest>) => setGuestState((g) => ({ ...g, ...patch })), []);
+
+  const placeOrder = useCallback(async (payment: PaymentInfo | null): Promise<string> => {
+    // The server prices the order from the product ids, so the browser only
+    // sends what it can't derive: which products, how many, and the size.
+    const items = Object.entries(cart).map(([product_id, line]) => ({
+      product_id,
+      qty: line.qty,
+      size: line.size,
+    }));
+    if (items.length === 0) throw new Error('Your bag is empty');
+
+    const res = await fetch('/api/place-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, guest, payment }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { orders?: { order_number: string }[]; error?: string };
+    if (!res.ok || !data.orders?.length) {
+      throw new Error(data.error || 'Could not place the order. Please try again.');
+    }
+
+    const oid = data.orders[0].order_number;
     setCart({});
     setAppliedCoupon(null);
     setLastOrderId(oid);
     showToast('Order placed successfully');
     return oid;
-  }, [showToast]);
+  }, [cart, guest, showToast]);
 
   const value: ShopValue = {
     wishlist, toggleWish,
@@ -207,6 +252,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     query, setQuery,
     appliedCoupon, applyCoupon, removeCoupon,
     payMethod, setPayMethod,
+    guest, setGuest,
     lastOrderId, placeOrder,
     toast, showToast,
     sellModal,

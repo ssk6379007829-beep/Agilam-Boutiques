@@ -36,11 +36,14 @@ export interface BoutiqueRow {
 export interface OrderWithDetails {
   id: string;
   order_number: string;
-  buyer_id: string;
+  buyer_id: string | null;
   boutique_id: string;
   status: 'pending' | 'shipped' | 'delivered' | 'rejected';
   total: number;
   created_at: string;
+  guest_name: string | null;
+  guest_phone: string | null;
+  guest_city: string | null;
   buyer: { full_name: string; phone: string | null; city: string | null } | null;
   boutique: { name: string; tone: number } | null;
   items: { id: string; title: string; price: number; qty: number; size: string | null; color: string | null }[];

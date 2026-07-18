@@ -7,19 +7,12 @@ import { PAY_METHODS, fmt } from '@/data/demo';
 
 export function Payment() {
   const navigate = useNavigate();
-  const { payMethod, setPayMethod, subtotal, discount, shipFee, total, placeOrder, showToast } = useShop();
+  const { payMethod, setPayMethod, subtotal, discount, shipFee, total, guest, placeOrder, showToast } = useShop();
   const [processing, setProcessing] = useState(false);
 
   const isOnline = payMethod !== 'cod';
 
   const onPlaceOrder = async () => {
-    // Cash on Delivery skips the gateway.
-    if (!isOnline) {
-      placeOrder();
-      navigate('/buyer/order-confirmation');
-      return;
-    }
-
     if (total < 1) {
       showToast('Your bag is empty');
       return;
@@ -27,13 +20,26 @@ export function Payment() {
 
     setProcessing(true);
     try {
-      await payWithRazorpay({
-        amountPaise: Math.round(total * 100),
-        name: 'Agilam Boutiques',
-        description: 'Order payment',
-        prefill: { name: 'Priya Sharma', contact: '9876543210' },
-      });
-      placeOrder();
+      // Cash on Delivery skips the gateway; online pays first, then we record
+      // the order server-side with the verified payment.
+      const payment = isOnline
+        ? await payWithRazorpay({
+            amountPaise: Math.round(total * 100),
+            name: 'Agilam Boutiques',
+            description: 'Order payment',
+            prefill: { name: guest.name, contact: guest.phone },
+          })
+        : null;
+
+      await placeOrder(
+        payment
+          ? {
+              razorpay_order_id: payment.orderId,
+              razorpay_payment_id: payment.paymentId,
+              razorpay_signature: payment.signature,
+            }
+          : null,
+      );
       navigate('/buyer/order-confirmation');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Payment failed');

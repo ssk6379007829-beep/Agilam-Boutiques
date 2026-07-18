@@ -35,9 +35,10 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
   return {
     id: o.id,
     number: '#' + o.order_number,
-    customer: o.buyer?.full_name ?? 'Customer',
-    city: o.buyer?.city ?? null,
-    phone: o.buyer?.phone ?? null,
+    // Guest orders (anonymous buyers) carry their details on the order itself.
+    customer: o.buyer?.full_name ?? o.guest_name ?? 'Customer',
+    city: o.buyer?.city ?? o.guest_city ?? null,
+    phone: o.buyer?.phone ?? o.guest_phone ?? null,
     item: (first?.title ?? 'Item') + extra,
     color: first?.color ?? null,
     size: first?.size ?? null,
