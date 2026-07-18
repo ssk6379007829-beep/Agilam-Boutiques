@@ -1,15 +1,45 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
+import { payWithRazorpay } from '@/lib/razorpay';
 import { PAY_METHODS, fmt } from '@/data/demo';
 
 export function Payment() {
   const navigate = useNavigate();
-  const { payMethod, setPayMethod, subtotal, discount, shipFee, total, placeOrder } = useShop();
+  const { payMethod, setPayMethod, subtotal, discount, shipFee, total, placeOrder, showToast } = useShop();
+  const [processing, setProcessing] = useState(false);
 
-  const onPlaceOrder = () => {
-    placeOrder();
-    navigate('/buyer/order-confirmation');
+  const isOnline = payMethod !== 'cod';
+
+  const onPlaceOrder = async () => {
+    // Cash on Delivery skips the gateway.
+    if (!isOnline) {
+      placeOrder();
+      navigate('/buyer/order-confirmation');
+      return;
+    }
+
+    if (total < 1) {
+      showToast('Your bag is empty');
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      await payWithRazorpay({
+        amountPaise: Math.round(total * 100),
+        name: 'Agilam Boutiques',
+        description: 'Order payment',
+        prefill: { name: 'Priya Sharma', contact: '9876543210' },
+      });
+      placeOrder();
+      navigate('/buyer/order-confirmation');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Payment failed');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -60,8 +90,9 @@ export function Payment() {
               <span style={css('font-weight:800;')}>To pay</span>
               <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:26px;")}>{fmt(total)}</span>
             </div>
-            <button onClick={onPlaceOrder} style={css('width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>lock</span>Place order
+            <button onClick={onPlaceOrder} disabled={processing} style={css(`width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:${processing ? 'wait' : 'pointer'};opacity:${processing ? '.7' : '1'};display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>lock</span>
+              {processing ? 'Processing…' : isOnline ? `Pay ${fmt(total)}` : 'Place order'}
             </button>
             <button onClick={() => navigate('/buyer/checkout')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:#8A7078;font-weight:800;font-size:13px;')}>Back to delivery</button>
           </div>

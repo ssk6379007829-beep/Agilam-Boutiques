@@ -62,7 +62,15 @@ export async function createProduct(input: {
   if (error) throw error;
 }
 
-export async function updateProduct(id: string, patch: Partial<{ title: string; price: number; stock: number; category: string }>) {
+export async function updateProduct(
+  id: string,
+  patch: Partial<{ title: string; price: number; stock: number; category: string; color: string; occasion: string; fabric: string }>,
+) {
   const { error } = await supabase.from('products').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteProduct(id: string) {
+  const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) throw error;
 }
