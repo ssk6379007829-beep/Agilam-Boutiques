@@ -1,13 +1,28 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
+import { useMyBoutique } from '@/hooks/useMyBoutique';
+import { createProduct } from '@/data/products';
 
-const ADD_FIELDS = [
-  { label: 'Product title', value: 'Rose Zari Silk Saree', ph: 'e.g. Rose Zari Silk Saree' },
-  { label: 'Category', value: 'Sarees', ph: 'Sarees' },
-  { label: 'Colour', value: 'Pink', ph: 'Pink' },
-  { label: 'Occasion', value: 'Wedding', ph: 'Wedding' },
-  { label: 'Fabric', value: 'Kanchipuram Silk', ph: 'Silk' },
+type Form = {
+  title: string;
+  category: string;
+  color: string;
+  occasion: string;
+  fabric: string;
+  price: string;
+  stock: string;
+};
+
+const EMPTY: Form = { title: '', category: '', color: '', occasion: '', fabric: '', price: '', stock: '' };
+
+const FIELDS: { key: keyof Form; label: string; ph: string }[] = [
+  { key: 'title', label: 'Product title', ph: 'e.g. Rose Zari Silk Saree' },
+  { key: 'category', label: 'Category', ph: 'Sarees' },
+  { key: 'color', label: 'Colour', ph: 'Pink' },
+  { key: 'occasion', label: 'Occasion', ph: 'Wedding' },
+  { key: 'fabric', label: 'Fabric', ph: 'Kanchipuram Silk' },
 ];
 
 const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
@@ -15,10 +30,41 @@ const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;backgro
 export function AddProduct() {
   const navigate = useNavigate();
   const { showToast } = useShop();
+  const { boutique } = useMyBoutique();
+  const [form, setForm] = useState<Form>(EMPTY);
+  const [saving, setSaving] = useState(false);
 
-  const publish = () => {
-    showToast('Product published');
-    navigate('/seller/products');
+  const set = (key: keyof Form, value: string) => setForm((f) => ({ ...f, [key]: value }));
+
+  const publish = async () => {
+    if (!boutique) {
+      showToast('No boutique found for this account');
+      return;
+    }
+    if (!form.title.trim()) {
+      showToast('Please enter a product title');
+      return;
+    }
+    setSaving(true);
+    try {
+      await createProduct({
+        boutique_id: boutique.id,
+        title: form.title.trim(),
+        category: form.category.trim() || 'Other',
+        price: Number(form.price) || 0,
+        stock: Number(form.stock) || 0,
+        fabric: form.fabric.trim(),
+        color: form.color.trim(),
+        occasion: form.occasion.trim(),
+        tone: Math.floor(Math.random() * 8),
+      });
+      showToast('Product published');
+      navigate('/seller/products');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not publish product');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -42,29 +88,24 @@ export function AddProduct() {
           </div>
         </div>
 
-        {ADD_FIELDS.map((fl) => (
-          <label key={fl.label} style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+        {FIELDS.map((fl) => (
+          <label key={fl.key} style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
             {fl.label}
-            <input defaultValue={fl.value} placeholder={fl.ph} style={css(inputStyle)} />
+            <input value={form[fl.key]} onChange={(e) => set(fl.key, e.target.value)} placeholder={fl.ph} style={css(inputStyle)} />
           </label>
         ))}
 
         <div style={css('display:flex;gap:12px;')}>
           <label style={css('flex:1;font-size:13px;font-weight:700;color:#7A5C67;')}>
-            Price (₹)<input defaultValue="4899" style={css(inputStyle)} />
+            Price (₹)<input value={form.price} onChange={(e) => set('price', e.target.value)} inputMode="numeric" placeholder="4899" style={css(inputStyle)} />
           </label>
           <label style={css('flex:1;font-size:13px;font-weight:700;color:#7A5C67;')}>
-            Stock<input defaultValue="12" style={css(inputStyle)} />
+            Stock<input value={form.stock} onChange={(e) => set('stock', e.target.value)} inputMode="numeric" placeholder="12" style={css(inputStyle)} />
           </label>
         </div>
 
-        <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
-          Description
-          <textarea rows={3} defaultValue="Handcrafted Kanchipuram silk saree with intricate zari border." style={css('width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;resize:none;')} />
-        </label>
-
-        <button onClick={publish} style={css('width:100%;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>
-          Publish Product
+        <button onClick={publish} disabled={saving} style={css(`width:100%;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:${saving ? 'default' : 'pointer'};opacity:${saving ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);`)}>
+          {saving ? 'Publishing…' : 'Publish Product'}
         </button>
       </div>
     </div>
