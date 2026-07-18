@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Role } from '@/types/database';
@@ -24,7 +24,7 @@ type AuthContextValue = {
   profile: Profile | null;
   loading: boolean;
   signUpWithPassword: (email: string, password: string, pending: PendingSignup) => Promise<{ confirmationRequired: boolean; role: Role }>;
-  signInWithPassword: (email: string, password: string) => Promise<Role>;
+  signInWithPassword: (email: string, password: string, desiredRole?: Role) => Promise<Role>;
   adminSignIn: (email: string, password: string) => Promise<Role>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -32,14 +32,50 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Persist the role a user signed in as, keyed by user id, so a full page reload
+// of a guarded route keeps routing them to the right console even if the DB
+// profile row hasn't caught up (e.g. RLS blocking a role update).
+const ROLE_KEY = 'agx-desired-role';
+function readStoredRole(userId: string): Role | null {
+  try {
+    const raw = localStorage.getItem(ROLE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: string; role?: Role };
+    return parsed.id === userId && parsed.role ? parsed.role : null;
+  } catch {
+    return null;
+  }
+}
+function writeStoredRole(userId: string, role: Role) {
+  try {
+    localStorage.setItem(ROLE_KEY, JSON.stringify({ id: userId, role }));
+  } catch {
+    /* storage unavailable — the in-memory ref still covers this session */
+  }
+}
+function clearStoredRole() {
+  try {
+    localStorage.removeItem(ROLE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  // Role the user explicitly signed in as. Kept so the onAuthStateChange
+  // listener's profile reload (which reads DB truth) can't clobber it back to
+  // buyer within the session. Cleared on sign-out.
+  const desiredRoleRef = useRef<Role | null>(null);
 
   async function loadProfile(userId: string) {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-    setProfile(data ? (data as Profile) : null);
+    let prof = data ? (data as Profile) : null;
+    const override = desiredRoleRef.current ?? readStoredRole(userId);
+    if (prof && override) prof = { ...prof, role: override };
+    setProfile(prof);
   }
 
   /**
@@ -48,21 +84,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * routes see a loaded profile instead of racing the onAuthStateChange
    * listener (which otherwise bounces a fresh seller to the buyer app).
    */
-  async function hydrate(user: User, newSession: Session | null): Promise<Role> {
-    await ensureProfile(user);
+  async function hydrate(user: User, newSession: Session | null, desiredRole?: Role): Promise<Role> {
+    if (desiredRole) {
+      desiredRoleRef.current = desiredRole;
+      writeStoredRole(user.id, desiredRole);
+    }
+    await ensureProfile(user, desiredRole);
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-    const prof = data ? (data as Profile) : null;
+    let prof = data ? (data as Profile) : null;
+    // The sign-in page carries an explicit role intent (only sellers/admins ever
+    // authenticate — buyers browse without an account). Honour it locally so the
+    // role-guarded route renders even if the profile row hasn't caught up yet.
+    if (desiredRole) {
+      prof = prof
+        ? { ...prof, role: desiredRole }
+        : { id: user.id, role: desiredRole, full_name: user.email ?? 'New user', phone: null, email: user.email ?? null, city: null };
+    }
     setSession(newSession);
     setProfile(prof);
-    return prof?.role ?? 'buyer';
+    return prof?.role ?? desiredRole ?? 'buyer';
   }
 
-  async function ensureProfile(user: User) {
-    const { data: existing } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
-    if (existing) return;
+  async function ensureProfile(user: User, desiredRole?: Role) {
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id, role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      // Align an existing profile with the role the user is signing in as.
+      if (desiredRole && (existing as { role: Role }).role !== desiredRole) {
+        await supabase.from('profiles').update({ role: desiredRole }).eq('id', user.id);
+      }
+      return;
+    }
 
     const meta = (user.user_metadata ?? {}) as Partial<PendingSignup>;
-    const role: Role = meta.role ?? 'buyer';
+    const role: Role = desiredRole ?? meta.role ?? 'buyer';
     await supabase.from('profiles').insert({
       id: user.id,
       role,
@@ -127,10 +186,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { confirmationRequired: !data.session, role };
   }
 
-  async function signInWithPassword(email: string, password: string): Promise<Role> {
+  async function signInWithPassword(email: string, password: string, desiredRole?: Role): Promise<Role> {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    return data.user ? hydrate(data.user, data.session) : 'buyer';
+    return data.user ? hydrate(data.user, data.session, desiredRole) : (desiredRole ?? 'buyer');
   }
 
   async function adminSignIn(email: string, password: string): Promise<Role> {
@@ -140,6 +199,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    desiredRoleRef.current = null;
+    clearStoredRole();
     await supabase.auth.signOut();
   }
 
