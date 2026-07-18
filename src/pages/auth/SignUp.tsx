@@ -42,7 +42,7 @@ export function SignUp() {
 
     setSending(true);
     try {
-      const { confirmationRequired } = await signUpWithPassword(trimmedEmail, password, {
+      const { confirmationRequired, role: newRole } = await signUpWithPassword(trimmedEmail, password, {
         full_name: fullName,
         role,
         city,
@@ -52,7 +52,7 @@ export function SignUp() {
         toast('Check your email to confirm your account, then sign in');
         navigate(`/auth/signin/${role}`);
       } else {
-        navigate(homeFor(role), { replace: true });
+        navigate(homeFor(newRole), { replace: true });
       }
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not create account');

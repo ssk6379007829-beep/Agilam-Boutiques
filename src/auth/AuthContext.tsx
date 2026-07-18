@@ -23,9 +23,9 @@ type AuthContextValue = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUpWithPassword: (email: string, password: string, pending: PendingSignup) => Promise<{ confirmationRequired: boolean }>;
-  signInWithPassword: (email: string, password: string) => Promise<void>;
-  adminSignIn: (email: string, password: string) => Promise<void>;
+  signUpWithPassword: (email: string, password: string, pending: PendingSignup) => Promise<{ confirmationRequired: boolean; role: Role }>;
+  signInWithPassword: (email: string, password: string) => Promise<Role>;
+  adminSignIn: (email: string, password: string) => Promise<Role>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 };
@@ -40,6 +40,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loadProfile(userId: string) {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     setProfile(data ? (data as Profile) : null);
+  }
+
+  /**
+   * Populate session + profile synchronously after an auth call and resolve the
+   * account's role. Callers await this before navigating so the role-guarded
+   * routes see a loaded profile instead of racing the onAuthStateChange
+   * listener (which otherwise bounces a fresh seller to the buyer app).
+   */
+  async function hydrate(user: User, newSession: Session | null): Promise<Role> {
+    await ensureProfile(user);
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    const prof = data ? (data as Profile) : null;
+    setSession(newSession);
+    setProfile(prof);
+    return prof?.role ?? 'buyer';
   }
 
   async function ensureProfile(user: User) {
@@ -106,17 +121,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       options: { data: pending },
     });
     if (error) throw error;
-    return { confirmationRequired: !data.session };
+    // When email confirmation is off, Supabase returns a session immediately —
+    // hydrate so the guarded route sees the new profile before we navigate.
+    const role = data.session && data.user ? await hydrate(data.user, data.session) : pending.role;
+    return { confirmationRequired: !data.session, role };
   }
 
-  async function signInWithPassword(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  async function signInWithPassword(email: string, password: string): Promise<Role> {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    return data.user ? hydrate(data.user, data.session) : 'buyer';
   }
 
-  async function adminSignIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  async function adminSignIn(email: string, password: string): Promise<Role> {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    return data.user ? hydrate(data.user, data.session) : 'buyer';
   }
 
   async function signOut() {

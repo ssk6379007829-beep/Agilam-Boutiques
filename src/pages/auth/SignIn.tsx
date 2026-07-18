@@ -35,8 +35,10 @@ export function SignIn() {
 
     setSending(true);
     try {
-      await signInWithPassword(trimmedEmail, password);
-      navigate(homeFor(role), { replace: true });
+      // Route by the account's actual role, not the login page's role param,
+      // so a boutique owner lands on the seller console (not the buyer app).
+      const profileRole = await signInWithPassword(trimmedEmail, password);
+      navigate(homeFor(profileRole), { replace: true });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Sign in failed');
     } finally {

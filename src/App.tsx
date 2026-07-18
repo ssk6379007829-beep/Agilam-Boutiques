@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { RequireRole } from '@/auth/RequireRole';
 
 import { Loading } from '@/pages/Loading';
@@ -58,7 +59,8 @@ import { Ads } from '@/pages/admin/Ads';
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <Routes>
       <Route path="/" element={<Loading />} />
       <Route path="/splash" element={<Splash />} />
       <Route path="/auth/signin/:role" element={<SignIn />} />
@@ -137,7 +139,9 @@ export default function App() {
         <Route path="ads" element={<Ads />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <SpeedInsights />
+    </>
   );
 }
