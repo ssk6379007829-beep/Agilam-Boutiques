@@ -84,7 +84,10 @@ export async function payWithRazorpay({
 
   return new Promise((resolve, reject) => {
     const rzp = new window.Razorpay!({
-      key: KEY_ID ?? order.key_id,
+      // Prefer the key the server used to create THIS order — it is guaranteed
+      // valid and to match order_id. VITE_RAZORPAY_KEY_ID is only a fallback,
+      // so a misconfigured build-time var can't break checkout.
+      key: order.key_id || KEY_ID,
       order_id: order.order_id,
       amount: order.amount,
       currency: order.currency,
