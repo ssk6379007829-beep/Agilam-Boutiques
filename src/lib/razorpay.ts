@@ -76,11 +76,24 @@ export async function payWithRazorpay({
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ amount: amountPaise, currency: 'INR', receipt }),
   });
-  if (!orderRes.ok) {
-    const { error } = await orderRes.json().catch(() => ({ error: '' }));
-    throw new Error(error || 'Could not start the payment. Please try again.');
+
+  // The endpoint can return HTML (e.g. an SPA fallback when /api isn't served),
+  // so parse defensively rather than assuming JSON.
+  const raw = await orderRes.text();
+  let order: { order_id?: string; amount?: number; currency?: string; key_id?: string; error?: string } = {};
+  try {
+    order = raw ? JSON.parse(raw) : {};
+  } catch {
+    /* non-JSON body handled below */
   }
-  const order = await orderRes.json();
+
+  if (!orderRes.ok || !order.order_id) {
+    console.error('[razorpay] create-order failed', orderRes.status, raw.slice(0, 200));
+    throw new Error(
+      order.error ||
+        `Could not start the payment (HTTP ${orderRes.status}). Make sure the /api routes are running.`,
+    );
+  }
 
   return new Promise((resolve, reject) => {
     const rzp = new window.Razorpay!({
