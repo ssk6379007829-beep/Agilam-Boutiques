@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { BOUTIQUES, CATEGORIES, HOME_REVIEWS, PRODUCTS, TONES, fmt, img } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
+import { CATEGORIES, HOME_REVIEWS, TONES, fmt, img } from '@/data/demo';
 
 const HERO_SLIDES = [
   { slotId: 'hero-banner', tag: 'Latest Collection', pre: 'New Arrivals for ', accent: 'Wedding', post: ' Season', sub: 'Handpicked bridal edits from 200+ boutiques', image: img('1602210901882-071c6b9e239d', 1600) },
@@ -14,13 +15,14 @@ const HERO_SLIDES = [
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 const starRow = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
-// Home shows a curated slice of the catalogue in each rail.
-const NEW_ARRIVALS = PRODUCTS.slice(0, 5);
-const BEST_SELLERS = [...PRODUCTS].sort((a, b) => b.reviews - a.reviews).slice(0, 6);
-
 export function Home() {
   const navigate = useNavigate();
   const { wishlist, toggleWish } = useShop();
+  const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
+
+  // Home shows a curated slice of the catalogue in each rail.
+  const NEW_ARRIVALS = PRODUCTS.slice(0, 5);
+  const BEST_SELLERS = [...PRODUCTS].sort((a, b) => b.reviews - a.reviews).slice(0, 6);
   const [heroIndex, setHeroIndex] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 

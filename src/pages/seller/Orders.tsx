@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
-import { ORDERS, TONES, fmt, statusStyle } from '@/data/demo';
+import { TONES, fmt, statusStyle } from '@/data/demo';
+import { useMyBoutique } from '@/hooks/useMyBoutique';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchOrdersForBoutique } from '@/data/orders';
+import { toOrderView } from '@/lib/orderView';
 
 const TABS = ['All', 'Pending', 'Shipped', 'Delivered'];
 
@@ -10,8 +14,10 @@ export function Orders() {
   // The design renders these tabs as static decoration; wiring them up keeps
   // the same visuals but makes the filter actually work.
   const [tab, setTab] = useState('All');
+  const { boutique } = useMyBoutique();
+  const { data: orderRows, loading } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
 
-  const orders = ORDERS.filter((o) => tab === 'All' || o.status === tab);
+  const orders = (orderRows ?? []).map((o, i) => toOrderView(o, i)).filter((o) => tab === 'All' || o.status === tab);
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
@@ -31,12 +37,15 @@ export function Orders() {
       </div>
 
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:0 20px;')}>
+        {!loading && orders.length === 0 && (
+          <div style={css('color:#8A7078;font-size:14px;padding:8px 2px;')}>No orders in this view yet.</div>
+        )}
         {orders.map((o) => {
           const st = statusStyle(o.status);
           return (
             <div key={o.id} onClick={() => navigate(`/seller/orders/${encodeURIComponent(o.id)}`)} style={css('background:#fff;border-radius:16px;padding:13px;cursor:pointer;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
               <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
-                <span style={css('font-weight:800;font-size:13px;color:#8A7078;')}>{o.id}</span>
+                <span style={css('font-weight:800;font-size:13px;color:#8A7078;')}>{o.number}</span>
                 <span style={css(`font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
               </div>
               <div style={css('display:flex;gap:11px;align-items:center;margin-top:10px;')}>

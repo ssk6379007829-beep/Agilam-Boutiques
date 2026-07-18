@@ -2,7 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { PRODUCTS, TONES, fmt } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
+import { TONES, fmt } from '@/data/demo';
 
 export function Cart() {
   const navigate = useNavigate();
@@ -11,11 +12,14 @@ export function Cart() {
     appliedCoupon, removeCoupon, coupon,
     subtotal, discount, shipFee, total,
   } = useShop();
+  const { productById } = useCatalog();
 
-  const items = Object.entries(cart).map(([id, line]) => {
-    const p = PRODUCTS.find((x) => x.id === id) ?? PRODUCTS[0];
-    return { ...p, qtyN: line.qty, size: line.size, lineTotal: p.price * line.qty };
-  });
+  const items = Object.entries(cart)
+    .map(([id, line]) => {
+      const p = productById(id);
+      return p ? { ...p, qtyN: line.qty, size: line.size, lineTotal: p.price * line.qty } : null;
+    })
+    .filter((x): x is NonNullable<typeof x> => x != null);
 
   const hasCart = items.length > 0;
 

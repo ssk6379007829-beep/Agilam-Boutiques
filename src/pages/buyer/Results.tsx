@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { COLORS, OCCASIONS, PRODUCTS, SORTS, TONES, fmt } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
+import { COLORS, OCCASIONS, SORTS, TONES, fmt } from '@/data/demo';
 
 const FILTER_CATS = ['Sarees', 'Lehengas', 'Gowns', 'Kurtis', 'Bridal'];
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
@@ -11,6 +12,7 @@ const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : Strin
 export function Results() {
   const navigate = useNavigate();
   const { filters, setFilters, toggleFilter, setSort, setMaxPrice, resetFilters, wishlist, toggleWish } = useShop();
+  const { products: PRODUCTS } = useCatalog();
 
   let results = PRODUCTS.filter(
     (p) =>

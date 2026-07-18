@@ -1,16 +1,39 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
-import { ORDERS, PRODUCTS, TONES, fmt } from '@/data/demo';
+import { TONES, fmt } from '@/data/demo';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchOrder, updateOrderStatus } from '@/data/orders';
+import { toOrderView } from '@/lib/orderView';
 
 export function OrderDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { showToast } = useShop();
 
-  const o = ORDERS.find((x) => x.id === decodeURIComponent(id ?? '')) ?? ORDERS[0];
-  const product = PRODUCTS.find((p) => p.title === o.item);
+  const orderId = decodeURIComponent(id ?? '');
+  const { data: row, loading, reload } = useAsync(() => (orderId ? fetchOrder(orderId) : Promise.resolve(null)), [orderId]);
+
+  if (!row) {
+    return (
+      <div style={css('min-height:60vh;display:flex;align-items:center;justify-content:center;color:#8A7078;font-size:15px;')}>
+        {loading ? 'Loading order…' : 'Order not found.'}
+      </div>
+    );
+  }
+
+  const o = toOrderView(row);
   const subtotal = o.amount;
+
+  const setStatus = async (status: 'shipped' | 'delivered' | 'rejected', msg: string) => {
+    try {
+      await updateOrderStatus(o.id, status);
+      showToast(msg);
+      reload();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Update failed');
+    }
+  };
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;display:flex;flex-direction:column;')}>
@@ -19,8 +42,8 @@ export function OrderDetail() {
           <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
         </button>
         <div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;")}>Order {o.id}</div>
-          <div style={css('font-size:12px;color:#8A7078;')}>Placed {o.date} · 10:04 AM</div>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;")}>Order {o.number}</div>
+          <div style={css('font-size:12px;color:#8A7078;')}>Placed {o.date} · {o.status}</div>
         </div>
       </div>
 
@@ -31,9 +54,9 @@ export function OrderDetail() {
             <div style={css("width:44px;height:44px;border-radius:13px;background:#F4D6E2;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.5);")}>{o.customer[0]}</div>
             <div style={css('flex:1;')}>
               <div style={css('font-weight:800;font-size:14px;')}>{o.customer}</div>
-              <div style={css('font-size:12px;color:#8A7078;')}>Coimbatore · +91 98765 43210</div>
+              <div style={css('font-size:12px;color:#8A7078;')}>{[o.city, o.phone].filter(Boolean).join(' · ') || 'Customer'}</div>
             </div>
-            <button onClick={() => navigate('/seller/chat/sm1')} style={css('width:38px;height:38px;border-radius:11px;border:none;background:#FCE0EC;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+            <button onClick={() => navigate('/seller/messages')} style={css('width:38px;height:38px;border-radius:11px;border:none;background:#FCE0EC;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
               <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>chat</span>
             </button>
           </div>
@@ -47,7 +70,7 @@ export function OrderDetail() {
             </div>
             <div style={css('flex:1;')}>
               <div style={css('font-weight:700;font-size:13.5px;')}>{o.item}</div>
-              <div style={css('font-size:12px;color:#8A7078;')}>Size M · {product?.color ?? 'Pink'} · Qty {o.qty}</div>
+              <div style={css('font-size:12px;color:#8A7078;')}>Size {o.size ?? 'Free'} · {o.color ?? '—'} · Qty {o.qty}</div>
             </div>
             <div style={css('font-weight:800;color:#B02454;')}>{fmt(o.amount)}</div>
           </div>
@@ -64,9 +87,9 @@ export function OrderDetail() {
       </div>
 
       <div style={css('position:sticky;bottom:0;background:#FBF6F2;padding:12px 20px 16px;display:flex;gap:10px;')}>
-        <button onClick={() => showToast('Order rejected')} style={css('flex:1;height:52px;border:1.5px solid #E7A7B4;background:#fff;color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;')}>Reject</button>
-        <button onClick={() => showToast('Order accepted')} style={css('flex:1;height:52px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:14px;font-weight:800;cursor:pointer;')}>Accept</button>
-        <button onClick={() => showToast('Marked as shipped')} style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;')}>Mark Shipped</button>
+        <button onClick={() => setStatus('rejected', 'Order rejected')} style={css('flex:1;height:52px;border:1.5px solid #E7A7B4;background:#fff;color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;')}>Reject</button>
+        <button onClick={() => setStatus('delivered', 'Marked delivered')} style={css('flex:1;height:52px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:14px;font-weight:800;cursor:pointer;')}>Delivered</button>
+        <button onClick={() => setStatus('shipped', 'Marked as shipped')} style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;')}>Mark Shipped</button>
       </div>
     </div>
   );

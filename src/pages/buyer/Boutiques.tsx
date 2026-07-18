@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { BOUTIQUES, TONES } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
+import { TONES } from '@/data/demo';
 
 export function Boutiques() {
   const navigate = useNavigate();
   const { showToast } = useShop();
+  const { boutiques: BOUTIQUES } = useCatalog();
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>

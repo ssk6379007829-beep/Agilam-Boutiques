@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { COUPONS, PRODUCTS, type Coupon } from '@/data/demo';
+import { COUPONS, type Coupon } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
 
 /**
  * Cross-screen shop state, mirroring the `state` object of the design's
@@ -72,9 +73,10 @@ type ShopValue = {
 const ShopContext = createContext<ShopValue | null>(null);
 
 export function ShopProvider({ children }: { children: ReactNode }) {
-  // Seeded to match the design's initial state so first paint matches it.
-  const [wishlist, setWishlist] = useState<Record<string, boolean>>({ p1: true, p5: true });
-  const [cart, setCart] = useState<Cart>({ p1: { qty: 1, size: 'M' }, p8: { qty: 2, size: 'L' } });
+  const { productById } = useCatalog();
+  // Cart and wishlist start empty — real shoppers build them from the catalogue.
+  const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
+  const [cart, setCart] = useState<Cart>({});
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [query, setQuery] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -162,10 +164,10 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const subtotal = useMemo(
     () => Object.entries(cart).reduce((sum, [id, line]) => {
-      const p = PRODUCTS.find((x) => x.id === id);
+      const p = productById(id);
       return sum + (p ? p.price * line.qty : 0);
     }, 0),
-    [cart],
+    [cart, productById],
   );
 
   // Mirrors the design: a flat coupon only counts once its minimum is met.

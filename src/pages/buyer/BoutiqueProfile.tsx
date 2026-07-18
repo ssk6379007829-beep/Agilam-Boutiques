@@ -3,15 +3,24 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { BOUTIQUES, PRODUCTS, TONES, fmt } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
+import { TONES, fmt } from '@/data/demo';
 
 export function BoutiqueProfile() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { showToast } = useShop();
+  const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   const [bqFilter, setBqFilter] = useState('All');
 
-  const ab = BOUTIQUES.find((b) => b.id === id) ?? BOUTIQUES[0];
+  const ab = BOUTIQUES.find((b) => b.id === id);
+  if (!ab) {
+    return (
+      <div style={css('min-height:60vh;display:flex;align-items:center;justify-content:center;color:#8A7078;font-size:15px;')}>
+        {loading ? 'Loading boutique…' : 'Boutique not found.'}
+      </div>
+    );
+  }
   const established = 2015 + (ab.id.charCodeAt(1) % 7);
 
   const bqCats = ['All', ...Array.from(new Set(PRODUCTS.filter((p) => p.boutique === ab.name).map((p) => p.cat)))];

@@ -2,7 +2,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { BOUTIQUES, PRODUCTS, TONES, fmt } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
+import { TONES, fmt } from '@/data/demo';
 
 const RATING_BARS = [
   { stars: 5, pct: 72 }, { stars: 4, pct: 19 }, { stars: 3, pct: 6 }, { stars: 2, pct: 2 }, { stars: 1, pct: 1 },
@@ -21,8 +22,16 @@ export function ProductDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { wishlist, toggleWish, addToCart, buyNow } = useShop();
+  const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
 
-  const ap = PRODUCTS.find((p) => p.id === id) ?? PRODUCTS[0];
+  const ap = PRODUCTS.find((p) => p.id === id);
+  if (!ap) {
+    return (
+      <div style={css('min-height:60vh;display:flex;align-items:center;justify-content:center;color:#8A7078;font-size:15px;')}>
+        {loading ? 'Loading product…' : 'Product not found.'}
+      </div>
+    );
+  }
   const related = PRODUCTS.filter((p) => p.id !== ap.id).slice(0, 5);
 
   const wishIcon = wishlist[ap.id] ? 'favorite' : 'favorite_border';

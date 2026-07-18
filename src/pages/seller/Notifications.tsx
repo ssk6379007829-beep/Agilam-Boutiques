@@ -1,15 +1,40 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
-import { NOTIFS } from '@/data/demo';
+import { useAuth } from '@/auth/AuthContext';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchNotifications } from '@/data/notifications';
 
 const TABS = ['All', 'Orders', 'Messages', 'Updates'];
 
+const STYLE: Record<string, { icon: string; tint: string; ic: string }> = {
+  Orders: { icon: 'shopping_bag', tint: '#FCE0EC', ic: '#D6336C' },
+  Messages: { icon: 'chat_bubble', tint: '#E6F0FA', ic: '#3A6EA5' },
+  Updates: { icon: 'notifications', tint: '#F3EAF5', ic: '#9B7FC7' },
+};
+
+const relTime = (iso: string) => {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.round(diff / 60000);
+  if (m < 1) return 'now';
+  if (m < 60) return m + 'm';
+  const h = Math.round(m / 60);
+  if (h < 24) return h + 'h';
+  return Math.round(h / 24) + 'd';
+};
+
 export function Notifications() {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [tab, setTab] = useState('All');
+  const { data: rows } = useAsync(() => (profile ? fetchNotifications(profile.id) : Promise.resolve([])), [profile?.id]);
 
-  const notifs = NOTIFS.filter((n) => tab === 'All' || n.type === tab);
+  const notifs = (rows ?? [])
+    .filter((n) => tab === 'All' || n.type === tab)
+    .map((n) => {
+      const s = STYLE[n.type] ?? STYLE.Updates;
+      return { title: n.title, body: n.body, type: n.type, unread: !n.read, time: relTime(n.created_at), ...s };
+    });
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>

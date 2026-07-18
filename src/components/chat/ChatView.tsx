@@ -1,24 +1,71 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { CHAT_THREAD } from '@/data/demo';
 import { useShop } from '@/state/ShopContext';
+import { fetchMessages, sendMessage, subscribeToMessages } from '@/data/chat';
 
-type Bubble = { me: boolean; text: string; time: string };
+type Bubble = { id?: string; me: boolean; text: string; time: string };
 
-/** Conversation view, shared by the buyer and seller chats. */
-export function ChatView({ name, backTo }: { name: string; backTo: string }) {
+const fmtTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+/**
+ * Conversation view, shared by the buyer and seller chats.
+ *
+ * When `conversationId` and `senderId` are supplied it runs live: messages load
+ * from the database and stream in over realtime, and the composer inserts real
+ * rows. Without them it falls back to the demo transcript (buyers browse without
+ * an account, so their chat stays local).
+ */
+export function ChatView({
+  name,
+  backTo,
+  conversationId,
+  senderId,
+}: {
+  name: string;
+  backTo: string;
+  conversationId?: string;
+  senderId?: string;
+}) {
   const navigate = useNavigate();
   const { showToast } = useShop();
-  const [thread, setThread] = useState<Bubble[]>(CHAT_THREAD);
+  const live = Boolean(conversationId && senderId);
+  const [thread, setThread] = useState<Bubble[]>(live ? [] : CHAT_THREAD);
   const [draft, setDraft] = useState('');
 
-  const send = () => {
+  useEffect(() => {
+    if (!conversationId || !senderId) return;
+    let active = true;
+    fetchMessages(conversationId)
+      .then((rows) => {
+        if (active) setThread(rows.map((m) => ({ id: m.id, me: m.sender_id === senderId, text: m.body, time: fmtTime(m.created_at) })));
+      })
+      .catch(() => {});
+    const unsub = subscribeToMessages(conversationId, (m) => {
+      setThread((t) => (t.some((b) => b.id === m.id) ? t : [...t, { id: m.id, me: m.sender_id === senderId, text: m.body, time: fmtTime(m.created_at) }]));
+    });
+    return () => {
+      active = false;
+      unsub();
+    };
+  }, [conversationId, senderId]);
+
+  const send = async () => {
     const text = draft.trim();
     if (!text) return;
-    const time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-    setThread((t) => [...t, { me: true, text, time }]);
     setDraft('');
+    if (live && conversationId && senderId) {
+      try {
+        await sendMessage(conversationId, senderId, text);
+        // Realtime echoes the inserted row back; no optimistic append needed.
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : 'Could not send');
+      }
+      return;
+    }
+    setThread((t) => [...t, { me: true, text, time: fmtTime(new Date().toISOString()) }]);
     showToast('Message sent');
   };
 

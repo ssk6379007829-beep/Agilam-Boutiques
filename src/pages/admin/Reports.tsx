@@ -1,7 +1,13 @@
 import { css } from '@/lib/css';
-import { CAT_STATS, CITY_BARS } from '@/data/adminDemo';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchCategoryStats, fetchRevenueByCity } from '@/data/admin';
 
 export function Reports() {
+  const { data: catStats } = useAsync(() => fetchCategoryStats(), []);
+  const { data: cityBars } = useAsync(() => fetchRevenueByCity(), []);
+  const CAT_STATS = catStats ?? [];
+  const CITY_BARS = cityBars ?? [];
+
   return (
     <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:16px;')}>
       <div style={css('background:#fff;border-radius:18px;padding:20px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>

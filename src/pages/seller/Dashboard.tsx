@@ -1,16 +1,30 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
-import { ORDERS, TONES, fmt, statusStyle } from '@/data/demo';
-
-const SELLER_STATS = [
-  { label: 'Total Products', value: '64', icon: 'inventory_2', tint: '#FCE0EC', ic: '#D6336C' },
-  { label: 'Total Orders', value: '128', icon: 'receipt_long', tint: '#E6F0FA', ic: '#3A6EA5' },
-  { label: 'Total Views', value: '3.2k', icon: 'visibility', tint: '#F3EAF5', ic: '#9B7FC7' },
-  { label: 'Total Customers', value: '96', icon: 'group', tint: '#E5F3EC', ic: '#2FA36B' },
-];
+import { TONES, fmt, statusStyle } from '@/data/demo';
+import { useMyBoutique } from '@/hooks/useMyBoutique';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchOrdersForBoutique } from '@/data/orders';
+import { fetchProductsByBoutique } from '@/data/products';
+import { toOrderView } from '@/lib/orderView';
 
 export function Dashboard() {
   const navigate = useNavigate();
+  const { boutique } = useMyBoutique();
+  const { data: orderRows } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+  const { data: productRows } = useAsync(() => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+
+  const orders = (orderRows ?? []).map((o, i) => toOrderView(o, i));
+  const customerCount = new Set((orderRows ?? []).map((o) => o.buyer_id)).size;
+  const recentOrders = orders.slice(0, 6);
+
+  const SELLER_STATS = [
+    { label: 'Total Products', value: String((productRows ?? []).length), icon: 'inventory_2', tint: '#FCE0EC', ic: '#D6336C' },
+    { label: 'Total Orders', value: String(orders.length), icon: 'receipt_long', tint: '#E6F0FA', ic: '#3A6EA5' },
+    { label: 'Total Revenue', value: fmt(orders.reduce((s, o) => s + o.amount, 0)), icon: 'payments', tint: '#F3EAF5', ic: '#9B7FC7' },
+    { label: 'Total Customers', value: String(customerCount), icon: 'group', tint: '#E5F3EC', ic: '#2FA36B' },
+  ];
+
+  const initial = (boutique?.name ?? 'B').charAt(0).toUpperCase();
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
@@ -19,12 +33,12 @@ export function Dashboard() {
         <div style={css('max-width:1240px;margin:0 auto;padding:clamp(24px,3.5vw,44px) clamp(20px,4vw,48px);position:relative;')}>
           <div style={css('display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;')}>
             <div style={css('display:flex;align-items:center;gap:14px;')}>
-              <div style={css("width:56px;height:56px;border-radius:17px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:27px;")}>E</div>
+              <div style={css("width:56px;height:56px;border-radius:17px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:27px;")}>{initial}</div>
               <div>
                 <div className="agx-eyebrow" style={css('font-size:9.5px;color:#F4D9A6;')}>Seller studio</div>
                 <div style={css('display:flex;align-items:center;gap:6px;margin-top:4px;')}>
-                  <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,38px);line-height:1;")}>Elegance Boutique</span>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#7FC0F2;")}>verified</span>
+                  <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,38px);line-height:1;")}>{boutique?.name ?? 'Your Boutique'}</span>
+                  {boutique?.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#7FC0F2;")}>verified</span>}
                 </div>
               </div>
             </div>
@@ -65,7 +79,10 @@ export function Dashboard() {
       </div>
 
       <div className="agx-ord-grid" style={css('display:grid;grid-template-columns:1fr;gap:12px;')}>
-        {ORDERS.map((o) => {
+        {recentOrders.length === 0 && (
+          <div style={css('color:#8A7078;font-size:14px;padding:8px 2px;')}>No orders yet.</div>
+        )}
+        {recentOrders.map((o) => {
           const st = statusStyle(o.status);
           return (
             <div key={o.id} onClick={() => navigate(`/seller/orders/${encodeURIComponent(o.id)}`)} className="agx-lift" style={css('background:#fff;border:1px solid #F2E4EA;border-radius:18px;padding:14px;display:flex;gap:13px;align-items:center;cursor:pointer;box-shadow:0 14px 32px -26px rgba(107,20,54,.55);')}>

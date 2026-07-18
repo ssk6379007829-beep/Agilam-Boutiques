@@ -24,10 +24,17 @@ export async function updateBoutique(id: string, patch: Partial<{ name: string; 
   if (error) throw error;
 }
 
-export async function fetchAllBoutiquesAdmin(): Promise<BoutiqueRow[]> {
-  const { data, error } = await supabase.from('boutiques').select('*').order('created_at', { ascending: false });
+export interface AdminBoutiqueRow extends BoutiqueRow {
+  owner: { full_name: string } | null;
+}
+
+export async function fetchAllBoutiquesAdmin(): Promise<AdminBoutiqueRow[]> {
+  const { data, error } = await supabase
+    .from('boutiques')
+    .select('*, owner:profiles!boutiques_owner_id_fkey(full_name)')
+    .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []) as BoutiqueRow[];
+  return (data ?? []) as unknown as AdminBoutiqueRow[];
 }
 
 export async function setBoutiqueStatus(id: string, status: 'approved' | 'rejected') {

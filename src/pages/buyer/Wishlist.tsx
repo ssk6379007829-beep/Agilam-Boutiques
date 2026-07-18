@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { PRODUCTS, TONES, fmt } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
+import { TONES, fmt } from '@/data/demo';
 
 export function Wishlist() {
   const navigate = useNavigate();
   const { wishlist, toggleWish } = useShop();
+  const { products: PRODUCTS } = useCatalog();
 
   const items = PRODUCTS.filter((p) => wishlist[p.id]);
 

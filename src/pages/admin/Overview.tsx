@@ -1,8 +1,27 @@
 import { css } from '@/lib/css';
-import { GMV_BARS, METRICS } from '@/data/adminDemo';
-import { BOUTIQUES, TONES } from '@/data/demo';
+import { TONES } from '@/data/demo';
+import { fmtInr } from '@/lib/tokens';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchOverviewMetrics, fetchGmvBars } from '@/data/admin';
+import { fetchApprovedBoutiques } from '@/data/boutiques';
+
+const compactInr = (n: number) =>
+  n >= 100000 ? '₹' + (n / 100000).toFixed(1) + 'L' : n >= 1000 ? '₹' + (n / 1000).toFixed(1) + 'k' : fmtInr(n);
 
 export function Overview() {
+  const { data: metrics } = useAsync(() => fetchOverviewMetrics(), []);
+  const { data: bars } = useAsync(() => fetchGmvBars(), []);
+  const { data: boutiqueRows } = useAsync(() => fetchApprovedBoutiques(), []);
+
+  const GMV_BARS = bars ?? new Array(12).fill('6%');
+  const BOUTIQUES = (boutiqueRows ?? []).slice(0, 5);
+  const METRICS = [
+    { label: 'Gross merchandise value', value: compactInr(metrics?.gmv ?? 0), icon: 'payments', tint: '#FCE0EC', ic: '#D6336C', delta: 'GMV', deltaColor: '#8A7078' },
+    { label: 'Active boutiques', value: String(metrics?.activeBoutiques ?? 0), icon: 'storefront', tint: '#E6F0FA', ic: '#3A6EA5', delta: 'Live', deltaColor: '#8A7078' },
+    { label: 'Orders this month', value: String(metrics?.ordersThisMonth ?? 0), icon: 'receipt_long', tint: '#F3EAF5', ic: '#9B7FC7', delta: 'MTD', deltaColor: '#8A7078' },
+    { label: 'Platform revenue', value: compactInr(metrics?.platformRevenue ?? 0), icon: 'account_balance', tint: '#FBF0DA', ic: '#C99A3F', delta: '8% comm.', deltaColor: '#8A7078' },
+  ];
+
   return (
     <div>
       <div style={css('display:grid;grid-template-columns:repeat(4,1fr);gap:16px;')}>

@@ -1,10 +1,20 @@
 import { useParams } from 'react-router-dom';
 import { ChatView } from '@/components/chat/ChatView';
-import { SELLER_MSGS } from '@/data/demo';
+import { useAuth } from '@/auth/AuthContext';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchConversationPeerName } from '@/data/chat';
 
 export function Chat() {
   const { id } = useParams();
-  const thread = SELLER_MSGS.find((m) => m.id === id);
+  const { profile } = useAuth();
+  const { data: name } = useAsync(() => (id ? fetchConversationPeerName(id, 'seller') : Promise.resolve('Customer')), [id]);
 
-  return <ChatView name={thread?.name ?? 'Priya Sharma'} backTo="/seller/messages" />;
+  return (
+    <ChatView
+      name={name ?? 'Customer'}
+      backTo="/seller/messages"
+      conversationId={id}
+      senderId={profile?.id}
+    />
+  );
 }

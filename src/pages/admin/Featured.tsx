@@ -1,12 +1,17 @@
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
-import { PRODUCTS, TONES, fmt } from '@/data/demo';
+import { TONES, fmt } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
 
 export function Featured() {
-  const featured = PRODUCTS.filter((p) => p.featured);
+  const { products, loading } = useCatalog();
+  const featured = products.filter((p) => p.featured);
 
   return (
     <div style={css('display:grid;grid-template-columns:repeat(3,1fr);gap:16px;')}>
+      {!loading && featured.length === 0 && (
+        <div style={css('color:#8A7078;font-size:13.5px;')}>No featured products yet.</div>
+      )}
       {featured.map((p) => (
         <div key={p.id} style={css('background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
           <div style={css(`height:150px;background:${TONES[p.tone]};position:relative;`)}>
