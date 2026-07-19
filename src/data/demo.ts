@@ -49,6 +49,10 @@ export type Boutique = {
   city: string;
   area: string;
   insta: string;
+  phone: string;
+  since?: number;
+  followers: number;
+  positiveRating: number;
   rating: number;
   reviews: number;
   tone: number;
@@ -60,11 +64,11 @@ export type Boutique = {
 };
 
 export const BOUTIQUES: Boutique[] = [
-  { id: 'b1', name: 'Elegance Boutique', city: 'Coimbatore', area: 'RS Puram, Coimbatore', insta: 'elegance.boutique', rating: 4.7, reviews: 128, tone: 0, verified: true, featured: true, products: 64, desc: 'Handpicked bridal & festive wear crafted by Coimbatore’s finest artisans.', image: img('1441984904996-e0b6ba687e04', 800) },
-  { id: 'b2', name: 'Trendz Wardrobe', city: 'Chennai', area: 'T. Nagar, Chennai', insta: 'trendz.wardrobe', rating: 4.6, reviews: 96, tone: 7, verified: true, products: 120, desc: 'Contemporary ethnic fusion for the modern woman.', image: img('1555529771-835f59fc5efe', 800) },
-  { id: 'b3', name: 'Pinky’s Boutique', city: 'Madurai', area: 'KK Nagar, Madurai', insta: 'pinkys.boutique', rating: 4.9, reviews: 212, tone: 2, verified: true, featured: true, products: 88, desc: 'Luxury bridal lehengas and heirloom sarees.', image: img('1521335629791-ce4aec67dd15', 800) },
-  { id: 'b4', name: 'Style Studio', city: 'Salem', area: 'Fairlands, Salem', insta: 'style.studio', rating: 4.4, reviews: 54, tone: 4, verified: false, products: 41, desc: 'Everyday elegance in kurtis, gowns and daily wear.', image: img('1525562723836-dca67a71d5f1', 800) },
-  { id: 'b5', name: 'Silk Symphony', city: 'Coimbatore', area: 'Gandhipuram, Coimbatore', insta: 'silk.symphony', rating: 4.8, reviews: 171, tone: 3, verified: true, products: 97, desc: 'Pure silk sarees, direct from the loom.', image: img('1595991209266-5ff5a3a2f008', 800) },
+  { id: 'b1', name: 'Elegance Boutique', city: 'Coimbatore', area: 'RS Puram', insta: 'elegance.boutique', phone: '+91 98430 12345', since: 2018, followers: 1240, positiveRating: 99, rating: 4.7, reviews: 128, tone: 0, verified: true, featured: true, products: 64, desc: 'Elegant ethnic wear for every occasion. Curated with love and elegance.', image: img('1441984904996-e0b6ba687e04', 800) },
+  { id: 'b2', name: 'Trendz Wardrobe', city: 'Chennai', area: 'T. Nagar', insta: 'trendz.wardrobe', phone: '+91 98410 23456', since: 2019, followers: 860, positiveRating: 96, rating: 4.6, reviews: 96, tone: 7, verified: true, products: 120, desc: 'Contemporary ethnic fusion for the modern woman.', image: img('1555529771-835f59fc5efe', 800) },
+  { id: 'b3', name: 'Pinky’s Boutique', city: 'Madurai', area: 'KK Nagar', insta: 'pinkys.boutique', phone: '+91 90470 34567', since: 2014, followers: 2100, positiveRating: 98, rating: 4.9, reviews: 212, tone: 2, verified: true, featured: true, products: 88, desc: 'Luxury bridal lehengas and heirloom sarees.', image: img('1521335629791-ce4aec67dd15', 800) },
+  { id: 'b4', name: 'Style Studio', city: 'Salem', area: 'Fairlands', insta: 'style.studio', phone: '+91 94430 45678', since: 2020, followers: 430, positiveRating: 92, rating: 4.4, reviews: 54, tone: 4, verified: false, products: 41, desc: 'Everyday elegance in kurtis, gowns and daily wear.', image: img('1525562723836-dca67a71d5f1', 800) },
+  { id: 'b5', name: 'Silk Symphony', city: 'Coimbatore', area: 'Gandhipuram', insta: 'silk.symphony', phone: '+91 90030 56789', since: 2012, followers: 1710, positiveRating: 97, rating: 4.8, reviews: 171, tone: 3, verified: true, products: 97, desc: 'Pure silk sarees, direct from the loom.', image: img('1595991209266-5ff5a3a2f008', 800) },
 ];
 
 export const CATEGORIES = [

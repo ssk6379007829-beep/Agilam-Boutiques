@@ -7,15 +7,18 @@ import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt } from '@/data/demo';
 
 /**
- * Buyer-facing boutique profile.
+ * Buyer-facing boutique profile — premium layout from design mock "09".
  *
- * Restyled to the mobile-card layout from the design mock: full-bleed cover,
- * an overlapping monogram avatar, a centred identity block (name · location ·
- * rating), a follow action and the boutique's collection grid. It reads live
- * data from `useCatalog()` (approved boutiques + their products are public, so
- * this works for anonymous buyers) and wires every control to a real flow:
- * back, cart, follow (persisted client-side — anonymous buyers have no id to
- * key a DB row on), chat and product navigation.
+ * Full-bleed cover, an overlapping monogram avatar and a centred identity block
+ * (name · rating · location), followed by tag pills, a description, a
+ * three-up stats row (followers · products · positive rating), Follow / Chat
+ * actions, a quick-action bar (live location · instagram · call · share) and
+ * the boutique's collection grid.
+ *
+ * It reads live data from `useCatalog()` (approved boutiques + their products
+ * are public, so this works for anonymous buyers) and wires every control to a
+ * real flow: back, wishlist, cart, follow (persisted client-side — anonymous
+ * buyers have no id to key a DB row on), chat, call, share and product nav.
  */
 
 const FOLLOW_KEY = 'agx:following';
@@ -32,6 +35,13 @@ function monogram(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   const initials = words.slice(0, 2).map((w) => w[0]).join('');
   return (initials || name.slice(0, 2)).toUpperCase();
+}
+
+/** Compact count: 1240 → "1.2K", 999 → "999". */
+function compact(n: number): string {
+  if (n < 1000) return String(n);
+  const k = n / 1000;
+  return (k >= 100 ? Math.round(k) : Math.round(k * 10) / 10) + 'K';
 }
 
 export function BoutiqueProfile() {
@@ -59,6 +69,19 @@ export function BoutiqueProfile() {
       showToast(next ? `Following ${ab.name}` : `Unfollowed ${ab.name}`);
       return next;
     });
+  }, [ab, showToast]);
+
+  const share = useCallback(() => {
+    if (!ab) return;
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: ab.name, text: ab.desc, url }).catch(() => {});
+      return;
+    }
+    navigator.clipboard?.writeText(url).then(
+      () => showToast('Boutique link copied'),
+      () => showToast('Share: ' + url),
+    );
   }, [ab, showToast]);
 
   const bqCats = useMemo(
@@ -91,6 +114,8 @@ export function BoutiqueProfile() {
     );
   }
 
+  const followerLabel = compact(ab.followers + (following ? 1 : 0));
+
   return (
     <div style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:#FBF6F2;padding-bottom:40px;')}>
       {/* ---------- Cover ---------- */}
@@ -106,25 +131,27 @@ export function BoutiqueProfile() {
           <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
         </button>
 
-        <button
-          onClick={() => navigate('/buyer/cart')}
-          aria-label="View cart"
-          style={css('position:absolute;right:clamp(14px,3vw,28px);top:16px;width:42px;height:42px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.5);')}
-        >
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>shopping_bag</span>
-          {cartCount > 0 && (
-            <span style={css('position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px -3px rgba(214,51,108,.9);')}>
-              {cartCount}
-            </span>
-          )}
-        </button>
-
-        {ab.featured && (
-          <div style={css('position:absolute;left:clamp(14px,3vw,28px);bottom:14px;display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#D9B25A,#B0863B);color:#fff;padding:6px 13px;border-radius:999px;box-shadow:0 12px 30px -12px rgba(176,134,59,.9);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>workspace_premium</span>
-            <span className="agx-eyebrow" style={css('font-size:9px;letter-spacing:.14em;')}>Featured Boutique</span>
-          </div>
-        )}
+        <div style={css('position:absolute;right:clamp(14px,3vw,28px);top:16px;display:flex;gap:10px;')}>
+          <button
+            onClick={() => navigate('/buyer/wishlist')}
+            aria-label="View wishlist"
+            style={css('width:42px;height:42px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.5);')}
+          >
+            <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>favorite</span>
+          </button>
+          <button
+            onClick={() => navigate('/buyer/cart')}
+            aria-label="View cart"
+            style={css('position:relative;width:42px;height:42px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.5);')}
+          >
+            <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>shopping_bag</span>
+            {cartCount > 0 && (
+              <span style={css('position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px -3px rgba(214,51,108,.9);')}>
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* ---------- Identity card ---------- */}
@@ -148,76 +175,92 @@ export function BoutiqueProfile() {
             )}
           </div>
 
+          {/* Rating */}
+          <div style={css('display:flex;align-items:center;justify-content:center;gap:6px;margin-top:9px;font-size:15px;font-weight:700;')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#E0B84B;")}>star</span>
+            {ab.rating}
+            <span style={css('color:#8A7078;font-weight:600;')}>({compact(ab.reviews)} Reviews)</span>
+          </div>
+
           {/* Location */}
           <div style={css('display:flex;align-items:center;justify-content:center;gap:5px;margin-top:8px;color:#8A7078;font-size:14px;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:#B02454;")}>location_on</span>
-            {ab.city}, Tamil Nadu
+            {ab.area && ab.area !== ab.city ? `${ab.area}, ${ab.city}` : ab.city}
           </div>
 
-          {/* Rating */}
-          <div style={css('display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;font-size:15px;font-weight:700;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#E0B84B;")}>star</span>
-            {ab.rating}
-            <span style={css('color:#8A7078;font-weight:600;')}>({ab.reviews})</span>
+          {/* Tag pills */}
+          <div style={css('display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;')}>
+            <span style={css('background:#FCE0EC;color:#B02454;font-size:12px;font-weight:800;padding:6px 14px;border-radius:999px;')}>
+              {ab.featured ? 'Premium Boutique' : 'Boutique'}
+            </span>
+            {ab.since && (
+              <span style={css('background:#F3ECFA;color:#7A4FB0;font-size:12px;font-weight:800;padding:6px 14px;border-radius:999px;')}>
+                Since {ab.since}
+              </span>
+            )}
           </div>
 
-          {/* Description + Follow / Chat */}
-          <div style={css('display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:space-between;margin-top:22px;padding-top:22px;border-top:1px solid #F4E6EC;')}>
-            <p style={css("flex:1;min-width:200px;color:#5C4650;font-size:clamp(14px,1.3vw,16px);line-height:1.6;margin:0;font-family:'Playfair Display',serif;font-style:italic;")}>
-              {ab.desc}
-            </p>
-            <div style={css('display:flex;gap:10px;flex:none;')}>
-              <button
-                onClick={() => navigate(`/buyer/chat/${ab.id}`)}
-                aria-label={`Chat with ${ab.name}`}
-                style={css('display:flex;align-items:center;gap:7px;background:#fff;color:#B02454;border:1.5px solid #F0D0DE;border-radius:14px;padding:11px 16px;font-weight:800;font-size:14px;cursor:pointer;')}
-              >
-                <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>chat</span>
-                Chat
-              </button>
-              <button
-                onClick={toggleFollow}
-                aria-pressed={following}
-                style={css(
-                  following
-                    ? 'display:flex;align-items:center;gap:7px;background:#fff;color:#B02454;border:1.5px solid #B02454;border-radius:14px;padding:11px 20px;font-weight:800;font-size:14px;cursor:pointer;'
-                    : 'display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:14px;padding:11px 22px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.9);',
-                )}
-              >
-                <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>{following ? 'check' : 'favorite'}</span>
-                {following ? 'Following' : 'Follow'}
-              </button>
-            </div>
+          {/* Description */}
+          <p style={css("text-align:center;color:#5C4650;font-size:clamp(14px,1.3vw,16px);line-height:1.6;margin:16px auto 0;max-width:420px;font-family:'Playfair Display',serif;font-style:italic;")}>
+            {ab.desc}
+          </p>
+
+          {/* Stats */}
+          <div style={css('display:flex;align-items:stretch;margin-top:22px;padding-top:22px;border-top:1px solid #F4E6EC;')}>
+            {[
+              { value: followerLabel, label: 'Followers' },
+              { value: `${ab.products}+`, label: 'Products' },
+              { value: `${ab.positiveRating}%`, label: 'Positive Rating' },
+            ].map((s, i) => (
+              <div key={s.label} style={css(`flex:1;text-align:center;${i > 0 ? 'border-left:1px solid #F4E6EC;' : ''}`)}>
+                <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(20px,2.6vw,26px);color:#241019;line-height:1;")}>{s.value}</div>
+                <div style={css('font-size:12px;color:#8A7078;margin-top:6px;font-weight:600;')}>{s.label}</div>
+              </div>
+            ))}
           </div>
 
-          {/* Contact shortcuts */}
-          <div style={css('display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;')}>
+          {/* Follow / Chat */}
+          <div style={css('display:flex;gap:12px;margin-top:22px;')}>
             <button
-              onClick={() => showToast('Opening Instagram → @' + ab.insta)}
-              style={css('flex:1;min-width:200px;display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #F0D8E2;border-radius:16px;background:#FCFAFB;cursor:pointer;text-align:left;')}
+              onClick={toggleFollow}
+              aria-pressed={following}
+              style={css(
+                following
+                  ? 'flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;color:#B02454;border:1.5px solid #B02454;border-radius:16px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;'
+                  : 'flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:16px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.9);',
+              )}
             >
-              <span style={css('width:40px;height:40px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#F58529,#DD2A7B 55%,#8134AF);')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:22px;")}>photo_camera</span>
-              </span>
-              <span style={css('flex:1;min-width:0;')}>
-                <span style={css('display:block;font-weight:800;font-size:13.5px;color:#241019;')}>@{ab.insta}</span>
-                <span style={css('display:block;font-size:12px;color:#8A7078;margin-top:1px;')}>View on Instagram</span>
-              </span>
-              <span style={css("font-family:'Material Symbols Outlined';color:#C9A9B6;font-size:19px;")}>open_in_new</span>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{following ? 'check' : 'add'}</span>
+              {following ? 'Following' : 'Follow'}
             </button>
             <button
-              onClick={() => showToast('Opening map → ' + ab.area)}
-              style={css('flex:1;min-width:200px;display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #F0D8E2;border-radius:16px;background:#FCFAFB;cursor:pointer;text-align:left;')}
+              onClick={() => navigate(`/buyer/chat/${ab.id}`)}
+              aria-label={`Chat with ${ab.name}`}
+              style={css('flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;color:#B02454;border:1.5px solid #F0D0DE;border-radius:16px;padding:14px;font-weight:800;font-size:15px;cursor:pointer;')}
             >
-              <span style={css('width:40px;height:40px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;background:#FCE0EC;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:22px;")}>location_on</span>
-              </span>
-              <span style={css('flex:1;min-width:0;')}>
-                <span style={css('display:block;font-weight:800;font-size:13.5px;color:#241019;')}>{ab.area}</span>
-                <span style={css('display:block;font-size:12px;color:#8A7078;margin-top:1px;')}>Get directions</span>
-              </span>
-              <span style={css("font-family:'Material Symbols Outlined';color:#C9A9B6;font-size:19px;")}>near_me</span>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>
+              Chat
             </button>
+          </div>
+
+          {/* Quick actions */}
+          <div style={css('display:flex;margin-top:18px;padding-top:18px;border-top:1px solid #F4E6EC;')}>
+            {[
+              { icon: 'location_on', label: 'Live Location', onClick: () => showToast('Opening map → ' + [ab.area, ab.city].filter(Boolean).join(', ')) },
+              { icon: 'photo_camera', label: 'Instagram', onClick: () => showToast('Opening Instagram → @' + ab.insta) },
+              { icon: 'call', label: 'Call', onClick: () => { if (ab.phone) window.location.href = `tel:${ab.phone.replace(/\s+/g, '')}`; else showToast('No phone number listed'); } },
+              { icon: 'share', label: 'Share', onClick: share },
+            ].map((a) => (
+              <button
+                key={a.label}
+                onClick={a.onClick}
+                aria-label={a.label}
+                style={css('flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;background:none;border:none;cursor:pointer;padding:4px;')}
+              >
+                <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#B02454;")}>{a.icon}</span>
+                <span style={css('font-size:11.5px;color:#6B5560;font-weight:700;')}>{a.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 

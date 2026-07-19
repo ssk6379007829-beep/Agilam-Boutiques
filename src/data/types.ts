@@ -22,14 +22,20 @@ export interface BoutiqueRow {
   owner_id: string;
   name: string;
   city: string;
+  area: string;
   description: string;
   tone: number;
   cover_url: string | null;
+  phone: string | null;
+  instagram: string | null;
+  established_year: number | null;
   verified: boolean;
   status: 'pending' | 'approved' | 'rejected';
   featured: boolean;
   rating: number;
   reviews_count: number;
+  followers_count: number;
+  positive_rating: number;
   created_at: string;
 }
 

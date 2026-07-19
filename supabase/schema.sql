@@ -34,14 +34,20 @@ create table if not exists boutiques (
   owner_id uuid not null references profiles(id) on delete cascade,
   name text not null,
   city text not null default '',
+  area text not null default '',
   description text not null default '',
   tone int not null default 0,
   cover_url text,
+  phone text,
+  instagram text,
+  established_year int,
   verified boolean not null default false,
   status text not null check (status in ('pending','approved','rejected')) default 'pending',
   featured boolean not null default false,
   rating numeric(2,1) not null default 0,
   reviews_count int not null default 0,
+  followers_count int not null default 0,
+  positive_rating int not null default 0 check (positive_rating between 0 and 100),
   created_at timestamptz not null default now()
 );
 
