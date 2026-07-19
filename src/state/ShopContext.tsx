@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { COUPONS, type Coupon } from '@/data/demo';
 import { useCatalog } from '@/state/CatalogContext';
+import { EMPTY_GUEST, readGuest, writeGuest, hasContactDetails } from '@/lib/buyerDetails';
 
 /**
  * Cross-screen shop state, mirroring the `state` object of the design's
@@ -29,13 +30,9 @@ export type PaymentInfo = {
 
 export const DEFAULT_FILTERS: Filters = { maxPrice: 10000, cats: [], colors: [], occasions: [], sort: 'Latest' };
 
-// Prefilled with the design's sample shopper; the checkout form lets the buyer edit it.
-export const DEFAULT_GUEST: Guest = {
-  name: 'Priya Sharma',
-  phone: '9876543210',
-  city: 'Coimbatore',
-  address: '14, Lakshmi Nagar, Saibaba Colony',
-};
+// Buyers browse anonymously — their details start empty and are captured (and
+// persisted) the first time they chat or check out. See `@/lib/buyerDetails`.
+export const DEFAULT_GUEST: Guest = EMPTY_GUEST;
 
 type ShopValue = {
   wishlist: Record<string, boolean>;
@@ -69,6 +66,8 @@ type ShopValue = {
 
   guest: Guest;
   setGuest: (patch: Partial<Guest>) => void;
+  /** True once the buyer has saved a valid name + phone. */
+  hasBuyerDetails: boolean;
 
   lastOrderId: string;
   /**
@@ -104,7 +103,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [payMethod, setPayMethod] = useState('cod');
-  const [guest, setGuestState] = useState<Guest>(DEFAULT_GUEST);
+  const [guest, setGuestState] = useState<Guest>(() => readGuest());
   const [lastOrderId, setLastOrderId] = useState('#AGL-2481');
   const [toast, setToast] = useState<string | null>(null);
   const [sellModal, setSellModal] = useState(false);
@@ -215,7 +214,17 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const total = useMemo(() => Math.max(0, subtotal - discount) + shipFee, [subtotal, discount, shipFee]);
 
-  const setGuest = useCallback((patch: Partial<Guest>) => setGuestState((g) => ({ ...g, ...patch })), []);
+  const setGuest = useCallback(
+    (patch: Partial<Guest>) =>
+      setGuestState((g) => {
+        const next = { ...g, ...patch };
+        writeGuest(next);
+        return next;
+      }),
+    [],
+  );
+
+  const hasBuyerDetails = useMemo(() => hasContactDetails(guest), [guest]);
 
   const placeOrder = useCallback(async (payment: PaymentInfo | null): Promise<string> => {
     // The server prices the order from the product ids, so the browser only
@@ -252,7 +261,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     query, setQuery,
     appliedCoupon, applyCoupon, removeCoupon,
     payMethod, setPayMethod,
-    guest, setGuest,
+    guest, setGuest, hasBuyerDetails,
     lastOrderId, placeOrder,
     toast, showToast,
     sellModal,

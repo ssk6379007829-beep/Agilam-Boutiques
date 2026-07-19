@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import { readGuest } from '@/lib/buyerDetails';
 import type { ConversationWithPeer, MessageRow } from './types';
-
-const BUYER_NAME_KEY = 'agx-buyer-name';
 
 /**
  * Return the current signed-in user's id, or null. Used by read-only surfaces
@@ -16,9 +15,10 @@ export async function getBuyerId(): Promise<string | null> {
  * Give the anonymous buyer a durable identity so their side of the chat is a
  * real, RLS-satisfying participant. Buyers never sign up (they browse the public
  * surface), so the first time one actually opens a conversation we create an
- * anonymous Supabase auth user + matching buyer profile. The session persists in
- * localStorage, so a returning buyer keeps the same threads. Requires
- * "Anonymous sign-ins" to be enabled in the Supabase project's Auth settings.
+ * anonymous Supabase auth user + matching buyer profile, seeded with the name +
+ * phone they gave at the details gate. The session persists in localStorage, so
+ * a returning buyer keeps the same threads. Requires "Anonymous sign-ins" to be
+ * enabled in the Supabase project's Auth settings.
  */
 export async function ensureBuyerIdentity(): Promise<string> {
   let uid = await getBuyerId();
@@ -28,18 +28,33 @@ export async function ensureBuyerIdentity(): Promise<string> {
     uid = data.user?.id ?? null;
     if (!uid) throw new Error('Could not start a chat session');
   }
+  const guest = readGuest();
+  const name = guest.name.trim() || 'Customer';
+  const phone = guest.phone.trim() || null;
   // Ensure a profile row exists so conversations.buyer_id / messages.sender_id
-  // resolve, and the seller sees a name instead of a bare id.
-  const { data: prof } = await supabase.from('profiles').select('id').eq('id', uid).maybeSingle();
-  if (!prof) {
-    const name = (localStorage.getItem(BUYER_NAME_KEY) || '').trim() || 'Customer';
-    // upsert/ignoreDuplicates: AuthContext's onAuthStateChange also creates the
-    // profile when the anonymous session lands, so tolerate the race.
-    await supabase
-      .from('profiles')
-      .upsert({ id: uid, role: 'buyer', full_name: name }, { onConflict: 'id', ignoreDuplicates: true });
-  }
+  // resolve, and the seller sees a real name/number instead of a bare id.
+  // upsert/ignoreDuplicates: AuthContext's onAuthStateChange also creates the
+  // profile when the anonymous session lands, so tolerate the race.
+  await supabase
+    .from('profiles')
+    .upsert({ id: uid, role: 'buyer', full_name: name, phone }, { onConflict: 'id', ignoreDuplicates: true });
   return uid;
+}
+
+/**
+ * Push the buyer's latest saved name/phone onto their profile. Called after the
+ * details gate so a returning buyer who updates their info is reflected to the
+ * boutique (the initial upsert above ignores conflicts, so it won't overwrite).
+ */
+export async function syncBuyerProfile(): Promise<void> {
+  const uid = await getBuyerId();
+  if (!uid) return;
+  const guest = readGuest();
+  if (!guest.name.trim()) return;
+  await supabase
+    .from('profiles')
+    .update({ full_name: guest.name.trim(), phone: guest.phone.trim() || null })
+    .eq('id', uid);
 }
 
 export async function fetchConversationsForBuyer(buyerId: string): Promise<ConversationWithPeer[]> {
@@ -60,6 +75,13 @@ export async function fetchConversationsForBoutique(boutiqueId: string): Promise
   return shapeConversations(data ?? [], boutiqueId, 'seller');
 }
 
+// Friendly one-line preview for the inbox: product-card messages carry an
+// encoded body, so surface the product name instead of the raw marker/JSON.
+function previewText(body: string): string {
+  const card = parseProductCard(body);
+  return card ? `🛍️ ${card.title}` : body;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shapeConversations(rows: any[], viewerId: string, mode: 'buyer' | 'seller'): ConversationWithPeer[] {
   return rows
@@ -75,7 +97,7 @@ function shapeConversations(rows: any[], viewerId: string, mode: 'buyer' | 'sell
         buyer_name: mode === 'seller' ? r.buyer?.full_name ?? 'Customer' : '',
         boutique_name: mode === 'buyer' ? r.boutique?.name ?? 'Boutique' : '',
         boutique_tone: r.boutique?.tone ?? 0,
-        last_message: last?.body ?? 'Say hello 👋',
+        last_message: last ? previewText(last.body) : 'Say hello 👋',
         last_message_at: last?.created_at ?? null,
         unread,
       } as ConversationWithPeer;
@@ -109,6 +131,29 @@ export async function fetchMessages(conversationId: string): Promise<MessageRow[
 export async function sendMessage(conversationId: string, senderId: string, body: string) {
   const { error } = await supabase.from('messages').insert({ conversation_id: conversationId, sender_id: senderId, body });
   if (error) throw error;
+}
+
+/**
+ * Product context shared into a conversation. When a buyer starts a chat from a
+ * product page we post one of these as a normal message, encoded with a marker
+ * so both the buyer's and the seller's ChatView render it as a product card —
+ * that way the seller immediately sees which product the enquiry is about.
+ */
+export type ProductCard = { id: string; title: string; price: number; image?: string; tone: number; cat?: string };
+
+const PRODUCT_MARKER = '@@PRODUCT@@';
+
+export function encodeProductCard(p: ProductCard): string {
+  return PRODUCT_MARKER + JSON.stringify(p);
+}
+
+export function parseProductCard(body: string): ProductCard | null {
+  if (!body.startsWith(PRODUCT_MARKER)) return null;
+  try {
+    return JSON.parse(body.slice(PRODUCT_MARKER.length)) as ProductCard;
+  } catch {
+    return null;
+  }
 }
 
 export function subscribeToMessages(conversationId: string, onInsert: (msg: MessageRow) => void) {

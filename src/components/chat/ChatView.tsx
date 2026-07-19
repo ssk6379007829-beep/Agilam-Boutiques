@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { fetchMessages, sendMessage, subscribeToMessages } from '@/data/chat';
+import { fetchMessages, parseProductCard, sendMessage, subscribeToMessages } from '@/data/chat';
+import { TONES, fmt } from '@/data/demo';
 
 type Bubble = { id?: string; me: boolean; text: string; time: string };
 
@@ -24,12 +26,14 @@ export function ChatView({
   conversationId,
   senderId,
   pending,
+  onProductClick,
 }: {
   name: string;
   backTo: string;
   conversationId?: string;
   senderId?: string;
   pending?: boolean;
+  onProductClick?: (productId: string) => void;
 }) {
   const navigate = useNavigate();
   const { showToast } = useShop();
@@ -97,15 +101,43 @@ export function ChatView({
         {thread.length > 0 && (
           <div style={css('align-self:center;background:#F4DDE8;color:#8A7078;font-size:11px;font-weight:700;padding:4px 12px;border-radius:10px;')}>Today</div>
         )}
-        {thread.map((c, i) => (
-          <div
-            key={c.id ?? i}
-            style={css(`max-width:78%;align-self:${c.me ? 'flex-end' : 'flex-start'};background:${c.me ? '#D6336C' : '#fff'};color:${c.me ? '#fff' : '#2A1A20'};padding:10px 13px;border-radius:${c.me ? '16px 16px 4px 16px' : '16px 16px 16px 4px'};font-size:13.5px;line-height:1.4;box-shadow:0 6px 16px -12px rgba(107,20,54,.5);`)}
-          >
-            {c.text}
-            <div style={css('font-size:10px;opacity:.6;margin-top:3px;text-align:right;')}>{c.time}</div>
-          </div>
-        ))}
+        {thread.map((c, i) => {
+          const card = parseProductCard(c.text);
+          if (card) {
+            return (
+              <div
+                key={c.id ?? i}
+                onClick={onProductClick ? () => onProductClick(card.id) : undefined}
+                style={css(`max-width:78%;width:250px;align-self:${c.me ? 'flex-end' : 'flex-start'};background:#fff;border:1px solid #F0E2E9;border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(107,20,54,.55);cursor:${onProductClick ? 'pointer' : 'default'};`)}
+              >
+                <div style={css('display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #F5E6EE;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#B02454;")}>sell</span>
+                  <span className="agx-eyebrow" style={css('font-size:9px;letter-spacing:.14em;color:#B02454;')}>Enquiry about this product</span>
+                </div>
+                <div style={css('display:flex;gap:11px;padding:11px 12px;')}>
+                  <div style={css(`width:60px;height:76px;flex:none;border-radius:11px;overflow:hidden;background:${TONES[card.tone % TONES.length]};position:relative;`)}>
+                    <ImageSlot src={card.image} placeholder={card.title} style={css('position:absolute;inset:0;')} />
+                  </div>
+                  <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;')}>
+                    {card.cat && <div className="agx-eyebrow" style={css('font-size:9px;color:#8A7078;')}>{card.cat}</div>}
+                    <div style={css('font-size:13.5px;font-weight:700;color:#241019;line-height:1.25;margin-top:2px;')}>{card.title}</div>
+                    <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:16px;margin-top:4px;")}>{fmt(card.price)}</div>
+                  </div>
+                </div>
+                <div style={css('font-size:10px;color:#B79AA6;padding:0 12px 8px;text-align:right;')}>{c.time}</div>
+              </div>
+            );
+          }
+          return (
+            <div
+              key={c.id ?? i}
+              style={css(`max-width:78%;align-self:${c.me ? 'flex-end' : 'flex-start'};background:${c.me ? '#D6336C' : '#fff'};color:${c.me ? '#fff' : '#2A1A20'};padding:10px 13px;border-radius:${c.me ? '16px 16px 4px 16px' : '16px 16px 16px 4px'};font-size:13.5px;line-height:1.4;box-shadow:0 6px 16px -12px rgba(107,20,54,.5);`)}
+            >
+              {c.text}
+              <div style={css('font-size:10px;opacity:.6;margin-top:3px;text-align:right;')}>{c.time}</div>
+            </div>
+          );
+        })}
       </div>
 
       <div style={css('flex:none;background:#fff;padding:10px 14px 16px;display:flex;gap:10px;align-items:center;border-top:1px solid #F3DFE8;')}>

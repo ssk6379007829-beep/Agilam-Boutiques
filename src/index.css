@@ -77,6 +77,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @media (max-width:899px){
   .agx-pdp-actions { display:none !important; }
   .agx-pdp-root { padding-bottom:86px !important; }
+  /* single-column: media has 0 right-padding for the desktop gutter, so add it
+     back on mobile so the image is centred instead of flush to the right edge */
+  .agx-pdp-media { padding-right: clamp(16px,4vw,44px) !important; }
   .agx-pdp-sticky {
     display:flex; gap:10px;
     position:fixed; left:0; right:0; bottom:0; z-index:900;

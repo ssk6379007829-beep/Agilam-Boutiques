@@ -96,7 +96,11 @@ export function ProductDetail() {
   };
   const openChat = () => {
     const b = BOUTIQUES.find((x) => x.name === ap.boutique);
-    navigate(`/buyer/chat/${b ? b.id : 'b1'}`);
+    navigate(`/buyer/chat/${b ? b.id : 'b1'}`, {
+      state: {
+        product: { id: ap.id, title: ap.title, price: ap.price, image: ap.image, tone: ap.tone, cat: ap.cat },
+      },
+    });
   };
   const onShare = async () => {
     const url = window.location.href;

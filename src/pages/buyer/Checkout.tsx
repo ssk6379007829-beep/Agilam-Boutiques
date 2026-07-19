@@ -1,11 +1,33 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
+import { nameOk, phoneOk } from '@/lib/buyerDetails';
 import { fmt } from '@/data/demo';
 
 export function Checkout() {
   const navigate = useNavigate();
-  const { subtotal, discount, shipFee, total, guest, setGuest } = useShop();
+  const { subtotal, discount, shipFee, total, guest, setGuest, showToast } = useShop();
+  const [touched, setTouched] = useState(false);
+
+  const errors = {
+    name: !nameOk(guest.name),
+    phone: !phoneOk(guest.phone),
+    address: guest.address.trim().length < 5,
+    city: guest.city.trim().length < 2,
+  };
+  const invalid = errors.name || errors.phone || errors.address || errors.city;
+
+  const continueToPayment = () => {
+    if (invalid) {
+      setTouched(true);
+      showToast('Please fill in your delivery details');
+      return;
+    }
+    navigate('/buyer/payment');
+  };
+
+  const errorRing = (bad: boolean) => (touched && bad ? '#E0748C' : '#F0D8E2');
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
@@ -19,23 +41,23 @@ export function Checkout() {
           <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;padding:22px;box-shadow:0 14px 32px -28px rgba(107,20,54,.5);display:flex;flex-direction:column;gap:15px;')}>
             <label style={css('font-size:12.5px;font-weight:800;color:#7A5C67;')}>
               Full name
-              <input value={guest.name} onChange={(e) => setGuest({ name: e.target.value })} style={css('display:block;width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#241019;')} />
+              <input value={guest.name} onChange={(e) => setGuest({ name: e.target.value })} placeholder="Your name" style={css(`display:block;width:100%;margin-top:7px;border:1.5px solid ${errorRing(errors.name)};background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#241019;`)} />
             </label>
             <label style={css('font-size:12.5px;font-weight:800;color:#7A5C67;')}>
               Mobile number
-              <div style={css('display:flex;align-items:center;margin-top:7px;border:1.5px solid #F0D8E2;background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;')}>
+              <div style={css(`display:flex;align-items:center;margin-top:7px;border:1.5px solid ${errorRing(errors.phone)};background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;`)}>
                 <span style={css('font-weight:800;color:#8A7078;font-size:15px;')}>+91</span>
-                <input value={guest.phone} onChange={(e) => setGuest({ phone: e.target.value })} inputMode="numeric" style={css('border:none;background:none;flex:1;margin-left:10px;font-size:15px;font-weight:600;color:#241019;min-width:0;')} />
+                <input value={guest.phone} onChange={(e) => setGuest({ phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} inputMode="numeric" placeholder="10-digit number" style={css('border:none;background:none;flex:1;margin-left:10px;font-size:15px;font-weight:600;color:#241019;min-width:0;')} />
               </div>
             </label>
             <label style={css('font-size:12.5px;font-weight:800;color:#7A5C67;')}>
               Flat / House no. &amp; area
-              <textarea rows={2} value={guest.address} onChange={(e) => setGuest({ address: e.target.value })} style={css('display:block;width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#FBF6F2;border-radius:14px;padding:12px 15px;font-size:15px;font-weight:600;color:#241019;resize:none;line-height:1.5;')} />
+              <textarea rows={2} value={guest.address} onChange={(e) => setGuest({ address: e.target.value })} placeholder="House / flat no., street, area" style={css(`display:block;width:100%;margin-top:7px;border:1.5px solid ${errorRing(errors.address)};background:#FBF6F2;border-radius:14px;padding:12px 15px;font-size:15px;font-weight:600;color:#241019;resize:none;line-height:1.5;`)} />
             </label>
             <div style={css('display:flex;gap:14px;flex-wrap:wrap;')}>
               <label style={css('flex:1;min-width:130px;font-size:12.5px;font-weight:800;color:#7A5C67;')}>
                 City
-                <input value={guest.city} onChange={(e) => setGuest({ city: e.target.value })} style={css('display:block;width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#241019;')} />
+                <input value={guest.city} onChange={(e) => setGuest({ city: e.target.value })} placeholder="City" style={css(`display:block;width:100%;margin-top:7px;border:1.5px solid ${errorRing(errors.city)};background:#FBF6F2;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#241019;`)} />
               </label>
               <label style={css('flex:1;min-width:130px;font-size:12.5px;font-weight:800;color:#7A5C67;')}>
                 Pincode
@@ -77,7 +99,12 @@ export function Checkout() {
               <span style={css('font-weight:800;')}>Total</span>
               <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:26px;")}>{fmt(total)}</span>
             </div>
-            <button onClick={() => navigate('/buyer/payment')} style={css('width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
+            {touched && invalid && (
+              <div style={css('color:#C0455E;font-size:12px;font-weight:700;margin-top:16px;text-align:center;')}>
+                Enter your name, a 10-digit mobile number and delivery address to continue.
+              </div>
+            )}
+            <button onClick={continueToPayment} style={css(`width:100%;height:54px;margin-top:${touched && invalid ? '10px' : '18px'};border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
               Continue to payment<span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
             </button>
             <button onClick={() => navigate('/buyer/cart')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:#8A7078;font-weight:800;font-size:13px;')}>Back to bag</button>

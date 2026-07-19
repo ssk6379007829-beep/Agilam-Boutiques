@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
+import { hasDeliveryDetails } from '@/lib/buyerDetails';
 import { payWithRazorpay } from '@/lib/razorpay';
 import { PAY_METHODS, fmt } from '@/data/demo';
 
@@ -15,6 +16,12 @@ export function Payment() {
   const onPlaceOrder = async () => {
     if (total < 1) {
       showToast('Your bag is empty');
+      return;
+    }
+    // Safety net if the buyer deep-linked past the checkout gate.
+    if (!hasDeliveryDetails(guest)) {
+      showToast('Please add your delivery details first');
+      navigate('/buyer/checkout');
       return;
     }
 
