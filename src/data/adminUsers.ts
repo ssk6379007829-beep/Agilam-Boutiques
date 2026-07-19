@@ -170,9 +170,19 @@ export interface CreateUserInput {
 }
 
 export async function createUser(input: CreateUserInput): Promise<{ userId: string; message: string }> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+
+  if (!accessToken) {
+    throw new Error('Admin session expired. Please sign in again.');
+  }
+
   const response = await fetch('/api/admin-create-user', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: JSON.stringify(input),
   });
 

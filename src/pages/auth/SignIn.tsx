@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
 import { homeFor } from '@/auth/RequireRole';
@@ -12,6 +12,7 @@ export function SignIn() {
   const { role: roleParam } = useParams<{ role: string }>();
   const role = (roleParam === 'seller' ? 'seller' : 'buyer') as Role;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signInWithPassword } = useAuth();
   const toast = useToast();
   const [email, setEmail] = useState('');
@@ -20,6 +21,11 @@ export function SignIn() {
 
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
   const roleIcon = role === 'seller' ? 'storefront' : 'shopping_bag';
+
+  useEffect(() => {
+    const seededEmail = searchParams.get('email');
+    if (seededEmail) setEmail(seededEmail);
+  }, [searchParams]);
 
   // Google works for both roles: sellers land on their console (or boutique
   // onboarding if they don't have one yet), buyers on their profile.

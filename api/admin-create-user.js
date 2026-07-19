@@ -1,16 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
 const fromEmail = process.env.EMAIL_FROM || process.env.VITE_EMAIL_FROM || 'noreply@agilam.in';
-const appUrl = process.env.APP_URL || process.env.VITE_APP_URL || 'http://localhost:5173';
+const appUrl = (process.env.APP_URL || process.env.VITE_APP_URL || 'http://localhost:5173').replace(/\/$/, '');
 
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Missing Supabase config');
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAuth = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -23,6 +25,17 @@ function generateTempPassword() {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return password;
+}
+
+function loginPathForRole(role) {
+  if (role === 'admin') return '/admin/login';
+  if (role === 'seller') return '/auth/signin/seller';
+  return '/auth/signin/buyer';
+}
+
+function buildLoginUrl(role, email) {
+  const path = loginPathForRole(role);
+  return `${appUrl}${path}?email=${encodeURIComponent(email)}`;
 }
 
 function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginUrl }) {
@@ -64,13 +77,11 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
               <div style="padding:44px 40px 30px;background:
                 radial-gradient(circle at 20% 20%, rgba(255,255,255,0.30), transparent 26%),
                 linear-gradient(135deg,#7f173d 0%,#b02454 42%,#d85b83 100%);
-                color:#fff;position:relative;">
+                color:#fff;">
                 <div style="font-size:34px;line-height:1;font-weight:700;letter-spacing:0.04em;">Agilam</div>
-                <div style="width:72px;height:1px;background:rgba(255,255,255,0.6);margin:18px 0 18px;"></div>
+                <div style="width:72px;height:1px;background:rgba(255,255,255,0.6);margin:18px 0;"></div>
                 <div style="font-size:13px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.86;margin-bottom:14px;">Your account is ready</div>
-                <div style="font-size:32px;line-height:1.2;font-weight:700;max-width:430px;">
-                  Welcome, ${fullName}
-                </div>
+                <div style="font-size:32px;line-height:1.2;font-weight:700;max-width:430px;">Welcome, ${fullName}</div>
                 <p style="margin:16px 0 0;font-size:15px;line-height:1.8;max-width:470px;color:rgba(255,255,255,0.9);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
                   Your ${roleLabel} has been prepared by the Agilam team with access tailored for a premium boutique experience.
                 </p>
@@ -111,24 +122,9 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
                 <div style="padding:24px;border-radius:24px;background:linear-gradient(180deg,#fff 0%,#fbf5f1 100%);border:1px solid #efe3da;margin-bottom:28px;">
                   <div style="font-size:13px;letter-spacing:0.16em;text-transform:uppercase;color:#9b6f57;margin-bottom:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Next Steps</div>
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
-                    <tr>
-                      <td style="width:40px;vertical-align:top;padding:0 0 14px;">
-                        <div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">1</div>
-                      </td>
-                      <td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Open your Agilam account using the secure button below.</td>
-                    </tr>
-                    <tr>
-                      <td style="width:40px;vertical-align:top;padding:0 0 14px;">
-                        <div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">2</div>
-                      </td>
-                      <td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Sign in with your email and temporary password.</td>
-                    </tr>
-                    <tr>
-                      <td style="width:40px;vertical-align:top;padding:0 0 14px;">
-                        <div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">3</div>
-                      </td>
-                      <td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Choose a new password and complete your profile details.</td>
-                    </tr>
+                    <tr><td style="width:40px;vertical-align:top;padding:0 0 14px;"><div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">1</div></td><td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Open your Agilam account using the secure button below.</td></tr>
+                    <tr><td style="width:40px;vertical-align:top;padding:0 0 14px;"><div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">2</div></td><td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Sign in with your email and temporary password.</td></tr>
+                    <tr><td style="width:40px;vertical-align:top;padding:0 0 14px;"><div style="width:28px;height:28px;border-radius:999px;background:#7f173d;color:#fff;text-align:center;line-height:28px;font-size:13px;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">3</div></td><td style="padding:0 0 14px;font-size:14px;line-height:1.7;color:#5f4c55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Choose a new password and complete your profile details.</td></tr>
                   </table>
                 </div>
 
@@ -176,6 +172,9 @@ function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginU
 
 async function sendEmail({ to, subject, html, text }) {
   if (!resendApiKey) {
+    if (process.env.NODE_ENV === 'production') {
+      return { success: false, error: 'Email provider is not configured' };
+    }
     console.log('[DEV EMAIL]', { to, subject });
     return { success: true };
   }
@@ -204,16 +203,53 @@ async function sendEmail({ to, subject, html, text }) {
 
     return { success: true };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown email error',
-    };
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown email error' };
   }
+}
+
+async function authenticateAdmin(req) {
+  if (!supabaseAuth) return { ok: false, status: 500, error: 'Missing Supabase anon key for admin verification' };
+
+  const authHeader = req.headers?.authorization || req.headers?.Authorization;
+  const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7).trim()
+    : '';
+
+  if (!token) {
+    return { ok: false, status: 401, error: 'Missing admin session' };
+  }
+
+  const { data: authData, error: authError } = await supabaseAuth.auth.getUser(token);
+  if (authError || !authData.user) {
+    return { ok: false, status: 401, error: 'Invalid admin session' };
+  }
+
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, role, status, deleted_at')
+    .eq('id', authData.user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return { ok: false, status: 500, error: 'Could not verify admin access' };
+  }
+
+  if (!profile || profile.role !== 'admin' || profile.status !== 'active' || profile.deleted_at) {
+    return { ok: false, status: 403, error: 'Admin access required' };
+  }
+
+  return { ok: true, adminId: authData.user.id };
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const auth = await authenticateAdmin(req);
+  if (!auth.ok) {
+    return res.status(auth.status).json({ error: auth.error });
   }
 
   try {
@@ -222,17 +258,19 @@ export default async function handler(req, res) {
     if (!email || !isValidEmail(email)) {
       return res.status(400).json({ error: 'Invalid email address' });
     }
-
     if (!fullName || fullName.trim().length < 2) {
       return res.status(400).json({ error: 'Full name required (minimum 2 characters)' });
     }
-
     if (!['buyer', 'seller', 'admin'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
-    const normalizedEmail = email.toLowerCase();
-    const { data: existing } = await supabase
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedName = fullName.trim();
+    const normalizedPhone = phone?.trim() || null;
+    const normalizedCity = city?.trim() || null;
+
+    const { data: existing } = await supabaseAdmin
       .from('profiles')
       .select('id')
       .eq('email', normalizedEmail)
@@ -243,57 +281,64 @@ export default async function handler(req, res) {
     }
 
     const tempPassword = generateTempPassword();
-    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+    const loginUrl = buildLoginUrl(role, normalizedEmail);
+    const emailData = buildAccountCreationEmail({
+      email: normalizedEmail,
+      fullName: normalizedName,
+      role,
+      tempPassword,
+      loginUrl,
+    });
+
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,
       password: tempPassword,
       email_confirm: true,
       user_metadata: {
-        full_name: fullName,
-        phone,
-        city,
+        full_name: normalizedName,
+        phone: normalizedPhone,
+        city: normalizedCity,
         role,
       },
     });
 
     if (authError || !authUser.user) {
       console.error('[AUTH_ERROR]', authError);
-      return res.status(500).json({ error: 'Failed to create auth user' });
+      const message = authError?.message?.toLowerCase().includes('already')
+        ? 'User already exists with this email'
+        : 'Failed to create auth user';
+      return res.status(message.includes('already') ? 409 : 500).json({ error: message });
     }
 
-    const { error: profileError } = await supabase.from('profiles').insert({
+    const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
       id: authUser.user.id,
       email: normalizedEmail,
-      full_name: fullName,
-      phone: phone || null,
-      city: city || null,
+      full_name: normalizedName,
+      phone: normalizedPhone,
+      city: normalizedCity,
       role,
       status: 'active',
-      created_at: new Date().toISOString(),
+      deleted_at: null,
+      updated_at: new Date().toISOString(),
     });
 
     if (profileError) {
       console.error('[PROFILE_ERROR]', profileError);
-      await supabase.auth.admin.deleteUser(authUser.user.id);
+      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       return res.status(500).json({ error: 'Failed to create user profile' });
     }
 
-    const emailData = buildAccountCreationEmail({
-      email: normalizedEmail,
-      fullName,
-      role,
-      tempPassword,
-      loginUrl: `${appUrl}/login?email=${encodeURIComponent(normalizedEmail)}`,
-    });
-
     const emailResult = await sendEmail(emailData);
     if (!emailResult.success) {
-      console.warn('[EMAIL_WARN]', `Failed to send email to ${normalizedEmail}:`, emailResult.error);
+      console.error('[EMAIL_ERROR]', emailResult.error);
+      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+      return res.status(502).json({ error: 'User was not created because the welcome email could not be delivered' });
     }
 
     return res.status(201).json({
       success: true,
       userId: authUser.user.id,
-      message: `User created. Welcome email ${emailResult.success ? 'sent' : 'queued'} to ${normalizedEmail}`,
+      message: `User created and welcome email sent to ${normalizedEmail}`,
     });
   } catch (error) {
     console.error('[API_ERROR]', error);

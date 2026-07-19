@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
@@ -10,10 +10,16 @@ const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid #F0D8E2;backgro
 export function AdminLogin() {
   const { adminSignIn, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const toast = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const seededEmail = searchParams.get('email');
+    if (seededEmail) setEmail(seededEmail);
+  }, [searchParams]);
 
   async function handleSignIn() {
     setBusy(true);
