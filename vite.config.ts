@@ -14,6 +14,7 @@ function devApi(env: Record<string, string>): Plugin {
     '/api/create-order': './api/create-order.js',
     '/api/verify-payment': './api/verify-payment.js',
     '/api/place-order': './api/place-order.js',
+    '/api/admin-create-user': './api/admin-create-user.js',
   };
   // Variable specifier + @vite-ignore: resolved by Node at request time, not
   // bundled or statically type-checked (the handlers are plain .js).
