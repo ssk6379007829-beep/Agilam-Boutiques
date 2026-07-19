@@ -23,7 +23,7 @@ export function FilterSheet() {
 
   return (
     <div style={css('position:fixed;inset:0;z-index:120;')}>
-      <div onClick={close} style={css('position:absolute;inset:0;background:rgba(42,10,24,.45);animation:agx-fade .2s ease;')} />
+      <div onClick={close} style={css('position:absolute;inset:0;background:rgba(42,10,24,.45);backdrop-filter:blur(4px);animation:agx-fade .2s ease;')} />
       <div className="agx-scroll" style={css('position:absolute;left:0;right:0;bottom:0;max-height:88%;overflow-y:auto;background:#fff;border-radius:28px 28px 0 0;padding:14px 22px 24px;animation:agx-sheet .28s cubic-bezier(.2,.9,.3,1);')}>
         <div style={css('width:44px;height:5px;border-radius:3px;background:#EAD3DE;margin:0 auto 14px;')} />
         <div style={css('display:flex;align-items:center;justify-content:space-between;')}>

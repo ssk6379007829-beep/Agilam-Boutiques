@@ -120,7 +120,7 @@ export function MyProducts() {
       </div>
 
       {editing && (
-        <div onClick={closeEdit} style={css('position:fixed;inset:0;z-index:50;background:rgba(42,16,25,.42);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;')}>
+        <div onClick={closeEdit} style={css('position:fixed;inset:0;z-index:50;background:rgba(42,16,25,.42);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;')}>
           <div onClick={(e) => e.stopPropagation()} style={css('width:100%;max-width:520px;margin:auto;background:#FBF6F2;border-radius:22px;padding:18px 20px 24px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);')}>
             <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;")}>Edit product</div>

@@ -1,18 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { css } from '@/lib/css';
-
-export type LoginRole = 'buyer' | 'seller' | 'admin';
-
-const ROLE_OPTS: { key: LoginRole; label: string; icon: string }[] = [
-  { key: 'buyer', label: 'Buyer', icon: 'shopping_bag' },
-  { key: 'seller', label: 'Seller', icon: 'storefront' },
-  { key: 'admin', label: 'Admin', icon: 'shield_person' },
-];
+import { Home } from '@/pages/buyer/Home';
 
 /**
  * Shared auth popup panel — the same centred white card as the
  * "Are you a Boutique Owner?" sheet (see SellModal), reused across every auth
  * screen (sign in, create account, OTP) so they read as one consistent popup.
+ *
+ * The auth screens are their own routes (the buyer app isn't mounted behind
+ * them), so we render a blurred, inert copy of the buyer home as the backdrop.
+ * That gives the card the same "popup floating over a blurred screen" feel as
+ * the in-app sheets, instead of sitting on a flat colour.
  */
 export function AuthModal({
   icon = 'storefront',
@@ -28,8 +26,18 @@ export function AuthModal({
   children: ReactNode;
 }) {
   return (
-    <div style={css('position:fixed;inset:0;z-index:50;background:radial-gradient(125% 78% at 50% 0%,#F6DCE6 0%,#FBF6F2 58%);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;')}>
-      <div style={css('width:100%;max-width:460px;background:#fff;border-radius:28px;padding:22px 26px 30px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);border:1px solid #F6E3EC;margin:auto;')}>
+    <div style={css('position:fixed;inset:0;z-index:50;overflow:hidden;')}>
+      {/* Blurred, non-interactive app backdrop. */}
+      <div aria-hidden style={css('position:absolute;inset:0;background:#FBF6F2;pointer-events:none;overflow:hidden;')}>
+        <div className="agx-app agx-app-main" style={css('padding:16px 18px 128px;filter:blur(11px) saturate(1.02);opacity:.85;transform:scale(1.04);transform-origin:top center;')}>
+          <Home />
+        </div>
+      </div>
+      {/* Frosted scrim over the backdrop. */}
+      <div style={css('position:absolute;inset:0;background:rgba(251,241,245,.5);backdrop-filter:blur(3px);')} />
+
+      <div style={css('position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;')}>
+      <div style={css('width:100%;max-width:460px;background:#fff;border-radius:28px;padding:22px 26px 30px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);border:1px solid #F6E3EC;margin:auto;position:relative;')}>
         {onBack && (
           <button
             onClick={onBack}
@@ -47,29 +55,6 @@ export function AuthModal({
 
         <div style={css('display:flex;flex-direction:column;gap:15px;margin-top:22px;')}>{children}</div>
       </div>
-    </div>
-  );
-}
-
-/** Buyer / Seller / Admin selector, shown inside the auth popup. */
-export function RoleTabs({ role, onRoleChange }: { role: LoginRole; onRoleChange: (r: LoginRole) => void }) {
-  return (
-    <div>
-      <div style={css('font-size:12px;font-weight:800;color:#8A7078;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;')}>Choose your role</div>
-      <div style={css('display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;')}>
-        {ROLE_OPTS.map((r) => {
-          const on = role === r.key;
-          return (
-            <button
-              key={r.key}
-              onClick={() => onRoleChange(r.key)}
-              style={css(`display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:72px;border-radius:15px;cursor:pointer;font-family:inherit;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#7A5C67'};box-shadow:${on ? '0 12px 26px -16px rgba(214,51,108,.85)' : 'none'};`)}
-            >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>{r.icon}</span>
-              <span style={css('font-size:13px;font-weight:800;')}>{r.label}</span>
-            </button>
-          );
-        })}
       </div>
     </div>
   );

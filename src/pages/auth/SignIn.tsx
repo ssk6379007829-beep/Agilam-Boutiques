@@ -4,7 +4,7 @@ import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
 import { homeFor } from '@/auth/RequireRole';
 import { css } from '@/lib/css';
-import { AuthModal, RoleTabs, PasswordField, type LoginRole } from '@/components/auth/AuthModal';
+import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { useToast } from '@/components/ui/Toast';
 
 export function SignIn() {
@@ -17,16 +17,8 @@ export function SignIn() {
   const [password, setPassword] = useState('');
   const [sending, setSending] = useState(false);
 
-  const loginTitle = role === 'seller' ? 'Seller' : 'Buyer';
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
   const roleIcon = role === 'seller' ? 'storefront' : 'shopping_bag';
-
-  // Buyers browse without an account, and admins have their own console login.
-  const onRoleChange = (r: LoginRole) => {
-    if (r === 'buyer') navigate('/buyer/home');
-    else if (r === 'admin') navigate('/admin/login');
-    else navigate('/auth/signin/seller');
-  };
 
   async function handleSignIn() {
     const trimmedEmail = email.trim();
@@ -52,10 +44,8 @@ export function SignIn() {
       icon={roleIcon}
       heading="Welcome back"
       sub={`Sign in to continue to your ${roleWord} workspace.`}
-      onBack={() => navigate('/')}
+      onBack={() => navigate('/buyer/home')}
     >
-      <RoleTabs role={role as LoginRole} onRoleChange={onRoleChange} />
-
       <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
         Email or phone
         <input
@@ -81,7 +71,7 @@ export function SignIn() {
         disabled={sending}
         style={css('width:100%;height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);display:flex;align-items:center;justify-content:center;gap:8px;')}
       >
-        {sending ? 'Signing in…' : `Sign in as ${loginTitle}`}
+        {sending ? 'Signing in…' : 'Login'}
         <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>
       </button>
 

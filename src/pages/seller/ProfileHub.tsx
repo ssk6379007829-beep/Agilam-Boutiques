@@ -18,7 +18,7 @@ export function ProfileHub() {
 
   const logout = async () => {
     await signOut();
-    navigate('/splash', { replace: true });
+    navigate('/buyer/home', { replace: true });
   };
 
   return (

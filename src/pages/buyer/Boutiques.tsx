@@ -152,7 +152,7 @@ export function Boutiques() {
           onClick={() => setFollowingOnly(true)}
           style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;padding:9px 12px;border-radius:11px;font-size:13px;font-weight:700;font-family:inherit;background:${followingOnly ? '#fff' : 'transparent'};color:${followingOnly ? '#B02454' : '#8A7078'};box-shadow:${followingOnly ? '0 6px 16px -10px rgba(107,20,54,.5)' : 'none'};`)}
         >
-          <span style={css(`font-family:'Material Symbols Outlined';font-size:17px;color:#D6336C;${followingOnly ? 'font-variation-settings:"FILL" 1;' : ''}`)}>favorite</span>
+          <span style={css(`font-family:'Material Symbols Outlined';font-size:18px;color:${followingOnly ? '#B02454' : '#8A7078'};`)}>how_to_reg</span>
           Following
           <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;background:${followingOnly ? '#FCE0EC' : '#E7D3DC'};color:#B02454;`)}>{followingCount}</span>
         </button>
@@ -264,20 +264,20 @@ export function Boutiques() {
 
             <button
               onClick={(e: MouseEvent) => toggleFollow(e, b.id, b.name)}
-              style={css('width:42px;height:42px;flex:none;border-radius:13px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+              aria-label={following[b.id] ? `Unfollow ${b.name}` : `Follow ${b.name}`}
+              aria-pressed={following[b.id]}
+              style={css(`width:42px;height:42px;flex:none;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1px solid ${following[b.id] ? 'transparent' : '#EFDCE4'};background:${following[b.id] ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : '#fff'};box-shadow:${following[b.id] ? '0 8px 18px -8px rgba(176,36,84,.7)' : 'none'};`)}
             >
-              <span style={css(`font-family:'Material Symbols Outlined';font-size:24px;color:#D6336C;${following[b.id] ? 'font-variation-settings:"FILL" 1;' : ''}`)}>
-                {following[b.id] ? 'favorite' : 'favorite_border'}
-              </span>
+              <span style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${following[b.id] ? '#fff' : '#B02454'};`)}>{following[b.id] ? 'how_to_reg' : 'person_add'}</span>
             </button>
           </div>
         ))}
 
         {filtered.length === 0 && followingOnly && followingCount === 0 && (
           <div style={css('padding:40px 20px;text-align:center;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:rgba(214,51,108,.3);")}>favorite</span>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:rgba(176,36,84,.3);")}>person_add</span>
             <div style={css('color:#2A1A20;font-size:15px;font-weight:700;margin-top:10px;')}>No boutiques followed yet</div>
-            <div style={css('color:#8A7078;font-size:13.5px;margin-top:4px;')}>Tap the ♥ on any boutique to follow it and find it here.</div>
+            <div style={css('color:#8A7078;font-size:13.5px;margin-top:4px;')}>Tap the follow button on any boutique to find it here.</div>
             <button
               onClick={() => setFollowingOnly(false)}
               style={css('margin-top:14px;border:none;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);cursor:pointer;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:700;color:#fff;font-family:inherit;')}

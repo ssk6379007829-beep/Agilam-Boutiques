@@ -60,6 +60,21 @@ export default async function handler(req, res) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // A signed-in buyer (Google / email) sends their access token; tie the order
+  // to their account so they can read it back cross-device via RLS. Guests
+  // (no token / invalid) fall through to null, staying phone-keyed.
+  let buyerId = null;
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (token) {
+    try {
+      const { data } = await supabase.auth.getUser(token);
+      buyerId = data?.user?.id ?? null;
+    } catch {
+      /* invalid token — treat as a guest checkout */
+    }
+  }
+
   try {
     // Authoritative product data — never trust prices sent by the browser.
     const ids = [...new Set(items.map((it) => it?.product_id).filter(Boolean))];

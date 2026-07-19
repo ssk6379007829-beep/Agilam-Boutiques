@@ -15,6 +15,12 @@ const HERO_SLIDES = [
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 const starRow = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
+/** Initials for a boutique's logo badge: "Elegance Boutique" -> "EB". */
+const monogram = (name: string) => {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return (words.slice(0, 2).map((w) => w[0]).join('') || name.slice(0, 2)).toUpperCase();
+};
+
 export function Home() {
   const navigate = useNavigate();
   const { wishlist, toggleWish } = useShop();
@@ -193,23 +199,31 @@ export function Home() {
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {BOUTIQUES.map((b) => (
           <div key={b.id} onClick={() => openBoutique(b.id)} className="agx-lift" style={css('flex:none;width:300px;background:#fff;border:1px solid #F2E4EA;border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
+            {/* Cover — image only, no name overlay */}
             <div className="agx-zoom" style={css(`position:relative;aspect-ratio:16/10;background:${TONES[b.tone]};overflow:hidden;`)}>
               <ImageSlot src={b.image} placeholder={`${b.name} — cover`} style={css('position:absolute;inset:0;')} />
-              <div style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,8,18,0) 40%,rgba(30,8,18,.55) 100%);pointer-events:none;')} />
-              <div style={css('position:absolute;left:14px;bottom:12px;color:#fff;display:flex;align-items:center;gap:6px;')}>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;text-shadow:0 2px 12px rgba(0,0,0,.4);")}>{b.name}</span>
-                {b.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:#7FC0F2;")}>verified</span>}
-              </div>
             </div>
-            <div style={css('padding:14px 16px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
-              <div style={css('min-width:0;')}>
-                <div style={css('color:#8A7078;font-size:12.5px;display:flex;align-items:center;gap:4px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>location_on</span>{b.city}
+            {/* Identity — logo + name shown separately below the cover */}
+            <div style={css('padding:14px 16px 16px;')}>
+              <div style={css('display:flex;align-items:center;gap:11px;')}>
+                <div style={css('width:44px;height:44px;flex:none;border-radius:50%;background:linear-gradient(135deg,#D6336C,#8E1E43);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px -12px rgba(214,51,108,.9);')}>
+                  <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#fff;letter-spacing:.02em;")}>{monogram(b.name)}</span>
                 </div>
-                <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;margin-top:4px;letter-spacing:.04em;")}>{b.products} styles</div>
+                <div style={css('min-width:0;flex:1;')}>
+                  <div style={css('display:flex;align-items:center;gap:5px;')}>
+                    <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
+                    {b.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
+                  </div>
+                  <div style={css('color:#8A7078;font-size:12px;display:flex;align-items:center;gap:3px;margin-top:2px;')}>
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>location_on</span>{b.city}
+                  </div>
+                </div>
               </div>
-              <div style={css('display:flex;align-items:center;gap:4px;font-size:13.5px;font-weight:700;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:10px;padding:6px 10px;white-space:nowrap;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{b.rating} <span style={css('color:#B79AA6;font-weight:600;')}>· {b.reviews}</span>
+              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;padding-top:12px;border-top:1px solid #F4E6EC;')}>
+                <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;letter-spacing:.04em;")}>{b.products} styles</div>
+                <div style={css('display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:10px;padding:5px 10px;white-space:nowrap;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{b.rating} <span style={css('color:#B79AA6;font-weight:600;')}>· {b.reviews}</span>
+                </div>
               </div>
             </div>
           </div>

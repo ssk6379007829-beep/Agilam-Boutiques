@@ -94,6 +94,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     box-shadow:0 -14px 36px -22px rgba(107,20,54,.42);
   }
 }
+/* Chat: a focused full-screen conversation surface. The composer is the last
+   flex child and the root reserves bottom space for the floating nav dock, so
+   the input panel floats just ABOVE the dock instead of being hidden by it. */
+.agx-chat-root { padding-bottom: 116px; }
+@media (max-width:640px){ .agx-chat-root { padding-bottom: 84px; } }
+@keyframes agx-pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(47,163,107,.55);} 70%{ box-shadow:0 0 0 5px rgba(47,163,107,0);} }
+.agx-online-dot { animation: agx-pulse 1.8s ease-in-out infinite; }
 /* results: fixed-height region — only the grid + filter options scroll */
 @media (min-width:960px){
   .agx-results-root{ height:calc(100vh - 71px); margin-top:-16px; margin-bottom:-96px; overflow:hidden; }

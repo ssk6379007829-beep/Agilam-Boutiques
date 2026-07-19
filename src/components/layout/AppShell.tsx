@@ -1,7 +1,37 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
+import { useAuth } from '@/auth/AuthContext';
 import { SellModal } from '@/components/SellModal';
+
+/** "Selva Kumar" -> "SK", "Priya" -> "PR". Empty when there's no name yet. */
+function initialsFrom(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/**
+ * Premium header profile button — shows the user's initials in a gradient
+ * avatar (falling back to an icon before they've told us their name). Reused
+ * for the desktop and mobile header slots.
+ */
+function ProfileAvatar({ initials, onClick, className }: { initials: string; onClick: () => void; className?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={className}
+      style={css('width:44px;height:44px;flex:none;border-radius:14px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#E14A7E,#B02454 70%,#8E1C44);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 12px 26px -12px rgba(176,36,84,.9);')}
+    >
+      {initials ? (
+        <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;letter-spacing:.02em;")}>{initials}</span>
+      ) : (
+        <span style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>person</span>
+      )}
+    </button>
+  );
+}
 
 export type TabDef = {
   label: string;
@@ -37,7 +67,11 @@ function Tab({ tab, active, onClick }: { tab: TabDef; active: boolean; onClick: 
 export function AppShell({ tabs, profileTo }: { tabs: TabDef[]; profileTo: string }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { toast, sellModal } = useShop();
+  const { toast, sellModal, guest } = useShop();
+  const { profile } = useAuth();
+  // Logged-in seller/admin get their account name; anonymous buyers get the
+  // name they saved at the checkout/chat gate.
+  const initials = initialsFrom(profile?.full_name || guest.name || '');
 
   return (
     <div style={css('min-height:100vh;background:#FBF6F2;')}>
@@ -71,22 +105,10 @@ export function AppShell({ tabs, profileTo }: { tabs: TabDef[]; profileTo: strin
               />
             </div>
 
-            <button
-              onClick={() => navigate(profileTo)}
-              className="agx-only-desktop"
-              style={css('width:44px;height:44px;border-radius:13px;border:1px solid #EFDCE4;background:#fff;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
-            >
-              <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>account_circle</span>
-            </button>
+            <ProfileAvatar initials={initials} onClick={() => navigate(profileTo)} className="agx-only-desktop" />
 
             {/* Mobile profile — the desktop search/profile are hidden below 960px. */}
-            <button
-              onClick={() => navigate(profileTo)}
-              className="agx-only-mobile"
-              style={css('width:44px;height:44px;flex:none;margin-left:auto;border-radius:13px;border:1px solid #EFDCE4;background:#fff;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
-            >
-              <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>account_circle</span>
-            </button>
+            <ProfileAvatar initials={initials} onClick={() => navigate(profileTo)} className="agx-only-mobile" />
           </div>
 
           {/* Mobile search row — below the logo/profile row, full width. */}

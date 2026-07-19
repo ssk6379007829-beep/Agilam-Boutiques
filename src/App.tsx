@@ -3,7 +3,6 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { RequireRole } from '@/auth/RequireRole';
 
 import { Loading } from '@/pages/Loading';
-import { Splash } from '@/pages/auth/Splash';
 import { SignIn } from '@/pages/auth/SignIn';
 import { SignUp } from '@/pages/auth/SignUp';
 import { Otp } from '@/pages/auth/Otp';
@@ -59,7 +58,6 @@ export default function App() {
     <>
       <Routes>
       <Route path="/" element={<Loading />} />
-      <Route path="/splash" element={<Splash />} />
       <Route path="/auth/signin/:role" element={<SignIn />} />
       <Route path="/auth/signup/:role" element={<SignUp />} />
       <Route path="/auth/otp/:role" element={<Otp />} />

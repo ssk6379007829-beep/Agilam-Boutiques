@@ -4,7 +4,7 @@ import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
 import { homeFor } from '@/auth/RequireRole';
 import { css } from '@/lib/css';
-import { AuthModal, RoleTabs, PasswordField, type LoginRole } from '@/components/auth/AuthModal';
+import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { useToast } from '@/components/ui/Toast';
 
 const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#2A1A20;';
@@ -26,12 +26,6 @@ export function SignUp() {
 
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
   const roleIcon = role === 'seller' ? 'storefront' : 'shopping_bag';
-
-  const onRoleChange = (r: LoginRole) => {
-    if (r === 'buyer') navigate('/buyer/home');
-    else if (r === 'admin') navigate('/admin/login');
-    else navigate('/auth/signup/seller');
-  };
 
   async function handleSignUp() {
     const trimmedEmail = email.trim();
@@ -68,8 +62,6 @@ export function SignUp() {
       sub={`Join Agilam as a ${roleWord}.`}
       onBack={() => navigate(`/auth/signin/${role}`)}
     >
-      <RoleTabs role={role as LoginRole} onRoleChange={onRoleChange} />
-
       <label style={css(labelStyle)}>
         Full name
         <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Priya Sharma" style={css(fieldStyle)} />

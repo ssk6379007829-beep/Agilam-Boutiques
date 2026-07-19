@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { COUPONS, type Coupon } from '@/data/demo';
 import { useCatalog } from '@/state/CatalogContext';
 import { EMPTY_GUEST, readGuest, writeGuest, hasContactDetails } from '@/lib/buyerDetails';
+import { addOrders, type PlacedOrder, type PlacedOrderItem } from '@/lib/orderHistory';
 
 /**
  * Cross-screen shop state, mirroring the `state` object of the design's
@@ -66,6 +67,8 @@ type ShopValue = {
 
   guest: Guest;
   setGuest: (patch: Partial<Guest>) => void;
+  /** Clears guest details and resets to empty state. */
+  clearGuest: () => void;
   /** True once the buyer has saved a valid name + phone. */
   hasBuyerDetails: boolean;
 
@@ -95,7 +98,7 @@ type ShopValue = {
 const ShopContext = createContext<ShopValue | null>(null);
 
 export function ShopProvider({ children }: { children: ReactNode }) {
-  const { productById } = useCatalog();
+  const { productById, boutiques } = useCatalog();
   // Cart and wishlist start empty — real shoppers build them from the catalogue.
   const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
   const [cart, setCart] = useState<Cart>({});
@@ -224,6 +227,11 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const clearGuest = useCallback(() => {
+    setGuestState(EMPTY_GUEST);
+    writeGuest(EMPTY_GUEST);
+  }, []);
+
   const hasBuyerDetails = useMemo(() => hasContactDetails(guest), [guest]);
 
   const placeOrder = useCallback(async (payment: PaymentInfo | null): Promise<string> => {
@@ -241,10 +249,43 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items, guest, payment }),
     });
-    const data = (await res.json().catch(() => ({}))) as { orders?: { order_number: string }[]; error?: string };
+    const data = (await res.json().catch(() => ({}))) as {
+      orders?: { order_number: string; boutique_id: string }[];
+      error?: string;
+    };
     if (!res.ok || !data.orders?.length) {
       throw new Error(data.error || 'Could not place the order. Please try again.');
     }
+
+    // Mirror the just-paid cart into the buyer's local order history, grouped by
+    // boutique the same way the server split it. Guest orders can't be read back
+    // from Supabase (RLS), so this is what powers "My orders" and tracking.
+    const boutiqueIdByName = new Map(boutiques.map((b) => [b.name, b.id]));
+    const itemsByBoutique = new Map<string, PlacedOrderItem[]>();
+    for (const [pid, line] of Object.entries(cart)) {
+      const p = productById(pid);
+      if (!p) continue;
+      const bid = boutiqueIdByName.get(p.boutique);
+      if (!bid) continue;
+      const arr = itemsByBoutique.get(bid) ?? [];
+      arr.push({ pid, title: p.title, tone: p.tone, qty: line.qty, size: line.size, price: p.price });
+      itemsByBoutique.set(bid, arr);
+    }
+    const placedAt = new Date().toISOString();
+    const placed: PlacedOrder[] = data.orders.map((o) => {
+      const items = itemsByBoutique.get(o.boutique_id) ?? [];
+      return {
+        id: '#' + o.order_number,
+        orderNumber: o.order_number,
+        placedAt,
+        boutique: boutiques.find((b) => b.id === o.boutique_id)?.name ?? 'Boutique',
+        boutiqueId: o.boutique_id,
+        status: 'pending',
+        total: items.reduce((s, it) => s + it.price * it.qty, 0),
+        items,
+      };
+    });
+    addOrders(placed);
 
     const oid = data.orders[0].order_number;
     setCart({});
@@ -252,7 +293,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     setLastOrderId(oid);
     showToast('Order placed successfully');
     return oid;
-  }, [cart, guest, showToast]);
+  }, [cart, guest, boutiques, productById, showToast]);
 
   const value: ShopValue = {
     wishlist, toggleWish,
@@ -261,7 +302,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     query, setQuery,
     appliedCoupon, applyCoupon, removeCoupon,
     payMethod, setPayMethod,
-    guest, setGuest, hasBuyerDetails,
+    guest, setGuest, clearGuest, hasBuyerDetails,
     lastOrderId, placeOrder,
     toast, showToast,
     sellModal,
