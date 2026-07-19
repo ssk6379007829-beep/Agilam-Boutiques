@@ -296,11 +296,26 @@ export function Users() {
         footer={(
           <div style={css('display:flex;gap:10px;')}>
             <GhostButton onClick={() => setCreateOpen(false)}>Cancel</GhostButton>
-            <GhostButton tone="primary" onClick={doCreate} icon="person_add">Create User</GhostButton>
+            <button
+              type="submit"
+              form="admin-create-user-form"
+              disabled={busy}
+              style={css(`height:42px;border:none;border-radius:12px;padding:0 14px;font-weight:700;font-size:13px;cursor:${busy ? 'not-allowed' : 'pointer'};display:flex;align-items:center;gap:6px;font-family:inherit;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;opacity:${busy ? 0.7 : 1};`)}
+            >
+              <Icon name="person_add" size={18} />
+              {busy ? 'Creating...' : 'Create User'}
+            </button>
           </div>
         )}
       >
-        <div style={css('display:flex;flex-direction:column;gap:14px;')}>
+        <form
+          id="admin-create-user-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void doCreate();
+          }}
+          style={css('display:flex;flex-direction:column;gap:14px;')}
+        >
           <div>
             <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:#6B5560;')}>Full Name *</label>
             <input
@@ -353,7 +368,7 @@ export function Users() {
           <div style={css('background:#FCE0EC;border-left:4px solid #B02454;padding:12px;border-radius:8px;font-size:12px;color:#6B5560;line-height:1.5;')}>
             <strong>Note:</strong> A temporary password will be generated and sent to the email address. The user must change it on first login.
           </div>
-        </div>
+        </form>
       </Drawer>
     </div>
   );

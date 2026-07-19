@@ -98,7 +98,7 @@ export function SearchInput({ value, onChange, placeholder }: { value: string; o
     <div style={css(`display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid ${T.field};border-radius:12px;padding:0 12px;height:42px;flex:1;min-width:180px;`)}>
       <Icon name="search" size={19} color="#B79AA6" />
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? 'Search…'} style={css('border:none;background:none;flex:1;font-size:13.5px;min-width:0;font-family:inherit;color:#2A1A20;')} />
-      {value && <button onClick={() => onChange('')} style={css('border:none;background:none;cursor:pointer;color:#B79AA6;display:flex;')}><Icon name="close" size={18} /></button>}
+      {value && <button type="button" onClick={() => onChange('')} style={css('border:none;background:none;cursor:pointer;color:#B79AA6;display:flex;')}><Icon name="close" size={18} /></button>}
     </div>
   );
 }
@@ -118,7 +118,7 @@ export function GhostButton({ icon, children, onClick, tone = 'default', title }
     primary: 'border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;',
   }[tone];
   return (
-    <button title={title} onClick={onClick} style={css(`height:42px;border-radius:12px;padding:0 14px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;${styles}`)}>
+    <button type="button" title={title} onClick={onClick} style={css(`height:42px;border-radius:12px;padding:0 14px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;${styles}`)}>
       {icon && <Icon name={icon} size={18} />}
       {children}
     </button>
@@ -133,7 +133,7 @@ export function IconButton({ icon, onClick, tone = 'default', title }: { icon: s
     warn: 'border:none;background:#FBF0DA;color:#B8860B;',
   }[tone];
   return (
-    <button title={title} onClick={onClick} style={css(`width:34px;height:34px;flex:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;${styles}`)}>
+    <button type="button" title={title} onClick={onClick} style={css(`width:34px;height:34px;flex:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;${styles}`)}>
       <Icon name={icon} size={18} />
     </button>
   );
@@ -237,8 +237,8 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
     <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:14px;')}>
       <div style={css(`font-size:12.5px;color:${T.muted};font-weight:600;`)}>{from}–{to} of {total}</div>
       <div style={css('display:flex;gap:8px;')}>
-        <button disabled={page <= 0} onClick={() => onPage(page - 1)} style={btn(page <= 0)}><Icon name="chevron_left" size={18} /></button>
-        <button disabled={page >= last} onClick={() => onPage(page + 1)} style={btn(page >= last)}><Icon name="chevron_right" size={18} /></button>
+        <button type="button" disabled={page <= 0} onClick={() => onPage(page - 1)} style={btn(page <= 0)}><Icon name="chevron_left" size={18} /></button>
+        <button type="button" disabled={page >= last} onClick={() => onPage(page + 1)} style={btn(page >= last)}><Icon name="chevron_right" size={18} /></button>
       </div>
     </div>
   );
@@ -257,7 +257,7 @@ export function Drawer({ open, onClose, title, children, footer }: { open: boole
       <div onClick={(e) => e.stopPropagation()} className="agx-scroll" style={css('width:460px;max-width:100%;height:100%;background:#FBF6F2;display:flex;flex-direction:column;box-shadow:-30px 0 70px -30px rgba(107,20,54,.6);')}>
         <div style={css(`flex:none;padding:20px 22px;background:#fff;border-bottom:1px solid ${T.border};display:flex;align-items:center;justify-content:space-between;`)}>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>{title}</div>
-          <button onClick={onClose} style={css(`width:36px;height:36px;border-radius:10px;border:1.5px solid ${T.field};background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B5560;`)}><Icon name="close" size={18} /></button>
+          <button type="button" onClick={onClose} style={css(`width:36px;height:36px;border-radius:10px;border:1.5px solid ${T.field};background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B5560;`)}><Icon name="close" size={18} /></button>
         </div>
         <div className="agx-scroll" style={css('flex:1;overflow-y:auto;padding:20px 22px;')}>{children}</div>
         {footer && <div style={css(`flex:none;padding:16px 22px;background:#fff;border-top:1px solid ${T.border};`)}>{footer}</div>}
