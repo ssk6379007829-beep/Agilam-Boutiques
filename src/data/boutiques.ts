@@ -49,6 +49,17 @@ export async function fetchMyBoutique(ownerId: string): Promise<BoutiqueRow | nu
   return data as BoutiqueRow | null;
 }
 
+/** Create the signed-in seller's boutique (used in Google onboarding). */
+export async function createMyBoutique(ownerId: string, input: { name: string; city: string }): Promise<BoutiqueRow> {
+  const { data, error } = await supabase
+    .from('boutiques')
+    .insert({ owner_id: ownerId, name: input.name, city: input.city, tone: Math.floor(Math.random() * 8) })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as BoutiqueRow;
+}
+
 export async function updateBoutique(id: string, patch: Partial<{ name: string; city: string; description: string }>) {
   const { error } = await supabase.from('boutiques').update(patch).eq('id', id);
   if (error) throw error;
@@ -67,7 +78,13 @@ export async function fetchAllBoutiquesAdmin(): Promise<AdminBoutiqueRow[]> {
   return (data ?? []) as unknown as AdminBoutiqueRow[];
 }
 
-export async function setBoutiqueStatus(id: string, status: 'approved' | 'rejected') {
+export async function setBoutiqueStatus(id: string, status: 'pending' | 'approved' | 'rejected') {
   const { error } = await supabase.from('boutiques').update({ status, verified: status === 'approved' }).eq('id', id);
+  if (error) throw error;
+}
+
+/** Toggle whether a boutique is featured across the marketplace. Admin-only via RLS. */
+export async function setBoutiqueFeatured(id: string, featured: boolean) {
+  const { error } = await supabase.from('boutiques').update({ featured }).eq('id', id);
   if (error) throw error;
 }

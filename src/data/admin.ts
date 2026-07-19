@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { fmtInr } from '@/lib/tokens';
+import type { OrderStatus } from '@/types/database';
 
 const COMMISSION_RATE = 0.08;
 
@@ -74,11 +75,15 @@ export async function fetchRevenueByCity(): Promise<CityStat[]> {
 }
 
 export interface PaymentRow {
+  id: string;
   txn: string;
   name: string;
   amount: string;
   commission: string;
+  /** Derived settlement label (Settled once the order is shipped/delivered). */
   status: string;
+  /** Underlying order status the admin can manage. */
+  orderStatus: OrderStatus;
 }
 
 export async function fetchPayments(): Promise<PaymentRow[]> {
@@ -87,12 +92,14 @@ export async function fetchPayments(): Promise<PaymentRow[]> {
     .select('id, total, status, boutique:boutiques(name)')
     .order('created_at', { ascending: false })
     .limit(20);
-  const rows = (data ?? []) as unknown as { id: string; total: number; status: string; boutique: { name: string } | null }[];
+  const rows = (data ?? []) as unknown as { id: string; total: number; status: OrderStatus; boutique: { name: string } | null }[];
   return rows.map((r) => ({
+    id: r.id,
     txn: '#TXN-' + r.id.slice(0, 6).toUpperCase(),
     name: r.boutique?.name ?? 'Boutique',
     amount: fmtInr(Number(r.total)),
     commission: fmtInr(Number(r.total) * COMMISSION_RATE),
     status: r.status === 'delivered' || r.status === 'shipped' ? 'Settled' : 'Pending',
+    orderStatus: r.status,
   }));
 }

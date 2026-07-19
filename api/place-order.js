@@ -126,7 +126,7 @@ export default async function handler(req, res) {
         .from('orders')
         .insert({
           order_number: orderNumber(),
-          buyer_id: null,
+          buyer_id: buyerId,
           boutique_id: g.boutique_id,
           total: g.total,
           status: 'pending',

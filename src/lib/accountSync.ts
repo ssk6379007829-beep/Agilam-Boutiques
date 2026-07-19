@@ -12,25 +12,26 @@ import { fromBuyerOrder, mergeServerOrders, type BuyerDbOrder } from '@/lib/orde
  * call right after sign-in, before the auth context state has caught up.
  */
 
-export type AccountProfile = { full_name: string; phone: string | null; city: string | null };
+export type AccountProfile = { full_name: string; phone: string | null; city: string | null; address: string | null };
 
-export async function syncAccount(patch?: { name?: string; phone?: string; city?: string }): Promise<AccountProfile | null> {
+export async function syncAccount(patch?: { name?: string; phone?: string; city?: string; address?: string }): Promise<AccountProfile | null> {
   const { data } = await supabase.auth.getSession();
   const uid = data.session?.user?.id;
   if (!uid) throw new Error('Not signed in');
 
   // Push any edited fields to the buyer's profile row.
-  const update: Partial<{ full_name: string; phone: string | null; city: string | null }> = {};
+  const update: Partial<{ full_name: string; phone: string | null; city: string | null; address: string | null }> = {};
   if (patch?.name != null) update.full_name = patch.name;
   if (patch?.phone != null) update.phone = patch.phone;
   if (patch?.city != null) update.city = patch.city;
+  if (patch?.address != null) update.address = patch.address;
   if (Object.keys(update).length) {
     const { error } = await supabase.from('profiles').update(update).eq('id', uid);
     if (error) throw error;
   }
 
   // Pull the saved profile back (source of truth across devices).
-  const { data: prof } = await supabase.from('profiles').select('full_name, phone, city').eq('id', uid).maybeSingle();
+  const { data: prof } = await supabase.from('profiles').select('full_name, phone, city, address').eq('id', uid).maybeSingle();
 
   // Merge the buyer's real orders into local history.
   const orders = await fetchOrdersForBuyer(uid);

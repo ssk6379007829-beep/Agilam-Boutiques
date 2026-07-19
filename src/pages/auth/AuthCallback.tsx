@@ -1,0 +1,42 @@
+import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/auth/AuthContext';
+import { FullscreenLoader } from '@/auth/RequireRole';
+import { fetchMyBoutique } from '@/data/boutiques';
+import { readPendingOAuthRole, clearPendingOAuthRole } from '@/lib/authMethods';
+
+/**
+ * Landing route for Google OAuth. Supabase exchanges the code for a session on
+ * load; once the auth context has it we route by the role the sign-in was
+ * started for: buyers to their profile, sellers to their console — or to
+ * boutique onboarding if they signed up as a seller but have no boutique yet.
+ */
+export function AuthCallback() {
+  const navigate = useNavigate();
+  const { session, loading, claimRole } = useAuth();
+  const ran = useRef(false);
+
+  useEffect(() => {
+    if (loading || ran.current) return;
+    // Session should be set by now; if the exchange failed, go home.
+    if (!session) {
+      navigate('/', { replace: true });
+      return;
+    }
+    ran.current = true;
+
+    (async () => {
+      const role = readPendingOAuthRole();
+      clearPendingOAuthRole();
+      if (role === 'seller') {
+        await claimRole('seller');
+        const boutique = await fetchMyBoutique(session.user.id).catch(() => null);
+        navigate(boutique ? '/seller/dashboard' : '/seller/onboarding', { replace: true });
+      } else {
+        navigate('/buyer/profile', { replace: true });
+      }
+    })();
+  }, [session, loading, claimRole, navigate]);
+
+  return <FullscreenLoader />;
+}

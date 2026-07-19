@@ -28,6 +28,8 @@ type AuthContextValue = {
   adminSignIn: (email: string, password: string) => Promise<Role>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  /** Promote the signed-in user to a role (used after Google OAuth). */
+  claimRole: (role: Role) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -214,9 +216,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session) await loadProfile(session.user.id);
   }
 
+  // Google users are created with the default buyer role; when they signed in
+  // as a seller, promote the profile row (self-update RLS) and pin the role for
+  // this session so the seller console renders.
+  async function claimRole(role: Role) {
+    const { data } = await supabase.auth.getSession();
+    const uid = data.session?.user?.id;
+    if (!uid) return;
+    desiredRoleRef.current = role;
+    writeStoredRole(uid, role);
+    await supabase.from('profiles').update({ role }).eq('id', uid);
+    await loadProfile(uid);
+  }
+
   return (
     <AuthContext.Provider
-      value={{ session, profile, loading, signUpWithPassword, signInWithPassword, adminSignIn, signOut, refreshProfile }}
+      value={{ session, profile, loading, signUpWithPassword, signInWithPassword, adminSignIn, signOut, refreshProfile, claimRole }}
     >
       {children}
     </AuthContext.Provider>

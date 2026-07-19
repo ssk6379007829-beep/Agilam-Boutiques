@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
@@ -7,6 +7,14 @@ import { ProfileEditSheet } from '@/components/buyer/ProfileEditSheet';
 import { AccountSheet } from '@/components/buyer/AccountSheet';
 import { readOrders } from '@/lib/orderHistory';
 import { syncAccount } from '@/lib/accountSync';
+
+// Placeholder names AuthContext seeds a fresh account with — treat as "no name".
+const PLACEHOLDER_NAMES = ['New user', 'Customer'];
+
+/** "selva.kumar" / "selva_kumar" -> "Selva Kumar" for an email-derived name. */
+function prettifyName(local: string): string {
+  return local.replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+}
 
 export function Profile() {
   const navigate = useNavigate();
@@ -26,22 +34,27 @@ export function Profile() {
   const signedIn = !!session;
   const accountEmail = session?.user?.email ?? '';
 
-  // Push edits to the account, pull the saved profile + orders back, merge locally.
+  // Push edits to the account, pull the saved profile + orders back, merge
+  // locally. An empty `msg` runs it silently (used for the on-return refresh).
   const doSync = async (patch?: { name: string; phone: string; city: string; address: string }, msg = 'Synced across devices') => {
     setSyncing(true);
     try {
       const prof = await syncAccount(patch);
       if (prof) {
+        // Ignore the seeded placeholder so the header can fall back to the
+        // email-derived name instead of showing "New user".
+        const realName = prof.full_name && !PLACEHOLDER_NAMES.includes(prof.full_name) ? prof.full_name : '';
         setGuest({
-          name: prof.full_name || guest.name,
+          name: realName || guest.name,
           phone: prof.phone || guest.phone,
           city: prof.city || guest.city,
+          address: prof.address || guest.address,
         });
       }
       setOrderCount(readOrders().length);
-      showToast(msg);
+      if (msg) showToast(msg);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Sync failed');
+      if (msg) showToast(e instanceof Error ? e.message : 'Sync failed');
     } finally {
       setSyncing(false);
     }
@@ -49,14 +62,36 @@ export function Profile() {
 
   const onSignedIn = () => {
     setAccountOpen(false);
-    void doSync(undefined, 'Signed in');
+    showToast('Signed in');
   };
 
-  const name = hasBuyerDetails ? guest.name : 'Guest shopper';
-  const initial = hasBuyerDetails ? guest.name.trim().charAt(0).toUpperCase() : '';
-  const subline = hasBuyerDetails
-    ? [guest.phone && `+91 ${guest.phone}`, guest.city].filter(Boolean).join(' · ')
-    : 'Add your details for a smoother checkout';
+  // Whenever we land on the profile already signed in — a fresh login, a Google
+  // redirect, a page reload, or after logout cleared local data — pull the saved
+  // profile + orders back so previously-added data always shows. Runs once.
+  const syncedRef = useRef(false);
+  useEffect(() => {
+    if (signedIn && !syncedRef.current) {
+      syncedRef.current = true;
+      void doSync(undefined, '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn]);
+
+  // Once signed in, name the account after the Google/email identity.
+  const meta = session?.user?.user_metadata as { full_name?: string; name?: string } | undefined;
+  const emailName = accountEmail ? prettifyName(accountEmail.split('@')[0]) : '';
+  const accountName = guest.name || meta?.full_name || meta?.name || emailName || 'Shopper';
+
+  // A guest with no saved details and no account has nothing to show or edit yet.
+  const guestNoAccount = !signedIn && !hasBuyerDetails;
+  const name = signedIn ? accountName : hasBuyerDetails ? guest.name : 'Guest shopper';
+  const initial = guestNoAccount ? '' : name.trim().charAt(0).toUpperCase();
+  const contactLine = [guest.phone && `+91 ${guest.phone}`, guest.city].filter(Boolean).join(' · ');
+  const subline = signedIn
+    ? contactLine || accountEmail
+    : hasBuyerDetails
+      ? contactLine
+      : 'Add your details for a smoother checkout';
 
   const stats = [
     { label: 'Orders', value: orderCount, icon: 'receipt_long', go: () => navigate('/buyer/orders') },
@@ -96,11 +131,11 @@ export function Profile() {
               <div style={css('opacity:.88;font-size:13px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{subline}</div>
             </div>
             <button
-              onClick={() => setEditing(true)}
+              onClick={() => (guestNoAccount ? setAccountOpen(true) : setEditing(true))}
               style={css('flex:none;height:38px;padding:0 15px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;')}
             >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>{hasBuyerDetails ? 'edit' : 'add'}</span>
-              {hasBuyerDetails ? 'Edit' : 'Set up'}
+              <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>{guestNoAccount ? 'login' : 'edit'}</span>
+              {guestNoAccount ? 'Sign in' : 'Edit'}
             </button>
           </div>
         </div>

@@ -6,6 +6,8 @@ import { Loading } from '@/pages/Loading';
 import { SignIn } from '@/pages/auth/SignIn';
 import { SignUp } from '@/pages/auth/SignUp';
 import { Otp } from '@/pages/auth/Otp';
+import { AuthCallback } from '@/pages/auth/AuthCallback';
+import { SellerOnboarding } from '@/pages/seller/SellerOnboarding';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 
 import { BuyerLayout } from '@/components/layout/BuyerLayout';
@@ -61,6 +63,8 @@ export default function App() {
       <Route path="/auth/signin/:role" element={<SignIn />} />
       <Route path="/auth/signup/:role" element={<SignUp />} />
       <Route path="/auth/otp/:role" element={<Otp />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/seller/onboarding" element={<SellerOnboarding />} />
       <Route path="/admin/login" element={<AdminLogin />} />
 
       {/* Clean, shareable public boutique link — e.g. /b/elegance-boutique.

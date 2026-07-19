@@ -71,39 +71,6 @@ export function findOrder(id: string | undefined): PlacedOrder | undefined {
   return readOrders().find((o) => o.id === id || o.orderNumber === id);
 }
 
-/** Shape of an order row returned by /api/guest-sync (DB-backed, by phone). */
-export type DbOrder = {
-  order_number: string;
-  total: number | string;
-  status: OrderStatus;
-  created_at: string;
-  boutique_id: string;
-  boutique: { name: string; tone: number } | null;
-  items: { product_id: string | null; title: string; price: number | string; qty: number; size: string | null }[];
-};
-
-/** Map a server order (looked up by phone) onto the local PlacedOrder shape. */
-export function fromDbOrder(o: DbOrder): PlacedOrder {
-  const tone = o.boutique?.tone ?? 0;
-  return {
-    id: '#' + o.order_number,
-    orderNumber: o.order_number,
-    placedAt: o.created_at,
-    boutique: o.boutique?.name ?? 'Boutique',
-    boutiqueId: o.boutique_id,
-    status: o.status,
-    total: Number(o.total),
-    items: (o.items ?? []).map((it) => ({
-      pid: it.product_id ?? '',
-      title: it.title,
-      tone,
-      qty: it.qty,
-      size: it.size ?? '',
-      price: Number(it.price),
-    })),
-  };
-}
-
 /** A signed-in buyer's order as read back via RLS (see data/orders.ts). */
 export type BuyerDbOrder = {
   order_number: string;

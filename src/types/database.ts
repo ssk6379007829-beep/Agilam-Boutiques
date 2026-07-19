@@ -16,6 +16,7 @@ export interface Database {
           phone: string | null;
           email: string | null;
           city: string | null;
+          address: string | null;
           created_at: string;
         };
         Insert: Partial<Database['public']['Tables']['profiles']['Row']> & { id: string };

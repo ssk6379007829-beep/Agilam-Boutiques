@@ -3,6 +3,7 @@ import { COUPONS, type Coupon } from '@/data/demo';
 import { useCatalog } from '@/state/CatalogContext';
 import { EMPTY_GUEST, readGuest, writeGuest, hasContactDetails } from '@/lib/buyerDetails';
 import { addOrders, type PlacedOrder, type PlacedOrderItem } from '@/lib/orderHistory';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Cross-screen shop state, mirroring the `state` object of the design's
@@ -244,9 +245,16 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     }));
     if (items.length === 0) throw new Error('Your bag is empty');
 
+    // A signed-in buyer sends their token so the order is tied to their account
+    // (readable cross-device via RLS); guests omit it and stay phone-keyed.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
     const res = await fetch('/api/place-order', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ items, guest, payment }),
     });
     const data = (await res.json().catch(() => ({}))) as {

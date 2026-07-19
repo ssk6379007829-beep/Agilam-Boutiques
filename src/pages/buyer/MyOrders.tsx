@@ -1,15 +1,36 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useCatalog } from '@/state/CatalogContext';
 import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
-import { readOrders, formatOrderDate, STATUS_STAGE, type PlacedOrder } from '@/lib/orderHistory';
+import { readOrders, fromBuyerOrder, mergeServerOrders, formatOrderDate, STATUS_STAGE, type PlacedOrder, type BuyerDbOrder } from '@/lib/orderHistory';
+import { fetchOrdersForBuyer } from '@/data/orders';
+import { supabase } from '@/lib/supabase';
 
 export function MyOrders() {
   const navigate = useNavigate();
   const { productById } = useCatalog();
 
-  const orders = readOrders();
+  const [orders, setOrders] = useState<PlacedOrder[]>(() => readOrders());
+
+  // A signed-in buyer's real orders come back via RLS — merge them with local.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const uid = data.session?.user?.id;
+      if (!uid) return;
+      try {
+        const db = await fetchOrdersForBuyer(uid);
+        mergeServerOrders(db.map((o) => fromBuyerOrder(o as unknown as BuyerDbOrder)));
+        if (active) setOrders(readOrders());
+      } catch {
+        /* offline / RLS — keep the local list */
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   // Open a live chat with the order's boutique, tagged with the order as an
   // enquiry card. Mirrors the button on the order tracking screen.

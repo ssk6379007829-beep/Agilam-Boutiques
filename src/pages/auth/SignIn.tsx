@@ -6,6 +6,7 @@ import { homeFor } from '@/auth/RequireRole';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { useToast } from '@/components/ui/Toast';
+import { signInWithGoogle } from '@/lib/authMethods';
 
 export function SignIn() {
   const { role: roleParam } = useParams<{ role: string }>();
@@ -19,6 +20,16 @@ export function SignIn() {
 
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
   const roleIcon = role === 'seller' ? 'storefront' : 'shopping_bag';
+
+  // Google works for both roles: sellers land on their console (or boutique
+  // onboarding if they don't have one yet), buyers on their profile.
+  async function handleGoogle() {
+    try {
+      await signInWithGoogle(role === 'seller' ? 'seller' : 'buyer');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Google sign-in failed');
+    }
+  }
 
   async function handleSignIn() {
     const trimmedEmail = email.trim();
@@ -79,7 +90,9 @@ export function SignIn() {
         <div style={css('flex:1;height:1px;background:#F0D8E2;')} />or continue with<div style={css('flex:1;height:1px;background:#F0D8E2;')} />
       </div>
       <div style={css('display:flex;gap:12px;')}>
-        <button onClick={() => toast('Google sign-in coming soon')} style={css('flex:1;height:50px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;font-weight:700;cursor:pointer;color:#2A1A20;')}>Google</button>
+        <button onClick={handleGoogle} style={css('flex:1;height:50px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;font-weight:700;cursor:pointer;color:#2A1A20;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>g_translate</span>Google
+        </button>
         <button onClick={() => toast('Apple sign-in coming soon')} style={css('flex:1;height:50px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;font-weight:700;cursor:pointer;color:#2A1A20;')}>Apple</button>
       </div>
 

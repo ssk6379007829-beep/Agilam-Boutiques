@@ -28,13 +28,43 @@ export function friendlyAuthError(message: string): string {
   return message;
 }
 
-/** Kick off Google OAuth. Redirects the page to Google and back to the profile. */
-export async function signInWithGoogle(): Promise<void> {
+// OAuth loses the buyer/seller intent across the Google round-trip, so we stash
+// it here and read it back in the /auth/callback route.
+const OAUTH_ROLE_KEY = 'agx-oauth-role';
+
+/**
+ * Kick off Google OAuth for the given role. Redirects to Google and back to
+ * /auth/callback, which routes buyers to their profile and sellers to their
+ * console (or boutique onboarding if they don't have one yet).
+ */
+export async function signInWithGoogle(role: 'buyer' | 'seller' = 'buyer'): Promise<void> {
+  try {
+    localStorage.setItem(OAUTH_ROLE_KEY, role);
+  } catch {
+    /* storage unavailable — callback falls back to buyer */
+  }
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${window.location.origin}/buyer/profile` },
+    options: { redirectTo: `${window.location.origin}/auth/callback` },
   });
   if (error) throw new Error(friendlyAuthError(error.message));
+}
+
+/** The role an in-flight Google sign-in was started for (defaults to buyer). */
+export function readPendingOAuthRole(): 'buyer' | 'seller' {
+  try {
+    return localStorage.getItem(OAUTH_ROLE_KEY) === 'seller' ? 'seller' : 'buyer';
+  } catch {
+    return 'buyer';
+  }
+}
+
+export function clearPendingOAuthRole(): void {
+  try {
+    localStorage.removeItem(OAUTH_ROLE_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Email a 6-digit login code (creating the account if it's new). */
