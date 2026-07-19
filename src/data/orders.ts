@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import type { OrderWithDetails } from './types';
+import type { Paged } from './adminUsers';
 
-const SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, guest_name, guest_phone, guest_city, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, title, price, qty, size, color)`;
+const SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, guest_name, guest_phone, guest_city, guest_address, payment_id, refunded, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, title, price, qty, size, color)`;
 
 export async function fetchOrdersForBuyer(buyerId: string): Promise<OrderWithDetails[]> {
   const { data, error } = await supabase.from('orders').select(SELECT).eq('buyer_id', buyerId).order('created_at', { ascending: false });
@@ -30,6 +31,40 @@ export async function fetchOrder(id: string): Promise<OrderWithDetails | null> {
 export async function updateOrderStatus(id: string, status: 'pending' | 'shipped' | 'delivered' | 'rejected') {
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
   if (error) throw error;
+}
+
+/** Flag/unflag an order as refunded (independent of the fulfilment status). */
+export async function setOrderRefunded(id: string, refunded: boolean) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ refunded, refunded_at: refunded ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export interface OrdersQuery {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: 'all' | 'pending' | 'shipped' | 'delivered' | 'rejected' | 'refunded';
+}
+
+export async function fetchOrdersAdminPaged(q: OrdersQuery): Promise<Paged<OrderWithDetails>> {
+  let query = supabase.from('orders').select(SELECT, { count: 'exact' });
+
+  if (q.status === 'refunded') query = query.eq('refunded', true);
+  else if (q.status && q.status !== 'all') query = query.eq('status', q.status);
+  if (q.search?.trim()) {
+    const s = `%${q.search.trim()}%`;
+    query = query.or(`order_number.ilike.${s},guest_name.ilike.${s},guest_phone.ilike.${s}`);
+  }
+
+  const from = q.page * q.pageSize;
+  query = query.order('created_at', { ascending: false }).range(from, from + q.pageSize - 1);
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+  return { rows: (data ?? []) as unknown as OrderWithDetails[], total: count ?? 0 };
 }
 
 export async function createOrder(input: {

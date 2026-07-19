@@ -4,7 +4,7 @@ import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
-import { COLORS, OCCASIONS, SORTS, TONES, fmt } from '@/data/demo';
+import { COLORS, OCCASIONS, SIZES, SORTS, TONES, fmt, productSizes } from '@/data/demo';
 
 const FILTER_CATS = ['Sarees', 'Lehengas', 'Gowns', 'Kurtis', 'Bridal'];
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
@@ -19,7 +19,8 @@ export function Results() {
       p.price <= filters.maxPrice &&
       (filters.cats.length === 0 || filters.cats.includes(p.cat)) &&
       (filters.colors.length === 0 || filters.colors.includes(p.color)) &&
-      (filters.occasions.length === 0 || filters.occasions.includes(p.occasion)),
+      (filters.occasions.length === 0 || filters.occasions.includes(p.occasion)) &&
+      (filters.sizes.length === 0 || productSizes(p).some((s) => filters.sizes.includes(s))),
   );
   if (filters.sort === 'Price: Low to High') results = [...results].sort((a, b) => a.price - b.price);
   else if (filters.sort === 'Price: High to Low') results = [...results].sort((a, b) => b.price - a.price);
@@ -30,6 +31,7 @@ export function Results() {
   filters.cats.forEach((c) => activeChips.push({ key: 'cat:' + c, label: c, remove: () => toggleFilter('cats', c) }));
   filters.colors.forEach((c) => activeChips.push({ key: 'color:' + c, label: c, remove: () => toggleFilter('colors', c) }));
   filters.occasions.forEach((c) => activeChips.push({ key: 'occ:' + c, label: c, remove: () => toggleFilter('occasions', c) }));
+  filters.sizes.forEach((c) => activeChips.push({ key: 'size:' + c, label: 'Size ' + c, remove: () => toggleFilter('sizes', c) }));
 
   const pricePlus = filters.maxPrice >= 10000 ? '+' : '';
 
@@ -109,6 +111,18 @@ export function Results() {
                           <span style={css(`font-family:'Material Symbols Outlined';font-size:14px;color:#fff;opacity:${on ? 1 : 0};`)}>check</span>
                         </span>{c}
                       </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
+                <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Size</div>
+                <div style={css('display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;')}>
+                  {SIZES.map((s) => {
+                    const on = filters.sizes.includes(s);
+                    return (
+                      <button key={s} onClick={() => toggleFilter('sizes', s)} style={css(`min-width:44px;height:40px;padding:0 12px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : '#E4CDD8'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#4B3840'};font-size:13px;font-weight:${on ? 800 : 700};cursor:pointer;`)}>{s}</button>
                     );
                   })}
                 </div>
@@ -197,7 +211,7 @@ export function Results() {
             )}
           </button>
           <button
-            onClick={() => navigate('/buyer/filter')}
+            onClick={() => navigate('/buyer/sort')}
             style={css('pointer-events:auto;flex:1;max-width:200px;height:52px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 16px 34px -14px rgba(214,51,108,.75);')}
           >
             <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>swap_vert</span>

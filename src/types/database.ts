@@ -1,6 +1,8 @@
 export type Role = 'buyer' | 'seller' | 'admin';
 export type BoutiqueStatus = 'pending' | 'approved' | 'rejected';
 export type OrderStatus = 'pending' | 'shipped' | 'delivered' | 'rejected';
+export type ProductStatus = 'pending' | 'active' | 'hidden' | 'rejected';
+export type AccountStatus = 'active' | 'blocked';
 export type SubPlan = 'boutique' | 'featured';
 export type SubStatus = 'active' | 'due' | 'expired';
 export type AdStatus = 'live' | 'paused' | 'draft';
@@ -17,6 +19,9 @@ export interface Database {
           email: string | null;
           city: string | null;
           address: string | null;
+          status: AccountStatus;
+          deleted_at: string | null;
+          updated_at: string | null;
           created_at: string;
         };
         Insert: Partial<Database['public']['Tables']['profiles']['Row']> & { id: string };
@@ -59,6 +64,8 @@ export interface Database {
           featured: boolean;
           rating: number;
           reviews_count: number;
+          status: ProductStatus;
+          deleted_at: string | null;
           created_at: string;
         };
         Insert: Partial<Database['public']['Tables']['products']['Row']> & { boutique_id: string; title: string };
@@ -79,6 +86,8 @@ export interface Database {
           boutique_id: string;
           status: OrderStatus;
           total: number;
+          refunded: boolean;
+          refunded_at: string | null;
           created_at: string;
         };
         Insert: Partial<Database['public']['Tables']['orders']['Row']> & { order_number: string; buyer_id: string; boutique_id: string };
@@ -113,6 +122,21 @@ export interface Database {
         Row: { id: string; boutique_id: string; plan: SubPlan; status: SubStatus; price: number; renewal_date: string | null; created_at: string };
         Insert: Partial<Database['public']['Tables']['subscriptions']['Row']> & { boutique_id: string };
         Update: Partial<Database['public']['Tables']['subscriptions']['Row']>;
+        Relationships: [];
+      };
+      admin_activity_log: {
+        Row: {
+          id: string;
+          actor_id: string | null;
+          actor_name: string;
+          action: string;
+          entity_type: string;
+          entity_id: string | null;
+          meta: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['admin_activity_log']['Row']>;
+        Update: never;
         Relationships: [];
       };
       ads: {

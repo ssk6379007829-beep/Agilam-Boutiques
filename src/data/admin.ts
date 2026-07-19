@@ -86,6 +86,150 @@ export interface PaymentRow {
   orderStatus: OrderStatus;
 }
 
+// ── Dashboard ──────────────────────────────────────────────────────────────
+
+export interface WindowStat { revenue: number; orders: number }
+export interface TopBoutique { id: string; name: string; tone: number; revenue: number; orders: number }
+export interface TopProduct { title: string; qty: number; revenue: number }
+export interface LowStockRow { id: string; title: string; stock: number; boutique: string }
+export interface RecentOrder { id: string; order_number: string; name: string; boutique: string; total: number; status: OrderStatus; created_at: string }
+
+export interface DashboardData {
+  today: WindowStat;
+  yesterday: WindowStat;
+  week: WindowStat;
+  month: WindowStat;
+  year: WindowStat;
+  gmv: number;
+  platformRevenue: number;
+  counts: {
+    buyers: number;
+    sellers: number;
+    activeBoutiques: number;
+    pendingApprovals: number;
+    products: number;
+    lowStock: number;
+    pendingOrders: number;
+  };
+  revenueSeries: { label: string; value: number }[];
+  orderSeries: { label: string; value: number }[];
+  paymentSplit: { online: number; cod: number };
+  topBoutiques: TopBoutique[];
+  topProducts: TopProduct[];
+  lowStockList: LowStockRow[];
+  recentOrders: RecentOrder[];
+}
+
+type DashOrder = {
+  id: string; order_number: string; total: number; status: OrderStatus; created_at: string;
+  payment_id: string | null; boutique_id: string; refunded: boolean;
+  guest_name: string | null;
+  boutique: { name: string; tone: number } | null;
+  buyer: { full_name: string } | null;
+};
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const isEarned = (o: DashOrder) => o.status !== 'rejected' && !o.refunded;
+
+export async function fetchDashboard(): Promise<DashboardData> {
+  const [ordersRes, itemsRes, buyers, sellers, activeBoutiques, pendingApprovals, products, lowStockRes] = await Promise.all([
+    supabase
+      .from('orders')
+      .select('id, order_number, total, status, created_at, payment_id, boutique_id, refunded, guest_name, boutique:boutiques(name, tone), buyer:profiles!orders_buyer_id_fkey(full_name)')
+      .order('created_at', { ascending: false }),
+    supabase.from('order_items').select('title, price, qty'),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'buyer').is('deleted_at', null),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'seller').is('deleted_at', null),
+    supabase.from('boutiques').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+    supabase.from('boutiques').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'active').is('deleted_at', null),
+    supabase.from('products').select('id, title, stock, boutique:boutiques(name)').lte('stock', 5).is('deleted_at', null).order('stock', { ascending: true }).limit(12),
+  ]);
+
+  const orders = (ordersRes.data ?? []) as unknown as DashOrder[];
+  const now = new Date();
+  const todayStart = startOfDay(now);
+  const yStart = todayStart - 86400000;
+  const weekStart = todayStart - 6 * 86400000;
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const yearStart = new Date(now.getFullYear(), 0, 1).getTime();
+
+  const blank = (): WindowStat => ({ revenue: 0, orders: 0 });
+  const acc = { today: blank(), yesterday: blank(), week: blank(), month: blank(), year: blank() };
+  let gmv = 0;
+  let online = 0;
+  let cod = 0;
+  const byBoutique = new Map<string, TopBoutique>();
+
+  // 14-day series buckets
+  const days = 14;
+  const revSeries = new Array(days).fill(0);
+  const ordSeries = new Array(days).fill(0);
+
+  for (const o of orders) {
+    const t = new Date(o.created_at).getTime();
+    const earned = isEarned(o);
+    const amt = Number(o.total);
+    if (earned) {
+      gmv += amt;
+      if (o.payment_id) online += 1; else cod += 1;
+      if (t >= todayStart) { acc.today.revenue += amt; acc.today.orders += 1; }
+      if (t >= yStart && t < todayStart) { acc.yesterday.revenue += amt; acc.yesterday.orders += 1; }
+      if (t >= weekStart) { acc.week.revenue += amt; acc.week.orders += 1; }
+      if (t >= monthStart) { acc.month.revenue += amt; acc.month.orders += 1; }
+      if (t >= yearStart) { acc.year.revenue += amt; acc.year.orders += 1; }
+
+      const b = byBoutique.get(o.boutique_id) ?? { id: o.boutique_id, name: o.boutique?.name ?? 'Boutique', tone: o.boutique?.tone ?? 0, revenue: 0, orders: 0 };
+      b.revenue += amt; b.orders += 1;
+      byBoutique.set(o.boutique_id, b);
+
+      const dayIdx = Math.floor((t - (todayStart - (days - 1) * 86400000)) / 86400000);
+      if (dayIdx >= 0 && dayIdx < days) { revSeries[dayIdx] += amt; ordSeries[dayIdx] += 1; }
+    }
+  }
+
+  const items = (itemsRes.data ?? []) as { title: string; price: number; qty: number }[];
+  const prodMap = new Map<string, TopProduct>();
+  for (const it of items) {
+    const p = prodMap.get(it.title) ?? { title: it.title, qty: 0, revenue: 0 };
+    p.qty += Number(it.qty);
+    p.revenue += Number(it.price) * Number(it.qty);
+    prodMap.set(it.title, p);
+  }
+
+  const seriesLabel = (i: number) => {
+    const d = new Date(todayStart - (days - 1 - i) * 86400000);
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  };
+
+  const lowStock = (lowStockRes.data ?? []) as unknown as { id: string; title: string; stock: number; boutique: { name: string } | null }[];
+
+  return {
+    ...acc,
+    gmv,
+    platformRevenue: gmv * COMMISSION_RATE,
+    counts: {
+      buyers: buyers.count ?? 0,
+      sellers: sellers.count ?? 0,
+      activeBoutiques: activeBoutiques.count ?? 0,
+      pendingApprovals: pendingApprovals.count ?? 0,
+      products: products.count ?? 0,
+      lowStock: lowStock.length,
+      pendingOrders: orders.filter((o) => o.status === 'pending').length,
+    },
+    revenueSeries: revSeries.map((v, i) => ({ label: seriesLabel(i), value: v })),
+    orderSeries: ordSeries.map((v, i) => ({ label: seriesLabel(i), value: v })),
+    paymentSplit: { online, cod },
+    topBoutiques: [...byBoutique.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5),
+    topProducts: [...prodMap.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5),
+    lowStockList: lowStock.map((p) => ({ id: p.id, title: p.title, stock: p.stock, boutique: p.boutique?.name ?? '—' })),
+    recentOrders: orders.slice(0, 6).map((o) => ({
+      id: o.id, order_number: o.order_number, name: o.buyer?.full_name ?? o.guest_name ?? 'Guest',
+      boutique: o.boutique?.name ?? '—', total: Number(o.total), status: o.status, created_at: o.created_at,
+    })),
+  };
+}
+
 export async function fetchPayments(): Promise<PaymentRow[]> {
   const { data } = await supabase
     .from('orders')

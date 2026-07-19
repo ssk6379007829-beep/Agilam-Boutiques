@@ -17,6 +17,7 @@ export type Filters = {
   cats: string[];
   colors: string[];
   occasions: string[];
+  sizes: string[];
   sort: string;
 };
 
@@ -30,7 +31,7 @@ export type PaymentInfo = {
   razorpay_signature: string;
 };
 
-export const DEFAULT_FILTERS: Filters = { maxPrice: 10000, cats: [], colors: [], occasions: [], sort: 'Latest' };
+export const DEFAULT_FILTERS: Filters = { maxPrice: 10000, cats: [], colors: [], occasions: [], sizes: [], sort: 'Latest' };
 
 // Buyers browse anonymously — their details start empty and are captured (and
 // persisted) the first time they chat or check out. See `@/lib/buyerDetails`.
@@ -51,7 +52,7 @@ type ShopValue = {
 
   filters: Filters;
   setFilters: (next: Filters) => void;
-  toggleFilter: (group: 'cats' | 'colors' | 'occasions', value: string) => void;
+  toggleFilter: (group: 'cats' | 'colors' | 'occasions' | 'sizes', value: string) => void;
   setSort: (v: string) => void;
   setMaxPrice: (v: number) => void;
   resetFilters: () => void;
@@ -166,7 +167,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => setCart({}), []);
 
-  const toggleFilter = useCallback((group: 'cats' | 'colors' | 'occasions', value: string) => {
+  const toggleFilter = useCallback((group: 'cats' | 'colors' | 'occasions' | 'sizes', value: string) => {
     setFilters((f) => {
       const arr = f[group];
       return { ...f, [group]: arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value] };

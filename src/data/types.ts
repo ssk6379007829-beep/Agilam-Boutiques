@@ -51,6 +51,9 @@ export interface OrderWithDetails {
   guest_name: string | null;
   guest_phone: string | null;
   guest_city: string | null;
+  guest_address?: string | null;
+  payment_id?: string | null;
+  refunded?: boolean;
   buyer: { full_name: string; phone: string | null; city: string | null } | null;
   boutique: { name: string; tone: number } | null;
   items: { id: string; title: string; price: number; qty: number; size: string | null; color: string | null }[];

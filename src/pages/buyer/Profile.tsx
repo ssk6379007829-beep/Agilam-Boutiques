@@ -16,7 +16,7 @@ function prettifyName(local: string): string {
 export function Profile() {
   const navigate = useNavigate();
   const { openSellModal, showToast, guest, setGuest, clearGuest, hasBuyerDetails, wishlist, cartCount } = useShop();
-  const { session, signOut } = useAuth();
+  const { session, signOut, loading: authLoading } = useAuth();
   const [editing, setEditing] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -37,9 +37,15 @@ export function Profile() {
     setSyncing(true);
     try {
       // Pass the current local details so anything entered as a guest migrates
-      // up to the account rather than being lost on logout.
+      // up to the account rather than being lost on logout. Never let a synced
+      // value blank out something we already have locally.
       const prof = await syncAccount(guest, patch);
-      if (prof) setGuest({ name: prof.name, phone: prof.phone, city: prof.city, address: prof.address });
+      setGuest({
+        name: prof.name || guest.name,
+        phone: prof.phone || guest.phone,
+        city: prof.city || guest.city,
+        address: prof.address || guest.address,
+      });
       setOrderCount(readOrders().length);
       if (msg) showToast(msg);
     } catch (e) {
@@ -72,7 +78,8 @@ export function Profile() {
   const accountName = guest.name || meta?.full_name || meta?.name || emailName || 'Shopper';
 
   // A guest with no saved details and no account has nothing to show or edit yet.
-  const guestNoAccount = !signedIn && !hasBuyerDetails;
+  // Wait for auth to resolve so a refresh doesn't briefly offer "Sign in".
+  const guestNoAccount = !authLoading && !signedIn && !hasBuyerDetails;
   const name = signedIn ? accountName : hasBuyerDetails ? guest.name : 'Guest shopper';
   const initial = guestNoAccount ? '' : name.trim().charAt(0).toUpperCase();
   const contactLine = [guest.phone && `+91 ${guest.phone}`, guest.city].filter(Boolean).join(' · ');
@@ -144,8 +151,9 @@ export function Profile() {
           ))}
         </div>
 
-        {/* Account / cross-device sync */}
-        {signedIn ? (
+        {/* Account / cross-device sync — hidden until auth has resolved so a
+            refresh doesn't flash the signed-out prompt. */}
+        {authLoading ? null : signedIn ? (
           <div style={css('margin:16px 20px 0;display:flex;align-items:center;gap:13px;padding:14px 15px;background:linear-gradient(135deg,#EAF7F0,#F1FBF5);border:1px solid #CDEBDB;border-radius:18px;')}>
             <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:#D6F0E1;display:flex;align-items:center;justify-content:center;')}>
               <span style={css("font-family:'Material Symbols Outlined';color:#2FA36B;font-size:22px;")}>verified</span>

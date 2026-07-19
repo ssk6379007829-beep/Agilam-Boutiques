@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
-import { COLORS, OCCASIONS, PRODUCTS, SORTS, fmt } from '@/data/demo';
+import { COLORS, OCCASIONS, PRODUCTS, SIZES, SORTS, fmt, productSizes } from '@/data/demo';
 
 const FILTER_CATS = ['Sarees', 'Lehengas', 'Gowns', 'Kurtis', 'Bridal'];
 
@@ -15,7 +15,8 @@ export function FilterSheet() {
       p.price <= filters.maxPrice &&
       (filters.cats.length === 0 || filters.cats.includes(p.cat)) &&
       (filters.colors.length === 0 || filters.colors.includes(p.color)) &&
-      (filters.occasions.length === 0 || filters.occasions.includes(p.occasion)),
+      (filters.occasions.length === 0 || filters.occasions.includes(p.occasion)) &&
+      (filters.sizes.length === 0 || productSizes(p).some((s) => filters.sizes.includes(s))),
   );
 
   const close = () => navigate('/buyer/results');
@@ -43,6 +44,16 @@ export function FilterSheet() {
             const on = filters.cats.includes(c);
             return (
               <button key={c} onClick={() => toggleFilter('cats', c)} style={css(`border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#6B5560'};border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;cursor:pointer;`)}>{c}</button>
+            );
+          })}
+        </div>
+
+        <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Size</div>
+        <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
+          {SIZES.map((s) => {
+            const on = filters.sizes.includes(s);
+            return (
+              <button key={s} onClick={() => toggleFilter('sizes', s)} style={css(`min-width:46px;height:44px;padding:0 14px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#6B5560'};border-radius:12px;font-size:13px;font-weight:${on ? 800 : 700};cursor:pointer;`)}>{s}</button>
             );
           })}
         </div>

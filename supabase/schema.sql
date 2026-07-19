@@ -202,6 +202,18 @@ create policy "messages: participants send" on messages for insert
     )
   ) and sender_id = auth.uid());
 
+-- A seller may read the profile of any buyer they share a conversation with,
+-- so the Messages inbox shows the buyer's real name instead of "Customer".
+-- (Declared here because it references conversations/boutiques, defined above.)
+create policy "profiles: seller reads chat buyers" on profiles for select
+  using (
+    exists (
+      select 1 from conversations c
+      join boutiques b on b.id = c.boutique_id
+      where c.buyer_id = profiles.id and b.owner_id = auth.uid()
+    )
+  );
+
 -- ── Notifications ──────────────────────────────────────────────────────
 create table if not exists notifications (
   id uuid primary key default gen_random_uuid(),

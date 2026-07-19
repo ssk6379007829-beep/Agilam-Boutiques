@@ -12,7 +12,9 @@ export type ProductFilters = {
 const SELECT = '*, boutique:boutiques(name, city, tone)';
 
 export async function fetchProducts(filters: ProductFilters = {}): Promise<ProductWithBoutique[]> {
-  let query = supabase.from('products').select(SELECT);
+  // Only surface live products to buyers — admin moderation (hidden/rejected)
+  // and soft-deletes drop out of discovery. Existing rows default to 'active'.
+  let query = supabase.from('products').select(SELECT).eq('status', 'active').is('deleted_at', null);
 
   if (filters.maxPrice != null) query = query.lte('price', filters.maxPrice);
   if (filters.categories?.length) query = query.in('category', filters.categories);
@@ -30,7 +32,12 @@ export async function fetchProducts(filters: ProductFilters = {}): Promise<Produ
 }
 
 export async function fetchProduct(id: string): Promise<ProductWithBoutique | null> {
-  const { data, error } = await supabase.from('products').select(SELECT).eq('id', id).maybeSingle();
+  const { data, error } = await supabase
+    .from('products')
+    .select(SELECT)
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle();
   if (error) throw error;
   return data as unknown as ProductWithBoutique | null;
 }

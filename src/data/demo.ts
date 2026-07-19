@@ -93,6 +93,20 @@ export const COLORS = [
 
 export const OCCASIONS = ['Bridal', 'Wedding', 'Reception', 'Festive', 'Party', 'Casual'];
 export const SORTS = ['Latest', 'Price: Low to High', 'Price: High to Low', 'Popularity'];
+export const SIZES = ['S', 'M', 'L', 'XL'];
+
+/**
+ * Sizes a product is currently available in. Per-variant inventory isn't in the
+ * catalogue yet, so this is derived deterministically from the product id
+ * (stable across renders) — enough to make the size filter narrow results.
+ * Swap the body for a real `sizes` column when variant stock lands in the DB.
+ */
+export function productSizes(p: Pick<Product, 'id' | 'stock'>): string[] {
+  if (p.stock === 0) return [];
+  const seed = [...p.id].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  const sizes = SIZES.filter((_, i) => (seed + i) % 4 !== 0);
+  return sizes.length ? sizes : SIZES;
+}
 
 /** Home page customer reviews (v2 design "What shoppers say" section). */
 export type HomeReview = { name: string; city: string; rating: number; tone: number; text: string };

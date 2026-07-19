@@ -18,6 +18,7 @@ import { BoutiqueProfile } from '@/pages/buyer/BoutiqueProfile';
 import { ProductDetail } from '@/pages/buyer/ProductDetail';
 import { Wishlist } from '@/pages/buyer/Wishlist';
 import { FilterSheet } from '@/pages/buyer/FilterSheet';
+import { SortSheet } from '@/pages/buyer/SortSheet';
 import { Cart } from '@/pages/buyer/Cart';
 import { Checkout } from '@/pages/buyer/Checkout';
 import { Payment } from '@/pages/buyer/Payment';
@@ -50,7 +51,9 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Overview } from '@/pages/admin/Overview';
 import { Approvals } from '@/pages/admin/Approvals';
 import { BoutiquesTable } from '@/pages/admin/BoutiquesTable';
-import { CustomersAdmin } from '@/pages/admin/CustomersAdmin';
+import { Users } from '@/pages/admin/Users';
+import { ProductsAdmin } from '@/pages/admin/ProductsAdmin';
+import { OrdersAdmin } from '@/pages/admin/OrdersAdmin';
 import { Reports } from '@/pages/admin/Reports';
 import { Payments } from '@/pages/admin/Payments';
 import { Ads } from '@/pages/admin/Ads';
@@ -80,6 +83,8 @@ export default function App() {
         <Route path="results" element={<Results />} />
         {/* The sheet is a fixed overlay, so keep the results grid behind it. */}
         <Route path="filter" element={<><Results /><FilterSheet /></>} />
+        {/* Sort shares the results grid behind a lighter sort-only sheet. */}
+        <Route path="sort" element={<><Results /><SortSheet /></>} />
         <Route path="boutiques" element={<Boutiques />} />
         <Route path="boutique/:id" element={<BoutiqueProfile />} />
         <Route path="product/:id" element={<ProductDetail />} />
@@ -134,7 +139,9 @@ export default function App() {
         <Route path="overview" element={<Overview />} />
         <Route path="approvals" element={<Approvals />} />
         <Route path="boutiques" element={<BoutiquesTable />} />
-        <Route path="customers" element={<CustomersAdmin />} />
+        <Route path="users" element={<Users />} />
+        <Route path="products" element={<ProductsAdmin />} />
+        <Route path="orders" element={<OrdersAdmin />} />
         <Route path="reports" element={<Reports />} />
         <Route path="payments" element={<Payments />} />
         <Route path="ads" element={<Ads />} />
