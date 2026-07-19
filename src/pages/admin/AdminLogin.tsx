@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/Toast';
 const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:#2A1A20;';
 
 export function AdminLogin() {
-  const { adminSignIn } = useAuth();
+  const { adminSignIn, signOut } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const [email, setEmail] = useState('');
@@ -18,7 +18,14 @@ export function AdminLogin() {
   async function handleSignIn() {
     setBusy(true);
     try {
-      await adminSignIn(email, password);
+      const role = await adminSignIn(email, password);
+      // Only admins may enter the console. A non-admin account (seller/buyer)
+      // that authenticates here is signed back out rather than routed elsewhere.
+      if (role !== 'admin') {
+        await signOut();
+        toast('This account does not have admin access.');
+        return;
+      }
       navigate('/admin/overview', { replace: true });
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Sign in failed');

@@ -6,36 +6,65 @@ import { fromBuyerOrder, mergeServerOrders, type BuyerDbOrder } from '@/lib/orde
  * Cross-device sync for a signed-in buyer.
  *
  * A signed-in buyer has a real account, so everything works through existing
- * RLS from the browser — no service role needed: their profile lives in the
- * `profiles` table (self-update policy) and their orders read back via the
- * `buyer_id` policy. The uid is read from the live session so this is safe to
- * call right after sign-in, before the auth context state has caught up.
+ * RLS from the browser — no service role: their profile lives in `profiles`
+ * (self-update policy) and their orders read back via the `buyer_id` policy.
  */
 
-export type AccountProfile = { full_name: string; phone: string | null; city: string | null; address: string | null };
+export type LocalProfile = { name: string; phone: string; city: string; address: string };
 
-export async function syncAccount(patch?: { name?: string; phone?: string; city?: string; address?: string }): Promise<AccountProfile | null> {
+// Seeded placeholder names AuthContext gives a fresh account — treat as "unset".
+const PLACEHOLDER_NAMES = ['New user', 'Customer'];
+
+/**
+ * Merge the buyer's account profile with what's in the browser, and pull their
+ * orders back.
+ *
+ * - `local` — details currently in the browser (guest state).
+ * - `patch` — an explicit edit the buyer just saved; overrides everything.
+ *
+ * With no patch this MERGES so nothing is lost: the account (DB) wins where it
+ * has a value, otherwise the local value fills it in. So details typed as a
+ * guest migrate up to the account on first sign-in, and a later sign-in (even
+ * after logout wiped local storage) restores whatever the account holds. The
+ * merged result is persisted back to the account and returned for display.
+ */
+export async function syncAccount(local: LocalProfile, patch?: LocalProfile): Promise<LocalProfile | null> {
   const { data } = await supabase.auth.getSession();
   const uid = data.session?.user?.id;
   if (!uid) throw new Error('Not signed in');
 
-  // Push any edited fields to the buyer's profile row.
-  const update: Partial<{ full_name: string; phone: string | null; city: string | null; address: string | null }> = {};
-  if (patch?.name != null) update.full_name = patch.name;
-  if (patch?.phone != null) update.phone = patch.phone;
-  if (patch?.city != null) update.city = patch.city;
-  if (patch?.address != null) update.address = patch.address;
-  if (Object.keys(update).length) {
-    const { error } = await supabase.from('profiles').update(update).eq('id', uid);
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('full_name, phone, city, address')
+    .eq('id', uid)
+    .maybeSingle();
+
+  const dbName = prof?.full_name && !PLACEHOLDER_NAMES.includes(prof.full_name) ? prof.full_name : '';
+  const base: LocalProfile = { name: dbName, phone: prof?.phone ?? '', city: prof?.city ?? '', address: prof?.address ?? '' };
+
+  // Explicit edit overrides; otherwise fill the account's blanks from local.
+  const next: LocalProfile = patch
+    ? { name: patch.name, phone: patch.phone, city: patch.city, address: patch.address }
+    : {
+        name: base.name || local.name,
+        phone: base.phone || local.phone,
+        city: base.city || local.city,
+        address: base.address || local.address,
+      };
+
+  // Persist only when it actually changes what the account holds.
+  const changed = next.name !== base.name || next.phone !== base.phone || next.city !== base.city || next.address !== base.address;
+  if (changed) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: next.name, phone: next.phone || null, city: next.city || null, address: next.address || null })
+      .eq('id', uid);
     if (error) throw error;
   }
-
-  // Pull the saved profile back (source of truth across devices).
-  const { data: prof } = await supabase.from('profiles').select('full_name, phone, city, address').eq('id', uid).maybeSingle();
 
   // Merge the buyer's real orders into local history.
   const orders = await fetchOrdersForBuyer(uid);
   mergeServerOrders(orders.map((o) => fromBuyerOrder(o as unknown as BuyerDbOrder)));
 
-  return (prof as AccountProfile) ?? null;
+  return next;
 }

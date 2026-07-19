@@ -8,9 +8,6 @@ import { AccountSheet } from '@/components/buyer/AccountSheet';
 import { readOrders } from '@/lib/orderHistory';
 import { syncAccount } from '@/lib/accountSync';
 
-// Placeholder names AuthContext seeds a fresh account with — treat as "no name".
-const PLACEHOLDER_NAMES = ['New user', 'Customer'];
-
 /** "selva.kumar" / "selva_kumar" -> "Selva Kumar" for an email-derived name. */
 function prettifyName(local: string): string {
   return local.replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
@@ -39,18 +36,10 @@ export function Profile() {
   const doSync = async (patch?: { name: string; phone: string; city: string; address: string }, msg = 'Synced across devices') => {
     setSyncing(true);
     try {
-      const prof = await syncAccount(patch);
-      if (prof) {
-        // Ignore the seeded placeholder so the header can fall back to the
-        // email-derived name instead of showing "New user".
-        const realName = prof.full_name && !PLACEHOLDER_NAMES.includes(prof.full_name) ? prof.full_name : '';
-        setGuest({
-          name: realName || guest.name,
-          phone: prof.phone || guest.phone,
-          city: prof.city || guest.city,
-          address: prof.address || guest.address,
-        });
-      }
+      // Pass the current local details so anything entered as a guest migrates
+      // up to the account rather than being lost on logout.
+      const prof = await syncAccount(guest, patch);
+      if (prof) setGuest({ name: prof.name, phone: prof.phone, city: prof.city, address: prof.address });
       setOrderCount(readOrders().length);
       if (msg) showToast(msg);
     } catch (e) {
