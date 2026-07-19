@@ -41,8 +41,3 @@ export async function setBoutiqueStatus(id: string, status: 'approved' | 'reject
   const { error } = await supabase.from('boutiques').update({ status, verified: status === 'approved' }).eq('id', id);
   if (error) throw error;
 }
-
-export async function setBoutiqueFeatured(id: string, featured: boolean) {
-  const { error } = await supabase.from('boutiques').update({ featured }).eq('id', id);
-  if (error) throw error;
-}

@@ -1,6 +1,47 @@
 import { supabase } from '@/lib/supabase';
 import type { ConversationWithPeer, MessageRow } from './types';
 
+const BUYER_NAME_KEY = 'agx-buyer-name';
+
+/**
+ * Return the current signed-in user's id, or null. Used by read-only surfaces
+ * (the buyer inbox) so merely opening Messages never mints a throwaway account.
+ */
+export async function getBuyerId(): Promise<string | null> {
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id ?? null;
+}
+
+/**
+ * Give the anonymous buyer a durable identity so their side of the chat is a
+ * real, RLS-satisfying participant. Buyers never sign up (they browse the public
+ * surface), so the first time one actually opens a conversation we create an
+ * anonymous Supabase auth user + matching buyer profile. The session persists in
+ * localStorage, so a returning buyer keeps the same threads. Requires
+ * "Anonymous sign-ins" to be enabled in the Supabase project's Auth settings.
+ */
+export async function ensureBuyerIdentity(): Promise<string> {
+  let uid = await getBuyerId();
+  if (!uid) {
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) throw error;
+    uid = data.user?.id ?? null;
+    if (!uid) throw new Error('Could not start a chat session');
+  }
+  // Ensure a profile row exists so conversations.buyer_id / messages.sender_id
+  // resolve, and the seller sees a name instead of a bare id.
+  const { data: prof } = await supabase.from('profiles').select('id').eq('id', uid).maybeSingle();
+  if (!prof) {
+    const name = (localStorage.getItem(BUYER_NAME_KEY) || '').trim() || 'Customer';
+    // upsert/ignoreDuplicates: AuthContext's onAuthStateChange also creates the
+    // profile when the anonymous session lands, so tolerate the race.
+    await supabase
+      .from('profiles')
+      .upsert({ id: uid, role: 'buyer', full_name: name }, { onConflict: 'id', ignoreDuplicates: true });
+  }
+  return uid;
+}
+
 export async function fetchConversationsForBuyer(buyerId: string): Promise<ConversationWithPeer[]> {
   const { data, error } = await supabase
     .from('conversations')

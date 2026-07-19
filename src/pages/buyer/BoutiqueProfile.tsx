@@ -169,7 +169,7 @@ export function BoutiqueProfile() {
           {/* Tag pills */}
           <div style={css('display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;')}>
             <span style={css('background:#FCE0EC;color:#B02454;font-size:12px;font-weight:800;padding:6px 14px;border-radius:999px;')}>
-              {ab.featured ? 'Premium Boutique' : 'Boutique'}
+              Boutique
             </span>
             {ab.since && (
               <span style={css('background:#F3ECFA;color:#7A4FB0;font-size:12px;font-weight:800;padding:6px 14px;border-radius:999px;')}>
@@ -224,7 +224,7 @@ export function BoutiqueProfile() {
           {/* Quick actions */}
           <div style={css('display:flex;margin-top:18px;padding-top:18px;border-top:1px solid #F4E6EC;')}>
             {[
-              { icon: 'location_on', label: 'Live Location', onClick: () => showToast('Opening map → ' + [ab.area, ab.city].filter(Boolean).join(', ')) },
+              { icon: 'location_on', label: 'Shop Location', onClick: () => showToast('Opening map → ' + [ab.area, ab.city].filter(Boolean).join(', ')) },
               { icon: 'photo_camera', label: 'Instagram', onClick: () => showToast('Opening Instagram → @' + ab.insta) },
               { icon: 'share', label: 'Share', onClick: share },
             ].map((a) => (

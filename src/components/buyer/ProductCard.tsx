@@ -25,9 +25,6 @@ export function ProductCard({ product: p, onOpen, wished, onToggleWish, showRati
         ) : (
           <div className="absolute inset-0 flex items-center justify-center px-3 text-center text-xs font-semibold text-black/40">{p.title}</div>
         )}
-        {p.featured && (
-          <div className="absolute left-2 top-2 rounded-lg bg-gold px-2 py-0.5 text-[9.5px] font-extrabold tracking-wide text-white">FEATURED</div>
-        )}
         {onToggleWish && (
           <button
             onClick={onToggleWish}

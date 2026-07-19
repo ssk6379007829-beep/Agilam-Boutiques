@@ -122,13 +122,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const meta = (user.user_metadata ?? {}) as Partial<PendingSignup>;
     const role: Role = desiredRole ?? meta.role ?? 'buyer';
-    await supabase.from('profiles').insert({
-      id: user.id,
-      role,
-      full_name: meta.full_name ?? 'New user',
-      email: user.email,
-      city: meta.city ?? null,
-    });
+    const defaultName = user.is_anonymous ? 'Customer' : 'New user';
+    // ignoreDuplicates: an anonymous buyer's identity may be created concurrently
+    // by ensureBuyerIdentity() when they open a chat, so tolerate the race.
+    await supabase.from('profiles').upsert(
+      {
+        id: user.id,
+        role,
+        full_name: meta.full_name ?? defaultName,
+        email: user.email,
+        city: meta.city ?? null,
+      },
+      { onConflict: 'id', ignoreDuplicates: true },
+    );
 
     if (role === 'seller' && meta.boutiqueName) {
       await supabase.from('boutiques').insert({

@@ -10,7 +10,6 @@ export function ProfileHub() {
     { label: 'Earnings', icon: 'payments', border: '1px solid #F5E4EC', to: '/seller/earnings' },
     { label: 'Analytics', icon: 'insights', border: '1px solid #F5E4EC', to: '/seller/analytics' },
     { label: 'Boutique Profile', icon: 'store', border: '1px solid #F5E4EC', to: '/seller/boutique' },
-    { label: 'Subscription', icon: 'workspace_premium', border: '1px solid #F5E4EC', to: '/seller/subscription' },
     { label: 'Customers', icon: 'group', border: '1px solid #F5E4EC', to: '/seller/customers' },
     { label: 'Notifications', icon: 'notifications', border: '1px solid #F5E4EC', to: '/seller/notifications' },
     { label: 'Settings', icon: 'settings', border: '1px solid #F5E4EC', to: '/seller/settings' },

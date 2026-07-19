@@ -72,6 +72,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .agx-blend-root{ margin-top:-16px; }
 .agx-pdp { display:grid; grid-template-columns:1fr; }
 @media (min-width:900px){ .agx-pdp{ grid-template-columns:1.05fr .95fr; align-items:start; } .agx-pdp-media{ position:sticky; top:76px; } .agx-ord-grid{ grid-template-columns:1fr 1fr; } .agx-reviews{ grid-template-columns:340px 1fr; } }
+/* PDP action buttons: inline on desktop, sticky bottom bar on mobile (≤899px) */
+.agx-pdp-sticky { display:none; }
+@media (max-width:899px){
+  .agx-pdp-actions { display:none !important; }
+  .agx-pdp-root { padding-bottom:86px !important; }
+  .agx-pdp-sticky {
+    display:flex; gap:10px;
+    position:fixed; left:0; right:0; bottom:0; z-index:900;
+    padding:10px clamp(14px,4vw,20px) calc(10px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.94); backdrop-filter:blur(10px);
+    border-top:1px solid #F0E2E9; box-shadow:0 -10px 30px -18px rgba(107,20,54,.4);
+  }
+}
 /* results: fixed-height region — only the grid + filter options scroll */
 @media (min-width:960px){
   .agx-results-root{ height:calc(100vh - 71px); margin-top:-16px; margin-bottom:-96px; overflow:hidden; }

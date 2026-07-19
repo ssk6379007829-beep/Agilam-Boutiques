@@ -196,12 +196,6 @@ export function Home() {
             <div className="agx-zoom" style={css(`position:relative;aspect-ratio:16/10;background:${TONES[b.tone]};overflow:hidden;`)}>
               <ImageSlot src={b.image} placeholder={`${b.name} — cover`} style={css('position:absolute;inset:0;')} />
               <div style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,8,18,0) 40%,rgba(30,8,18,.55) 100%);pointer-events:none;')} />
-              {b.featured && (
-                <div style={css('position:absolute;left:12px;top:12px;display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,#D9B25A,#B0863B);color:#fff;padding:5px 11px;border-radius:999px;box-shadow:0 8px 20px -8px rgba(176,134,59,.8);')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>workspace_premium</span>
-                  <span className="agx-eyebrow" style={css('font-size:8.5px;letter-spacing:.14em;')}>Featured</span>
-                </div>
-              )}
               <div style={css('position:absolute;left:14px;bottom:12px;color:#fff;display:flex;align-items:center;gap:6px;')}>
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;text-shadow:0 2px 12px rgba(0,0,0,.4);")}>{b.name}</span>
                 {b.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:17px;color:#7FC0F2;")}>verified</span>}

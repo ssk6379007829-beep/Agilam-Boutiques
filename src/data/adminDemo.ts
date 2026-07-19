@@ -27,16 +27,6 @@ export const APPROVAL_TABS = [
   { label: 'Rejected · 1', bg: '#fff', fg: '#6B5560' },
 ];
 
-// --- partially verbatim: the first three rows survived, the fourth was cut
-// mid-token at `{name:'Quick Fashions', plan:'Boutique', renewal:'28 Jul', s`
-export const SUBSCRIPTIONS = [
-  { name: 'Elegance Boutique', plan: 'Featured', renewal: '1 Aug', status: 'Active', bg: '#E5F3EC', fg: '#218456' },
-  { name: 'Pinky’s Boutique', plan: 'Boutique', renewal: '12 Aug', status: 'Active', bg: '#E5F3EC', fg: '#218456' },
-  { name: 'Style Studio', plan: 'Boutique', renewal: '3 Aug', status: 'Due', bg: '#FBF0DA', fg: '#B8860B' },
-  // RECONSTRUCTED — status/colours inferred from statusStyle('Rejected').
-  { name: 'Quick Fashions', plan: 'Boutique', renewal: '28 Jul', status: 'Expired', bg: '#FBE3E3', fg: '#C0392B' },
-];
-
 // --- RECONSTRUCTED (below the truncation point) ---
 
 /** Mirrors ANALYTICS.categories, which the design reuses for category splits. */
@@ -66,6 +56,6 @@ export const PAYMENTS = [
 export const ADS = [
   { title: 'Wedding Season Edit', placement: 'Home hero · carousel slot 1', status: 'Live', bg: '#E5F3EC', fg: '#218456', impressions: '48.2k', clicks: '3.1k' },
   { title: 'Festive Silk Push', placement: 'Results · top banner', status: 'Live', bg: '#E5F3EC', fg: '#218456', impressions: '31.7k', clicks: '2.4k' },
-  { title: 'Boutique Spotlight', placement: 'Boutiques · featured row', status: 'Scheduled', bg: '#FBF0DA', fg: '#B8860B', impressions: '—', clicks: '—' },
+  { title: 'Boutique Spotlight', placement: 'Boutiques · top row', status: 'Scheduled', bg: '#FBF0DA', fg: '#B8860B', impressions: '—', clicks: '—' },
   { title: 'Monsoon Clearance', placement: 'Home · mid-page strip', status: 'Ended', bg: '#F1E4EB', fg: '#8A7078', impressions: '22.9k', clicks: '1.2k' },
 ];

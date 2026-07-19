@@ -51,7 +51,7 @@ function toBoutique(b: BoutiqueRow, productCount: number): Boutique {
     area: b.area || b.city,
     insta: b.instagram || instaHandle(b.name),
     phone: b.phone ?? '',
-    since: b.established_year ?? undefined,
+    since: b.established_year ?? (b.created_at ? new Date(b.created_at).getFullYear() : undefined),
     followers: b.followers_count ?? 0,
     positiveRating: b.positive_rating ?? 0,
     rating: Number(b.rating),

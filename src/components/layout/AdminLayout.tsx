@@ -7,8 +7,6 @@ const NAV = [
   { label: 'Overview', icon: 'dashboard', to: '/admin/overview', title: 'Overview', sub: 'Marketplace health at a glance' },
   { label: 'Approvals', icon: 'verified', to: '/admin/approvals', title: 'Boutique Approvals', sub: 'Review and verify new boutiques' },
   { label: 'Boutiques', icon: 'storefront', to: '/admin/boutiques', title: 'Boutiques', sub: 'All boutiques on the platform' },
-  { label: 'Subscriptions', icon: 'workspace_premium', to: '/admin/subscriptions', title: 'Subscriptions & Commission', sub: 'Plans, renewals and commission' },
-  { label: 'Featured', icon: 'star', to: '/admin/featured', title: 'Featured Listings', sub: 'Manage premium placements' },
   { label: 'Customers', icon: 'group', to: '/admin/customers', title: 'Customers', sub: 'All shoppers across Tamil Nadu' },
   { label: 'Reports', icon: 'analytics', to: '/admin/reports', title: 'Reports & Analytics', sub: 'Trends and analytics' },
   { label: 'Payments', icon: 'account_balance', to: '/admin/payments', title: 'Payments', sub: 'Transactions and payouts' },

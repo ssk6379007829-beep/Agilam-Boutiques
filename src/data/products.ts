@@ -35,12 +35,6 @@ export async function fetchProduct(id: string): Promise<ProductWithBoutique | nu
   return data as unknown as ProductWithBoutique | null;
 }
 
-export async function fetchFeaturedProducts(): Promise<ProductWithBoutique[]> {
-  const { data, error } = await supabase.from('products').select(SELECT).eq('featured', true).order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as unknown as ProductWithBoutique[];
-}
-
 export async function fetchProductsByBoutique(boutiqueId: string): Promise<ProductWithBoutique[]> {
   const { data, error } = await supabase.from('products').select(SELECT).eq('boutique_id', boutiqueId).order('created_at', { ascending: false });
   if (error) throw error;

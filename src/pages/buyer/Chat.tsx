@@ -1,15 +1,50 @@
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ChatView } from '@/components/chat/ChatView';
-import { BOUTIQUES, MESSAGES } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
+import { useShop } from '@/state/ShopContext';
+import { ensureBuyerIdentity, getOrCreateConversation } from '@/data/chat';
 
+/**
+ * Buyer conversation. The route param is the boutique id (chats are opened from
+ * a product or boutique page), so we mint/reuse the buyer's anonymous identity
+ * and the one conversation they have with that boutique, then run live.
+ */
 export function Chat() {
-  const { id } = useParams();
+  const { id: boutiqueId } = useParams();
+  const { boutiqueById } = useCatalog();
+  const { showToast } = useShop();
+  const [live, setLive] = useState<{ conversationId: string; senderId: string } | null>(null);
+  const [failed, setFailed] = useState(false);
 
-  // Chats are opened either from the inbox (thread id) or from a product /
-  // boutique page (boutique id), so resolve the name from both sources.
-  const thread = MESSAGES.find((m) => m.id === id);
-  const boutique = BOUTIQUES.find((b) => b.id === id);
-  const name = thread?.name ?? boutique?.name ?? 'Elegance Boutique';
+  useEffect(() => {
+    if (!boutiqueId) return;
+    let active = true;
+    setLive(null);
+    setFailed(false);
+    (async () => {
+      const buyerId = await ensureBuyerIdentity();
+      const conversationId = await getOrCreateConversation(buyerId, boutiqueId);
+      if (active) setLive({ conversationId, senderId: buyerId });
+    })().catch((e) => {
+      if (!active) return;
+      setFailed(true);
+      showToast(e instanceof Error ? e.message : 'Could not start chat');
+    });
+    return () => {
+      active = false;
+    };
+  }, [boutiqueId, showToast]);
 
-  return <ChatView name={name} backTo="/buyer/messages" />;
+  const name = boutiqueById(boutiqueId)?.name ?? 'Boutique';
+
+  return (
+    <ChatView
+      name={name}
+      backTo="/buyer/messages"
+      conversationId={live?.conversationId}
+      senderId={live?.senderId}
+      pending={!live && !failed}
+    />
+  );
 }
