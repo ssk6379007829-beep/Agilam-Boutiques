@@ -1,10 +1,11 @@
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { TONES } from '@/data/demo';
+import { readFollows, setFollow, FOLLOW_EVENT } from '@/lib/follows';
 
 /** Compact review counts the way the design shows them: 2100 → "2.1k". */
 function formatCount(n: number): string {
@@ -27,17 +28,35 @@ export function Boutiques() {
   const { boutiques: BOUTIQUES } = useCatalog();
 
   const [query, setQuery] = useState('');
-  const [following, setFollowing] = useState<Record<string, boolean>>({});
+  const [following, setFollowingMap] = useState<Record<string, boolean>>(() => readFollows());
 
-  // Filter state
+  // Browse mode + filter state
+  const [followingOnly, setFollowingOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<SortKey>('rating');
   const [city, setCity] = useState<string | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
+  // Keep the map in sync if follow state changes elsewhere (the profile page,
+  // another tab). Directory + profile share the same localStorage store.
+  useEffect(() => {
+    const sync = () => setFollowingMap(readFollows());
+    window.addEventListener(FOLLOW_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(FOLLOW_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+
   const cities = useMemo(
     () => Array.from(new Set(BOUTIQUES.map((b) => b.city))).sort(),
     [BOUTIQUES],
+  );
+
+  const followingCount = useMemo(
+    () => BOUTIQUES.filter((b) => following[b.id]).length,
+    [BOUTIQUES, following],
   );
 
   const activeFilters =
@@ -46,6 +65,7 @@ export function Boutiques() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = BOUTIQUES.filter((b) => {
+      if (followingOnly && !following[b.id]) return false;
       if (q && !b.name.toLowerCase().includes(q) && !b.city.toLowerCase().includes(q)) return false;
       if (city && b.city !== city) return false;
       if (verifiedOnly && !b.verified) return false;
@@ -66,15 +86,14 @@ export function Boutiques() {
       }
     });
     return list;
-  }, [BOUTIQUES, query, city, verifiedOnly, sort]);
+  }, [BOUTIQUES, query, city, verifiedOnly, sort, followingOnly, following]);
 
   function toggleFollow(e: MouseEvent, id: string, name: string) {
     e.stopPropagation();
-    setFollowing((prev) => {
-      const next = { ...prev, [id]: !prev[id] };
-      showToast(next[id] ? 'Following ' + name : 'Unfollowed ' + name);
-      return next;
-    });
+    const next = !following[id];
+    setFollow(id, next);
+    setFollowingMap((prev) => ({ ...prev, [id]: next }));
+    showToast(next ? 'Following ' + name : 'Unfollowed ' + name);
   }
 
   function clearFilters() {
@@ -118,6 +137,24 @@ export function Boutiques() {
               {activeFilters}
             </span>
           )}
+        </button>
+      </div>
+
+      {/* Browse mode — All vs. the boutiques this buyer follows */}
+      <div style={css('display:flex;gap:8px;background:#F3E6EC;border-radius:14px;padding:4px;margin-top:12px;')}>
+        <button
+          onClick={() => setFollowingOnly(false)}
+          style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;padding:9px 12px;border-radius:11px;font-size:13px;font-weight:700;font-family:inherit;background:${!followingOnly ? '#fff' : 'transparent'};color:${!followingOnly ? '#B02454' : '#8A7078'};box-shadow:${!followingOnly ? '0 6px 16px -10px rgba(107,20,54,.5)' : 'none'};`)}
+        >
+          All boutiques
+        </button>
+        <button
+          onClick={() => setFollowingOnly(true)}
+          style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;padding:9px 12px;border-radius:11px;font-size:13px;font-weight:700;font-family:inherit;background:${followingOnly ? '#fff' : 'transparent'};color:${followingOnly ? '#B02454' : '#8A7078'};box-shadow:${followingOnly ? '0 6px 16px -10px rgba(107,20,54,.5)' : 'none'};`)}
+        >
+          <span style={css(`font-family:'Material Symbols Outlined';font-size:17px;color:#D6336C;${followingOnly ? 'font-variation-settings:"FILL" 1;' : ''}`)}>favorite</span>
+          Following
+          <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;background:${followingOnly ? '#FCE0EC' : '#E7D3DC'};color:#B02454;`)}>{followingCount}</span>
         </button>
       </div>
 
@@ -189,7 +226,7 @@ export function Boutiques() {
       {/* Section label */}
       <div style={css('display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:20px 2px 6px;')}>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#2A1A20;")}>
-          {query || activeFilters ? 'Results' : 'All Boutiques'}
+          {followingOnly ? 'Following' : query || activeFilters ? 'Results' : 'All Boutiques'}
         </div>
         <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;letter-spacing:.04em;")}>
           {filtered.length} {filtered.length === 1 ? 'boutique' : 'boutiques'}
@@ -236,7 +273,21 @@ export function Boutiques() {
           </div>
         ))}
 
-        {filtered.length === 0 && (
+        {filtered.length === 0 && followingOnly && followingCount === 0 && (
+          <div style={css('padding:40px 20px;text-align:center;')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:rgba(214,51,108,.3);")}>favorite</span>
+            <div style={css('color:#2A1A20;font-size:15px;font-weight:700;margin-top:10px;')}>No boutiques followed yet</div>
+            <div style={css('color:#8A7078;font-size:13.5px;margin-top:4px;')}>Tap the ♥ on any boutique to follow it and find it here.</div>
+            <button
+              onClick={() => setFollowingOnly(false)}
+              style={css('margin-top:14px;border:none;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);cursor:pointer;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:700;color:#fff;font-family:inherit;')}
+            >
+              Browse all boutiques
+            </button>
+          </div>
+        )}
+
+        {filtered.length === 0 && !(followingOnly && followingCount === 0) && (
           <div style={css('padding:40px 20px;text-align:center;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:rgba(107,20,54,.2);")}>storefront</span>
             <div style={css('color:#8A7078;font-size:14px;margin-top:10px;')}>No boutiques match your filters.</div>

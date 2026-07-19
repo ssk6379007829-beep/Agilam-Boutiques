@@ -5,6 +5,7 @@ import { ImageSlot } from '@/components/ui/ImageSlot';
 import { ShareBoutiqueSheet } from '@/components/ShareBoutiqueSheet';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
+import { followBoutique, subscribeToBoutiqueFollowers } from '@/data/boutiques';
 import { TONES, fmt } from '@/data/demo';
 
 /**
@@ -53,33 +54,52 @@ export function BoutiqueProfile() {
   const [bqFilter, setBqFilter] = useState('All');
   const [shareOpen, setShareOpen] = useState(false);
   const [following, setFollowing] = useState(false);
+  const [liveFollowers, setLiveFollowers] = useState(0);
 
   // Resolved from either the in-app route (/buyer/boutique/:id) or the clean,
   // shareable public link (/b/:slug).
   const ab = BOUTIQUES.find((b) => (id ? b.id === id : b.slug === slug));
 
-  // Sync the persisted follow state once the boutique resolves (the slug route
-  // has no id until the catalogue loads).
+  // Sync the persisted follow state + baseline count once the boutique resolves
+  // (the slug route has no id until the catalogue loads).
   useEffect(() => {
-    if (ab) setFollowing(!!readFollows()[ab.id]);
+    if (!ab) return;
+    setFollowing(!!readFollows()[ab.id]);
+    setLiveFollowers(ab.followers);
+  }, [ab?.id, ab?.followers]);
+
+  // Live follower count — updates in real time as anyone follows/unfollows.
+  useEffect(() => {
+    if (!ab) return;
+    return subscribeToBoutiqueFollowers(ab.id, setLiveFollowers);
   }, [ab?.id]);
 
-  const toggleFollow = useCallback(() => {
+  const toggleFollow = useCallback(async () => {
     if (!ab) return;
-    setFollowing((prev) => {
-      const next = !prev;
-      const map = readFollows();
-      if (next) map[ab.id] = true;
-      else delete map[ab.id];
-      try {
-        localStorage.setItem(FOLLOW_KEY, JSON.stringify(map));
-      } catch {
-        /* storage may be unavailable (private mode) — the in-memory toggle still holds */
-      }
-      showToast(next ? `Following ${ab.name}` : `Unfollowed ${ab.name}`);
-      return next;
-    });
-  }, [ab, showToast]);
+    const next = !following;
+
+    // Optimistic: flip the label and nudge the count immediately.
+    setFollowing(next);
+    setLiveFollowers((c) => Math.max(0, c + (next ? 1 : -1)));
+    const map = readFollows();
+    if (next) map[ab.id] = true;
+    else delete map[ab.id];
+    try {
+      localStorage.setItem(FOLLOW_KEY, JSON.stringify(map));
+    } catch {
+      /* storage may be unavailable (private mode) — the in-memory toggle still holds */
+    }
+    showToast(next ? `Following ${ab.name}` : `Unfollowed ${ab.name}`);
+
+    // Persist to the shared count; adopt the authoritative total it returns.
+    try {
+      const count = await followBoutique(ab.id, next);
+      setLiveFollowers(count);
+    } catch {
+      // Roll back only the count on failure — the device-local follow stands.
+      setLiveFollowers((c) => Math.max(0, c + (next ? -1 : 1)));
+    }
+  }, [ab, following, showToast]);
 
   const bqCats = useMemo(
     () => (ab ? ['All', ...Array.from(new Set(PRODUCTS.filter((p) => p.boutique === ab.name).map((p) => p.cat)))] : ['All']),
@@ -111,7 +131,7 @@ export function BoutiqueProfile() {
     );
   }
 
-  const followerLabel = compact(ab.followers + (following ? 1 : 0));
+  const followerLabel = compact(liveFollowers);
   const shareLink = `${window.location.origin}/b/${ab.slug}`;
 
   return (
