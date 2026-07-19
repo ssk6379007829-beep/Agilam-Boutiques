@@ -54,10 +54,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .agx-shimmer { background:linear-gradient(100deg,#F1E5EC 30%,#F9F0F4 50%,#F1E5EC 70%); background-size:400px 100%; animation:agx-shimmer 1.3s linear infinite; }
 /* responsive nav: horizontal top nav on desktop, floating dock on mobile */
 .agx-topnav { display:none; }
-.agx-only-desktop { display:none; }
-.agx-only-mobile { display:flex; }
+.agx-only-desktop { display:none !important; }
+.agx-only-mobile { display:flex !important; }
 @media (min-width:960px){
-  .agx-only-desktop{ display:flex; }
+  .agx-only-desktop{ display:flex !important; }
   .agx-app-main{ padding-left:44px !important; padding-right:44px !important; padding-bottom:96px !important; }
   .agx-app-header{ padding-left:44px !important; padding-right:44px !important; }
   .agx-only-mobile{ display:none !important; }
