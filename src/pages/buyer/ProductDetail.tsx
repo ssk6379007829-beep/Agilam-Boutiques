@@ -262,11 +262,11 @@ export function ProductDetail() {
           </div>
 
           <div className="agx-pdp-actions" style={css('display:flex;gap:12px;margin-top:26px;flex-wrap:wrap;')}>
-            <button onClick={() => addToCart(ap.id)} style={css('flex:1;min-width:160px;height:56px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:21px;")}>shopping_bag</span>Add to Bag
-            </button>
             <button onClick={openChat} style={css('flex:1;min-width:160px;height:56px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
               <span style={css("font-family:'Material Symbols Outlined';font-size:21px;")}>chat</span>Chat
+            </button>
+            <button onClick={() => addToCart(ap.id)} style={css('flex:1;min-width:160px;height:56px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:21px;")}>shopping_bag</span>Add to Bag
             </button>
           </div>
 
@@ -393,11 +393,11 @@ export function ProductDetail() {
 
       {/* STICKY MOBILE ACTION BAR */}
       <div className="agx-pdp-sticky">
-        <button onClick={() => addToCart(ap.id)} style={css('flex:1;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 14px 30px -16px rgba(214,51,108,.85);')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>Add to Bag
-        </button>
-        <button onClick={openChat} style={css('flex:none;width:96px;height:52px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:14px;font-weight:800;font-size:14.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}>
+        <button onClick={openChat} style={css('flex:none;width:128px;height:52px;border:1.5px solid #ECC6D6;background:#fff;color:#B02454;border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>Chat
+        </button>
+        <button onClick={() => addToCart(ap.id)} style={css('flex:1;height:52px;border:none;border-radius:16px;background:linear-gradient(135deg,#E14A7E,#B02454 70%,#8E1C44);color:#fff;font-weight:800;font-size:15px;letter-spacing:.01em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 0 rgba(255,255,255,.28) inset,0 12px 26px -14px rgba(176,36,84,.9);')}>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>Add to Bag
         </button>
       </div>
 

@@ -75,17 +75,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* PDP action buttons: inline on desktop, sticky bottom bar on mobile (≤899px) */
 .agx-pdp-sticky { display:none; }
 @media (max-width:899px){
+  /* Product page: a full-width action bar is pinned to the bottom edge and the
+     floating nav dock is lifted to sit just above it, so both stay visible and
+     clearly separated instead of overlapping. */
+  body:has(.agx-pdp-root) .agx-dock { bottom:84px !important; }
   .agx-pdp-actions { display:none !important; }
-  .agx-pdp-root { padding-bottom:86px !important; }
+  .agx-pdp-root { padding-bottom:184px !important; }
   /* single-column: media has 0 right-padding for the desktop gutter, so add it
      back on mobile so the image is centred instead of flush to the right edge */
   .agx-pdp-media { padding-right: clamp(16px,4vw,44px) !important; }
   .agx-pdp-sticky {
-    display:flex; gap:10px;
-    position:fixed; left:0; right:0; bottom:0; z-index:900;
-    padding:10px clamp(14px,4vw,20px) calc(10px + env(safe-area-inset-bottom));
-    background:rgba(255,255,255,.94); backdrop-filter:blur(10px);
-    border-top:1px solid #F0E2E9; box-shadow:0 -10px 30px -18px rgba(107,20,54,.4);
+    display:flex; align-items:center; gap:12px;
+    position:fixed; left:0; right:0; bottom:0; z-index:60;
+    padding:11px clamp(14px,4vw,20px) calc(13px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.92);
+    backdrop-filter:blur(20px) saturate(1.2);
+    border-top:1px solid #F3DFE8;
+    box-shadow:0 -14px 36px -22px rgba(107,20,54,.42);
   }
 }
 /* results: fixed-height region — only the grid + filter options scroll */
