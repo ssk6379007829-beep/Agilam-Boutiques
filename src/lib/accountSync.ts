@@ -20,7 +20,7 @@ export async function syncAccount(patch?: { name?: string; phone?: string; city?
   if (!uid) throw new Error('Not signed in');
 
   // Push any edited fields to the buyer's profile row.
-  const update: Record<string, string> = {};
+  const update: Partial<{ full_name: string; phone: string | null; city: string | null }> = {};
   if (patch?.name != null) update.full_name = patch.name;
   if (patch?.phone != null) update.phone = patch.phone;
   if (patch?.city != null) update.city = patch.city;
