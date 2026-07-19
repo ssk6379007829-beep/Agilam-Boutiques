@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { fetchMessages, parseProductCard, sendMessage, subscribeToMessages } from '@/data/chat';
+import { fetchMessages, parseOrderCard, parseProductCard, sendMessage, subscribeToMessages } from '@/data/chat';
 import { TONES, fmt } from '@/data/demo';
 
 type Bubble = { id?: string; me: boolean; text: string; time: string };
@@ -27,6 +27,7 @@ export function ChatView({
   senderId,
   pending,
   onProductClick,
+  onOrderClick,
 }: {
   name: string;
   backTo: string;
@@ -34,6 +35,7 @@ export function ChatView({
   senderId?: string;
   pending?: boolean;
   onProductClick?: (productId: string) => void;
+  onOrderClick?: (orderId: string) => void;
 }) {
   const navigate = useNavigate();
   const { showToast } = useShop();
@@ -102,6 +104,35 @@ export function ChatView({
           <div style={css('align-self:center;background:#F4DDE8;color:#8A7078;font-size:11px;font-weight:700;padding:4px 12px;border-radius:10px;')}>Today</div>
         )}
         {thread.map((c, i) => {
+          const order = parseOrderCard(c.text);
+          if (order) {
+            return (
+              <div
+                key={c.id ?? i}
+                onClick={onOrderClick ? () => onOrderClick(order.orderId) : undefined}
+                style={css(`max-width:78%;width:250px;align-self:${c.me ? 'flex-end' : 'flex-start'};background:#fff;border:1px solid #F0E2E9;border-radius:16px;overflow:hidden;box-shadow:0 8px 20px -14px rgba(107,20,54,.55);cursor:${onOrderClick ? 'pointer' : 'default'};`)}
+              >
+                <div style={css('display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #F5E6EE;')}>
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#B02454;")}>receipt_long</span>
+                  <span className="agx-eyebrow" style={css('font-size:9px;letter-spacing:.14em;color:#B02454;')}>Enquiry about this order · {order.orderId}</span>
+                </div>
+                <div style={css('display:flex;gap:11px;padding:11px 12px;')}>
+                  <div style={css(`width:60px;height:76px;flex:none;border-radius:11px;overflow:hidden;background:${TONES[order.tone % TONES.length]};position:relative;`)}>
+                    <ImageSlot src={order.image} placeholder={order.title} style={css('position:absolute;inset:0;')} />
+                  </div>
+                  <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;')}>
+                    {order.status && <div className="agx-eyebrow" style={css('font-size:9px;color:#8A7078;')}>{order.status}</div>}
+                    <div style={css('font-size:13.5px;font-weight:700;color:#241019;line-height:1.25;margin-top:2px;')}>{order.title}</div>
+                    <div style={css('display:flex;align-items:baseline;gap:8px;margin-top:4px;')}>
+                      {order.amount != null && <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:16px;")}>{fmt(order.amount)}</span>}
+                      {order.qty != null && <span style={css('font-size:11px;color:#8A7078;font-weight:600;')}>Qty {order.qty}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div style={css('font-size:10px;color:#B79AA6;padding:0 12px 8px;text-align:right;')}>{c.time}</div>
+              </div>
+            );
+          }
           const card = parseProductCard(c.text);
           if (card) {
             return (

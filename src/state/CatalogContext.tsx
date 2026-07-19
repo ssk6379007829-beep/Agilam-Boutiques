@@ -23,6 +23,14 @@ function instaHandle(name: string): string {
     .replace(/(^\.|\.$)/g, '');
 }
 
+/** URL-safe handle used for shareable profile links: "Pinky's Boutique" -> "pinkys-boutique". */
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
 function toProduct(p: ProductWithBoutique): Product {
   return {
     id: p.id,
@@ -47,6 +55,7 @@ function toBoutique(b: BoutiqueRow, productCount: number): Boutique {
   return {
     id: b.id,
     name: b.name,
+    slug: b.slug || slugify(b.name),
     city: b.city,
     area: b.area || b.city,
     insta: b.instagram || instaHandle(b.name),
@@ -73,6 +82,7 @@ type CatalogValue = {
   reload: () => void;
   productById: (id: string | undefined) => Product | undefined;
   boutiqueById: (id: string | undefined) => Boutique | undefined;
+  boutiqueBySlug: (slug: string | undefined) => Boutique | undefined;
 };
 
 const CatalogContext = createContext<CatalogValue | null>(null);
@@ -97,6 +107,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     reload: () => { reloadP(); reloadB(); },
     productById: (id) => products.find((p) => p.id === id),
     boutiqueById: (id) => boutiques.find((b) => b.id === id),
+    boutiqueBySlug: (slug) => boutiques.find((b) => b.slug === slug),
   }), [products, boutiques, lp, lb, ep, eb, reloadP, reloadB]);
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;

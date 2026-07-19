@@ -21,6 +21,7 @@ export interface BoutiqueRow {
   id: string;
   owner_id: string;
   name: string;
+  slug: string | null;
   city: string;
   area: string;
   description: string;

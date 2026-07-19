@@ -156,6 +156,29 @@ export function parseProductCard(body: string): ProductCard | null {
   }
 }
 
+/**
+ * Order context shared into a conversation. When a buyer taps "Chat with
+ * boutique" from an order we post one of these, so the seller immediately sees
+ * which order the enquiry is about (rendered as an order card, same idea as the
+ * product card above).
+ */
+export type OrderCard = { orderId: string; title: string; image?: string; tone: number; qty?: number; amount?: number; status?: string };
+
+const ORDER_MARKER = '@@ORDER@@';
+
+export function encodeOrderCard(o: OrderCard): string {
+  return ORDER_MARKER + JSON.stringify(o);
+}
+
+export function parseOrderCard(body: string): OrderCard | null {
+  if (!body.startsWith(ORDER_MARKER)) return null;
+  try {
+    return JSON.parse(body.slice(ORDER_MARKER.length)) as OrderCard;
+  } catch {
+    return null;
+  }
+}
+
 export function subscribeToMessages(conversationId: string, onInsert: (msg: MessageRow) => void) {
   const channel = supabase
     .channel(`messages:${conversationId}`)

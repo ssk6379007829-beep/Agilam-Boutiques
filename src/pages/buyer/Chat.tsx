@@ -6,12 +6,15 @@ import { useCatalog } from '@/state/CatalogContext';
 import { useShop } from '@/state/ShopContext';
 import {
   ensureBuyerIdentity,
+  encodeOrderCard,
   encodeProductCard,
   fetchMessages,
   getOrCreateConversation,
+  parseOrderCard,
   parseProductCard,
   sendMessage,
   syncBuyerProfile,
+  type OrderCard,
   type ProductCard,
 } from '@/data/chat';
 
@@ -30,8 +33,11 @@ export function Chat() {
   const [gateOpen, setGateOpen] = useState(!hasBuyerDetails);
   const [live, setLive] = useState<{ conversationId: string; senderId: string } | null>(null);
   const [failed, setFailed] = useState(false);
-  const pendingProduct = (location.state as { product?: ProductCard } | null)?.product ?? null;
+  const navState = location.state as { product?: ProductCard; order?: OrderCard } | null;
+  const pendingProduct = navState?.product ?? null;
+  const pendingOrder = navState?.order ?? null;
   const sharedRef = useRef(false);
+  const sharedOrderRef = useRef(false);
 
   useEffect(() => {
     // Hold until the buyer has provided contact details.
@@ -74,6 +80,26 @@ export function Chat() {
     })();
   }, [live, pendingProduct]);
 
+  // Same idea for an order enquiry: if the buyer arrived from "Chat with
+  // boutique" on an order, post that order as a card so the seller knows which
+  // purchase the question is about.
+  useEffect(() => {
+    if (!live || !pendingOrder || sharedOrderRef.current) return;
+    sharedOrderRef.current = true;
+    const { conversationId, senderId } = live;
+    const order = pendingOrder;
+    (async () => {
+      try {
+        const msgs = await fetchMessages(conversationId);
+        const lastCard = [...msgs].reverse().map((m) => parseOrderCard(m.body)).find(Boolean);
+        if (lastCard?.orderId === order.orderId) return;
+        await sendMessage(conversationId, senderId, encodeOrderCard(order));
+      } catch {
+        /* non-fatal: the buyer can still chat */
+      }
+    })();
+  }, [live, pendingOrder]);
+
   const name = boutiqueById(boutiqueId)?.name ?? 'Boutique';
 
   return (
@@ -85,6 +111,7 @@ export function Chat() {
         senderId={live?.senderId}
         pending={!gateOpen && !live && !failed}
         onProductClick={(pid) => navigate(`/buyer/product/${pid}`)}
+        onOrderClick={(oid) => navigate(`/buyer/orders/${encodeURIComponent(oid)}/track`)}
       />
       {gateOpen && (
         <BuyerDetailsSheet

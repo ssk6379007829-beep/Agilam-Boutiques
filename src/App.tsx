@@ -65,6 +65,11 @@ export default function App() {
       <Route path="/auth/otp/:role" element={<Otp />} />
       <Route path="/admin/login" element={<AdminLogin />} />
 
+      {/* Clean, shareable public boutique link — e.g. /b/elegance-boutique.
+          Renders the same profile the buyer app uses, so a link dropped in an
+          Instagram bio or WhatsApp status deep-links straight to the boutique. */}
+      <Route path="/b/:slug" element={<BoutiqueProfile />} />
+
       {/* Buyers browse without signing in — the design treats the buyer app as
           the public surface and only gates the seller/admin consoles. */}
       <Route path="/buyer" element={<BuyerLayout />}>

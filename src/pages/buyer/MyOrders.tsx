@@ -1,10 +1,39 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { useShop } from '@/state/ShopContext';
+import { useCatalog } from '@/state/CatalogContext';
 import { BUYER_ORDERS, PRODUCTS, TONES, TRACK_STAGES, fmt } from '@/data/demo';
+
+type BuyerOrder = (typeof BUYER_ORDERS)[number];
 
 export function MyOrders() {
   const navigate = useNavigate();
+  const { showToast } = useShop();
+  const { boutiques } = useCatalog();
+
+  // Open a live chat with the order's boutique, tagged with the order as an
+  // enquiry card. Mirrors the button on the order tracking screen.
+  const chatWithBoutique = (o: BuyerOrder) => {
+    const boutique = boutiques.find((b) => b.name === o.boutique);
+    if (!boutique) {
+      showToast('Chat is not available for this boutique yet');
+      return;
+    }
+    navigate(`/buyer/chat/${boutique.id}`, {
+      state: {
+        order: {
+          orderId: o.id,
+          title: o.title,
+          image: PRODUCTS.find((x) => x.id === o.pid)?.image,
+          tone: o.tone,
+          qty: o.qty,
+          amount: o.amount,
+          status: TRACK_STAGES[o.stage].label,
+        },
+      },
+    });
+  };
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
@@ -44,6 +73,20 @@ export function MyOrders() {
                       </span>
                     </div>
                   </div>
+                </div>
+                <div style={css('display:flex;gap:10px;margin-top:13px;padding-top:13px;border-top:1px solid #F4E6EC;')}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); chatWithBoutique(o); }}
+                    style={css('flex:1;height:42px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}
+                  >
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>chat</span>Chat with boutique
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigate(`/buyer/orders/${encodeURIComponent(o.id)}/track`); }}
+                    style={css('flex:1;height:42px;border:none;background:#FCE0EC;color:#B02454;border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}
+                  >
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>local_shipping</span>Track order
+                  </button>
                 </div>
               </div>
             );

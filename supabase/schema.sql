@@ -33,6 +33,7 @@ create table if not exists boutiques (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references profiles(id) on delete cascade,
   name text not null,
+  slug text unique,
   city text not null default '',
   area text not null default '',
   description text not null default '',

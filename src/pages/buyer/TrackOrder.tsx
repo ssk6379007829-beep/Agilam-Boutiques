@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
+import { useCatalog } from '@/state/CatalogContext';
 import { BUYER_ORDERS, PRODUCTS, TONES, TRACK_STAGES } from '@/data/demo';
 
 const STEP_TIMES = ['15 Jul, 10:24 AM', '15 Jul, 11:40 AM', '16 Jul, 9:10 AM', '16 Jul, 6:30 PM', 'Today, 8:05 AM', '—'];
@@ -10,8 +11,32 @@ export function TrackOrder() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { showToast } = useShop();
+  const { boutiques } = useCatalog();
 
   const order = BUYER_ORDERS.find((o) => o.id === id) ?? BUYER_ORDERS[0];
+
+  // Open a live chat with this order's boutique, carrying the order as an
+  // enquiry card so the seller sees which purchase the message is about.
+  const chatWithBoutique = () => {
+    const boutique = boutiques.find((b) => b.name === order.boutique);
+    if (!boutique) {
+      showToast('Chat is not available for this boutique yet');
+      return;
+    }
+    navigate(`/buyer/chat/${boutique.id}`, {
+      state: {
+        order: {
+          orderId: order.id,
+          title: order.title,
+          image: PRODUCTS.find((x) => x.id === order.pid)?.image,
+          tone: order.tone,
+          qty: order.qty,
+          amount: order.amount,
+          status: TRACK_STAGES[order.stage].label,
+        },
+      },
+    });
+  };
 
   const steps = TRACK_STAGES.map((st, i) => ({
     ...st,
@@ -70,7 +95,7 @@ export function TrackOrder() {
         </div>
 
         <div style={css('display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;')}>
-          <button onClick={() => showToast('Opening WhatsApp…')} style={css('flex:1;min-width:150px;height:52px;border:1.5px solid #F0D8E2;background:#fff;color:#4B3840;border-radius:15px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
+          <button onClick={chatWithBoutique} style={css('flex:1;min-width:150px;height:52px;border:1.5px solid #F0D8E2;background:#fff;color:#4B3840;border-radius:15px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#25B04A;")}>chat</span>Chat with boutique
           </button>
           <button onClick={() => showToast('Help & Support')} style={css('flex:1;min-width:150px;height:52px;border:1.5px solid #F0D8E2;background:#fff;color:#4B3840;border-radius:15px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>

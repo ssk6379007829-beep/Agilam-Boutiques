@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { ShareBoutiqueSheet } from '@/components/ShareBoutiqueSheet';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt } from '@/data/demo';
@@ -46,13 +47,22 @@ function compact(n: number): string {
 
 export function BoutiqueProfile() {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id, slug } = useParams();
   const { showToast } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   const [bqFilter, setBqFilter] = useState('All');
-  const [following, setFollowing] = useState<boolean>(() => (id ? !!readFollows()[id] : false));
+  const [shareOpen, setShareOpen] = useState(false);
+  const [following, setFollowing] = useState(false);
 
-  const ab = BOUTIQUES.find((b) => b.id === id);
+  // Resolved from either the in-app route (/buyer/boutique/:id) or the clean,
+  // shareable public link (/b/:slug).
+  const ab = BOUTIQUES.find((b) => (id ? b.id === id : b.slug === slug));
+
+  // Sync the persisted follow state once the boutique resolves (the slug route
+  // has no id until the catalogue loads).
+  useEffect(() => {
+    if (ab) setFollowing(!!readFollows()[ab.id]);
+  }, [ab?.id]);
 
   const toggleFollow = useCallback(() => {
     if (!ab) return;
@@ -69,19 +79,6 @@ export function BoutiqueProfile() {
       showToast(next ? `Following ${ab.name}` : `Unfollowed ${ab.name}`);
       return next;
     });
-  }, [ab, showToast]);
-
-  const share = useCallback(() => {
-    if (!ab) return;
-    const url = window.location.href;
-    if (navigator.share) {
-      navigator.share({ title: ab.name, text: ab.desc, url }).catch(() => {});
-      return;
-    }
-    navigator.clipboard?.writeText(url).then(
-      () => showToast('Boutique link copied'),
-      () => showToast('Share: ' + url),
-    );
   }, [ab, showToast]);
 
   const bqCats = useMemo(
@@ -115,6 +112,7 @@ export function BoutiqueProfile() {
   }
 
   const followerLabel = compact(ab.followers + (following ? 1 : 0));
+  const shareLink = `${window.location.origin}/b/${ab.slug}`;
 
   return (
     <div style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:#FBF6F2;padding-bottom:40px;')}>
@@ -226,7 +224,7 @@ export function BoutiqueProfile() {
             {[
               { icon: 'location_on', label: 'Shop Location', onClick: () => showToast('Opening map → ' + [ab.area, ab.city].filter(Boolean).join(', ')) },
               { icon: 'photo_camera', label: 'Instagram', onClick: () => showToast('Opening Instagram → @' + ab.insta) },
-              { icon: 'share', label: 'Share', onClick: share },
+              { icon: 'share', label: 'Share', onClick: () => setShareOpen(true) },
             ].map((a) => (
               <button
                 key={a.label}
@@ -315,6 +313,8 @@ export function BoutiqueProfile() {
           </div>
         )}
       </div>
+
+      {shareOpen && <ShareBoutiqueSheet boutique={ab} link={shareLink} onClose={() => setShareOpen(false)} />}
     </div>
   );
 }
