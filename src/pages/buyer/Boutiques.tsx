@@ -39,21 +39,13 @@ export function Boutiques() {
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
-      {/* Screen header — title + share, mirroring the app design */}
-      <div style={css('display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 0 4px;')}>
-        <div>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>The directory</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3.2vw,40px);line-height:1.1;margin-top:6px;letter-spacing:-.01em;")}>Boutiques</div>
-        </div>
-        <button
-          onClick={() => showToast('Share link copied')}
-          style={css('width:44px;height:44px;flex:none;border-radius:14px;border:1px solid #EFDCE4;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
-        >
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:21px;")}>ios_share</span>
-        </button>
+      {/* Screen header */}
+      <div style={css('padding:2px 0 4px;')}>
+        <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>The directory</div>
+        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3.2vw,40px);line-height:1.1;margin-top:6px;letter-spacing:-.01em;")}>Boutiques</div>
       </div>
 
-      {/* Search bar with the Agilam logo badge on the right, per the design */}
+      {/* Search bar with a filter action on the right, per the design */}
       <div style={css('display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #EFDCE4;border-radius:16px;padding:0 8px 0 14px;height:52px;box-shadow:0 10px 26px -18px rgba(107,20,54,.5);margin-top:16px;')}>
         <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:21px;")}>search</span>
         <input
@@ -70,9 +62,12 @@ export function Boutiques() {
             <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:20px;")}>close</span>
           </button>
         ) : (
-          <span style={css('width:38px;height:38px;flex:none;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #F2E4EA;')}>
-            <img src="/agilam-logo.jpg" alt="Agilam" style={css('width:100%;height:100%;object-fit:cover;')} />
-          </span>
+          <button
+            onClick={() => showToast('Filters coming soon')}
+            style={css('width:38px;height:38px;flex:none;border-radius:12px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);box-shadow:0 8px 18px -8px rgba(176,36,84,.7);')}
+          >
+            <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:20px;")}>tune</span>
+          </button>
         )}
       </div>
 

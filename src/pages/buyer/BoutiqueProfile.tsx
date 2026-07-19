@@ -47,7 +47,7 @@ function compact(n: number): string {
 export function BoutiqueProfile() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { showToast, cartCount } = useShop();
+  const { showToast } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   const [bqFilter, setBqFilter] = useState('All');
   const [following, setFollowing] = useState<boolean>(() => (id ? !!readFollows()[id] : false));
@@ -130,37 +130,15 @@ export function BoutiqueProfile() {
         >
           <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
         </button>
-
-        <div style={css('position:absolute;right:clamp(14px,3vw,28px);top:16px;display:flex;gap:10px;')}>
-          <button
-            onClick={() => navigate('/buyer/wishlist')}
-            aria-label="View wishlist"
-            style={css('width:42px;height:42px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.5);')}
-          >
-            <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>favorite</span>
-          </button>
-          <button
-            onClick={() => navigate('/buyer/cart')}
-            aria-label="View cart"
-            style={css('position:relative;width:42px;height:42px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.5);')}
-          >
-            <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>shopping_bag</span>
-            {cartCount > 0 && (
-              <span style={css('position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px -3px rgba(214,51,108,.9);')}>
-                {cartCount}
-              </span>
-            )}
-          </button>
-        </div>
       </div>
 
-      {/* ---------- Identity card ---------- */}
-      <div style={css('max-width:900px;margin:0 auto;padding:0 clamp(14px,4vw,28px);')}>
-        <div
-          className="agx-reveal"
-          style={css('position:relative;margin-top:-30px;background:#fff;border:1px solid #F2E4EA;border-radius:26px;padding:56px clamp(18px,4vw,34px) 26px;box-shadow:0 26px 60px -40px rgba(107,20,54,.55);')}
-        >
-          {/* Monogram avatar overlapping the card's top edge */}
+      {/* ---------- Identity (flush white panel, no card) ---------- */}
+      <div
+        className="agx-reveal"
+        style={css('position:relative;margin-top:-26px;background:#fff;border-radius:30px 30px 0 0;padding:56px clamp(18px,4vw,28px) 30px;')}
+      >
+        <div style={css('max-width:560px;margin:0 auto;')}>
+          {/* Monogram avatar overlapping the panel's top edge */}
           <div
             style={css('position:absolute;top:-42px;left:50%;transform:translateX(-50%);width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#D6336C,#8E1E43);border:4px solid #fff;box-shadow:0 16px 34px -16px rgba(214,51,108,.9);display:flex;align-items:center;justify-content:center;')}
           >
@@ -248,7 +226,6 @@ export function BoutiqueProfile() {
             {[
               { icon: 'location_on', label: 'Live Location', onClick: () => showToast('Opening map → ' + [ab.area, ab.city].filter(Boolean).join(', ')) },
               { icon: 'photo_camera', label: 'Instagram', onClick: () => showToast('Opening Instagram → @' + ab.insta) },
-              { icon: 'call', label: 'Call', onClick: () => { if (ab.phone) window.location.href = `tel:${ab.phone.replace(/\s+/g, '')}`; else showToast('No phone number listed'); } },
               { icon: 'share', label: 'Share', onClick: share },
             ].map((a) => (
               <button
@@ -263,8 +240,10 @@ export function BoutiqueProfile() {
             ))}
           </div>
         </div>
+      </div>
 
-        {/* ---------- Collections ---------- */}
+      {/* ---------- Collections ---------- */}
+      <div style={css('max-width:900px;margin:0 auto;padding:0 clamp(14px,4vw,28px);')}>
         <div style={css('display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:32px;')}>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;")}>
             Collections
