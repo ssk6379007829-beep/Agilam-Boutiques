@@ -16,31 +16,27 @@ export function buildWhatsAppLink(phone: string, message: string): string {
 
 export type BillItem = { title: string; qty: number; price: number };
 
-export function formatBillMessage(opts: {
+/** Short greeting/promo caption sent alongside the bill image/PDF (the
+ *  itemized breakdown lives on the image itself now — see BillReceipt — so
+ *  this text stays a personal thank-you + a nudge back to the boutique's
+ *  shareable Agilam page, not a re-statement of the bill). */
+export function buildBillShareCaption(opts: {
   boutiqueName: string;
-  boutiquePhone?: string | null;
+  boutiqueSlug?: string | null;
+  buyerName?: string;
   billNumber: string;
-  date: string;
-  buyerName: string;
-  items: BillItem[];
-  discount?: number;
   total: number;
 }): string {
-  const { boutiqueName, boutiquePhone, billNumber, date, buyerName, items, discount, total } = opts;
+  const { boutiqueName, boutiqueSlug, buyerName, billNumber, total } = opts;
   const lines: string[] = [];
-  lines.push(`*${boutiqueName}*`);
-  lines.push(`Bill ${billNumber} · ${date}`);
+  lines.push(`Hi ${buyerName?.trim() || 'there'}, thank you for shopping with ${boutiqueName}!`);
+  lines.push(`Here's your bill ${billNumber} — total ₹${total.toLocaleString('en-IN')}.`);
   lines.push('');
-  lines.push(`Hi ${buyerName || 'there'}, here's your bill:`);
-  lines.push('');
-  items.forEach((it, i) => {
-    lines.push(`${i + 1}. ${it.title} x${it.qty} — ₹${(it.price * it.qty).toLocaleString('en-IN')}`);
-  });
-  lines.push('');
-  if (discount) lines.push(`Discount: -₹${discount.toLocaleString('en-IN')}`);
-  lines.push(`*Total: ₹${total.toLocaleString('en-IN')}*`);
-  lines.push('');
-  lines.push(`Thank you for shopping with ${boutiqueName}!`);
-  if (boutiquePhone) lines.push(`Reach us: ${boutiquePhone}`);
+  lines.push(`Loved what you got? Visit ${boutiqueName} again and explore more boutiques on Agilam:`);
+  if (boutiqueSlug) {
+    lines.push(`${window.location.origin}/b/${boutiqueSlug}`);
+  } else {
+    lines.push(window.location.origin);
+  }
   return lines.join('\n');
 }

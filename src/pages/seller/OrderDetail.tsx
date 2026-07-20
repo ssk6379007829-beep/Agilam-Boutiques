@@ -7,7 +7,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { fetchOrder, updateOrderStatus } from '@/data/orders';
 import { toOrderView } from '@/lib/orderView';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
-import { buildWhatsAppLink } from '@/lib/whatsapp';
+import { buildWhatsAppLink, buildBillShareCaption } from '@/lib/whatsapp';
 import { shareOrDownloadBillImage } from '@/lib/billImage';
 import { BillReceipt } from '@/components/seller/BillReceipt';
 
@@ -51,14 +51,17 @@ export function OrderDetail() {
     if (!receiptRef.current) return;
     setSharing(true);
     try {
-      const result = await shareOrDownloadBillImage(
-        receiptRef.current,
-        `Bill-${o.number.replace('#', '')}.png`,
-        `Bill ${o.number} from ${boutique?.name ?? 'Agilam Boutique'} — total ${fmt(o.amount)}`,
-      );
+      const caption = buildBillShareCaption({
+        boutiqueName: boutique?.name ?? 'Agilam Boutique',
+        boutiqueSlug: boutique?.slug,
+        buyerName: o.customer,
+        billNumber: o.number,
+        total: o.amount,
+      });
+      const result = await shareOrDownloadBillImage(receiptRef.current, `Bill-${o.number.replace('#', '')}.png`, caption);
       if (result === 'downloaded') {
         showToast('Bill image saved — attach it in the WhatsApp chat that just opened');
-        window.open(buildWhatsAppLink(o.phone, ''), '_blank', 'noopener,noreferrer');
+        window.open(buildWhatsAppLink(o.phone, caption), '_blank', 'noopener,noreferrer');
       } else if (result === 'shared') {
         showToast('Bill shared');
       }
