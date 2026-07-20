@@ -40,6 +40,7 @@ import { Customers } from '@/pages/seller/Customers';
 import { Notifications } from '@/pages/seller/Notifications';
 import { Messages as SellerMessages } from '@/pages/seller/Messages';
 import { Chat as SellerChat } from '@/pages/seller/Chat';
+import { Billing } from '@/pages/seller/Billing';
 import { Earnings } from '@/pages/seller/Earnings';
 import { Analytics } from '@/pages/seller/Analytics';
 import { BoutiqueProfileEdit } from '@/pages/seller/BoutiqueProfileEdit';
@@ -116,6 +117,7 @@ export default function App() {
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
         <Route path="customers" element={<Customers />} />
+        <Route path="billing" element={<Billing />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="messages" element={<SellerMessages />} />
         <Route path="chat/:id" element={<SellerChat />} />

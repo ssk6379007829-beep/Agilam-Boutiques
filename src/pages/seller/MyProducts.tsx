@@ -7,29 +7,22 @@ import { TONES, fmt } from '@/data/demo';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchProductsByBoutique, updateProduct, deleteProduct } from '@/data/products';
-
-type Row = { id: string; title: string; cat: string; price: number; stock: number; tone: number; image: string };
-type EditForm = { title: string; category: string; price: string; stock: string };
-
-const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:0 14px;height:48px;font-size:14px;font-weight:600;';
+import { ProductForm, type ProductFormValues } from '@/components/seller/ProductForm';
+import type { ProductWithBoutique } from '@/data/types';
 
 export function MyProducts() {
   const navigate = useNavigate();
   const { showToast } = useShop();
   const { boutique } = useMyBoutique();
   const { data: rows, loading, reload } = useAsync(() => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
-  const products: Row[] = (rows ?? []).map((p) => ({
-    id: p.id, title: p.title, cat: p.category, price: Number(p.price), stock: p.stock, tone: p.tone, image: p.image_url ?? '',
-  }));
+  const products = rows ?? [];
 
-  const [editing, setEditing] = useState<Row | null>(null);
-  const [form, setForm] = useState<EditForm>({ title: '', category: '', price: '', stock: '' });
+  const [editing, setEditing] = useState<ProductWithBoutique | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const openEdit = (p: Row) => {
+  const openEdit = (p: ProductWithBoutique) => {
     setEditing(p);
-    setForm({ title: p.title, category: p.cat, price: String(p.price), stock: String(p.stock) });
     setConfirmDelete(false);
   };
   const closeEdit = () => {
@@ -37,14 +30,9 @@ export function MyProducts() {
     setEditing(null);
     setConfirmDelete(false);
   };
-  const set = (key: keyof EditForm, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
-  const save = async () => {
+  const save = async (form: ProductFormValues) => {
     if (!editing) return;
-    if (!form.title.trim()) {
-      showToast('Please enter a product title');
-      return;
-    }
     setBusy(true);
     try {
       await updateProduct(editing.id, {
@@ -52,6 +40,15 @@ export function MyProducts() {
         category: form.category.trim() || 'Other',
         price: Number(form.price) || 0,
         stock: Number(form.stock) || 0,
+        fabric: form.fabric.trim(),
+        color: form.color.trim(),
+        occasion: form.occasion.trim(),
+        description: form.description.trim(),
+        mrp: form.mrp.trim() ? Number(form.mrp) : null,
+        sizes: form.sizes,
+        wash_care: form.washCare.trim(),
+        image_url: form.imageUrl,
+        images: form.images,
       });
       showToast('Product updated');
       setEditing(null);
@@ -104,11 +101,11 @@ export function MyProducts() {
           return (
             <div key={p.id} style={css('background:#fff;border-radius:16px;padding:10px;display:flex;gap:11px;align-items:center;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
               <div style={css(`width:56px;height:56px;flex:none;border-radius:13px;background:${TONES[p.tone]};position:relative;overflow:hidden;`)}>
-                <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
+                <ImageSlot src={p.image_url ?? undefined} placeholder={p.title} style={css('position:absolute;inset:0;')} />
               </div>
               <div style={css('flex:1;min-width:0;')}>
                 <div style={css('font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
-                <div style={css('font-size:12px;color:#8A7078;')}>{p.cat} · {fmt(p.price)}</div>
+                <div style={css('font-size:12px;color:#8A7078;')}>{p.category} · {fmt(Number(p.price))}</div>
                 <span style={css(`display:inline-block;margin-top:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:7px;background:${st.bg};color:${st.fg};`)}>{st.label}</span>
               </div>
               <button onClick={() => openEdit(p)} style={css('width:36px;height:36px;border-radius:11px;border:1.5px solid #F0D8E2;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
@@ -129,26 +126,29 @@ export function MyProducts() {
               </button>
             </div>
 
-            <div style={css('display:flex;flex-direction:column;gap:12px;margin-top:16px;')}>
-              <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
-                Product title<input value={form.title} onChange={(e) => set('title', e.target.value)} style={css(inputStyle)} />
-              </label>
-              <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
-                Category<input value={form.category} onChange={(e) => set('category', e.target.value)} style={css(inputStyle)} />
-              </label>
-              <div style={css('display:flex;gap:12px;')}>
-                <label style={css('flex:1;font-size:13px;font-weight:700;color:#7A5C67;')}>
-                  Price (₹)<input value={form.price} onChange={(e) => set('price', e.target.value)} inputMode="numeric" style={css(inputStyle)} />
-                </label>
-                <label style={css('flex:1;font-size:13px;font-weight:700;color:#7A5C67;')}>
-                  Stock<input value={form.stock} onChange={(e) => set('stock', e.target.value)} inputMode="numeric" style={css(inputStyle)} />
-                </label>
-              </div>
+            <div style={css('margin-top:16px;')}>
+              <ProductForm
+                boutiqueId={editing.boutique_id}
+                submitLabel="Save changes"
+                busy={busy}
+                onSubmit={save}
+                initial={{
+                  title: editing.title,
+                  category: editing.category,
+                  color: editing.color ?? '',
+                  occasion: editing.occasion ?? '',
+                  fabric: editing.fabric ?? '',
+                  price: String(editing.price),
+                  stock: String(editing.stock),
+                  description: editing.description ?? '',
+                  mrp: editing.mrp != null ? String(editing.mrp) : '',
+                  sizes: editing.sizes ?? [],
+                  washCare: editing.wash_care ?? '',
+                  imageUrl: editing.image_url ?? '',
+                  images: editing.images ?? [],
+                }}
+              />
             </div>
-
-            <button onClick={save} disabled={busy} style={css(`width:100%;height:52px;margin-top:18px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:${busy ? 'default' : 'pointer'};opacity:${busy ? 0.7 : 1};`)}>
-              {busy ? 'Saving…' : 'Save changes'}
-            </button>
 
             {confirmDelete ? (
               <div style={css('margin-top:12px;background:#FBE3E3;border:1px solid #F0BEC5;border-radius:14px;padding:12px 14px;')}>

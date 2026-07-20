@@ -66,6 +66,11 @@ export interface Database {
           reviews_count: number;
           status: ProductStatus;
           deleted_at: string | null;
+          description: string;
+          mrp: number | null;
+          sizes: string[];
+          wash_care: string;
+          images: string[];
           created_at: string;
         };
         Insert: Partial<Database['public']['Tables']['products']['Row']> & { boutique_id: string; title: string };
@@ -151,6 +156,17 @@ export interface Database {
       toggle_boutique_follow: {
         Args: { bid: string; do_follow: boolean };
         Returns: number;
+      };
+      create_offline_sale: {
+        Args: {
+          p_boutique_id: string;
+          p_buyer_name: string;
+          p_buyer_phone: string;
+          p_items: { product_id: string | null; title: string; price: number; qty: number }[];
+          p_discount?: number;
+          p_payment_method?: string;
+        };
+        Returns: { id: string; order_number: string; total: number; created_at: string }[];
       };
     };
     Enums: Record<string, never>;

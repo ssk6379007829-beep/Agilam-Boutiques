@@ -30,6 +30,11 @@ export type Product = {
   stock: number;
   fabric: string;
   image: string;
+  description?: string;
+  mrp?: number | null;
+  sizes?: string[];
+  washCare?: string;
+  images?: string[];
 };
 
 export const PRODUCTS: Product[] = [

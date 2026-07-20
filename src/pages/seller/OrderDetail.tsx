@@ -5,12 +5,15 @@ import { TONES, fmt } from '@/data/demo';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchOrder, updateOrderStatus } from '@/data/orders';
 import { toOrderView } from '@/lib/orderView';
+import { useMyBoutique } from '@/hooks/useMyBoutique';
+import { buildWhatsAppLink, formatBillMessage } from '@/lib/whatsapp';
 
 export function OrderDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { showToast } = useShop();
 
+  const { boutique } = useMyBoutique();
   const orderId = decodeURIComponent(id ?? '');
   const { data: row, loading, reload } = useAsync(() => (orderId ? fetchOrder(orderId) : Promise.resolve(null)), [orderId]);
 
@@ -33,6 +36,23 @@ export function OrderDetail() {
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Update failed');
     }
+  };
+
+  const sendWhatsApp = () => {
+    if (!o.phone) {
+      showToast('No phone number on this order');
+      return;
+    }
+    const message = formatBillMessage({
+      boutiqueName: boutique?.name ?? 'Agilam Boutique',
+      boutiquePhone: boutique?.phone,
+      billNumber: o.number,
+      date: o.date,
+      buyerName: o.customer,
+      items: o.items.map((it) => ({ title: it.title, qty: it.qty, price: Number(it.price) })),
+      total: o.amount,
+    });
+    window.open(buildWhatsAppLink(o.phone, message), '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -60,6 +80,9 @@ export function OrderDetail() {
               <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>chat</span>
             </button>
           </div>
+          <button onClick={sendWhatsApp} style={css('width:100%;margin-top:12px;height:44px;border:none;border-radius:13px;background:linear-gradient(135deg,#2FA36B,#1E8A57);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>chat</span>Send bill via WhatsApp
+          </button>
         </div>
 
         <div style={css('background:#fff;border-radius:16px;padding:14px;margin-top:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>

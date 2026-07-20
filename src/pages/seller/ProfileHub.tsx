@@ -7,6 +7,7 @@ export function ProfileHub() {
   const { signOut } = useAuth();
 
   const rows = [
+    { label: 'Billing (Offline Sales)', icon: 'receipt_long', border: '1px solid #F5E4EC', to: '/seller/billing' },
     { label: 'Earnings', icon: 'payments', border: '1px solid #F5E4EC', to: '/seller/earnings' },
     { label: 'Analytics', icon: 'insights', border: '1px solid #F5E4EC', to: '/seller/analytics' },
     { label: 'Boutique Profile', icon: 'store', border: '1px solid #F5E4EC', to: '/seller/boutique' },

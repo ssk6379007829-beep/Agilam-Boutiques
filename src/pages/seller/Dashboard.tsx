@@ -47,6 +47,9 @@ export function Dashboard() {
                 <span style={css("font-family:'Material Symbols Outlined';color:#fff;")}>notifications</span>
                 <span style={css('position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:#FFD84D;')} />
               </button>
+              <button onClick={() => navigate('/seller/billing')} style={css('background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:14px;padding:13px 20px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px;')}>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>receipt_long</span>New Bill
+              </button>
               <button onClick={() => navigate('/seller/add-product')} style={css('background:#fff;color:#B02454;border:none;border-radius:14px;padding:13px 20px;font-weight:800;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 14px 30px -14px rgba(0,0,0,.4);')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>add</span>Add product
               </button>

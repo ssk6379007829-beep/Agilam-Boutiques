@@ -14,6 +14,11 @@ export interface ProductWithBoutique {
   rating: number;
   reviews_count: number;
   created_at: string;
+  description?: string | null;
+  mrp?: number | null;
+  sizes?: string[] | null;
+  wash_care?: string | null;
+  images?: string[] | null;
   boutique: { name: string; city: string; tone: number } | null;
 }
 
@@ -54,6 +59,8 @@ export interface OrderWithDetails {
   guest_address?: string | null;
   payment_id?: string | null;
   refunded?: boolean;
+  channel?: 'online' | 'offline';
+  payment_method?: string | null;
   buyer: { full_name: string; phone: string | null; city: string | null } | null;
   boutique: { name: string; tone: number } | null;
   items: { id: string; title: string; price: number; qty: number; size: string | null; color: string | null }[];

@@ -19,13 +19,7 @@ const REVIEWS = [
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 const starsFor = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
-const SIZES = ['S', 'M', 'L', 'XL'];
-
-const COLORS = [
-  { name: 'Rani Pink', hex: '#E7719F' },
-  { name: 'Violet', hex: '#9B7FC7' },
-  { name: 'Emerald', hex: '#5FA37E' },
-];
+const FALLBACK_SIZES = ['S', 'M', 'L', 'XL'];
 
 // Blouse measurements in inches (unstitched saree blouse piece can be tailored to these)
 const SIZE_CHART = [
@@ -42,7 +36,6 @@ export function ProductDetail() {
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   const [selectedSize, setSelectedSize] = useState('M');
   const [showSizeChart, setShowSizeChart] = useState(false);
-  const [colorIdx, setColorIdx] = useState(0);
   const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({ details: true });
   const togglePanel = (k: string) => setOpenPanels((p) => ({ ...p, [k]: !p[k] }));
 
@@ -67,6 +60,11 @@ export function ProductDetail() {
   const stockLabel = ap.stock === 0 ? 'Out of stock' : ap.stock <= 5 ? `Low · ${ap.stock} left` : 'In stock';
   const stockFg = ap.stock === 0 ? '#D6455A' : ap.stock <= 5 ? '#C99A3F' : '#2FA36B';
 
+  const sizeOptions = ap.sizes?.length ? ap.sizes : FALLBACK_SIZES;
+  const hasMrp = !!ap.mrp && ap.mrp > ap.price;
+  const discountPct = hasMrp ? Math.round((1 - ap.price / (ap.mrp as number)) * 100) : null;
+  const gallery = [ap.image, ...(ap.images ?? [])].filter(Boolean);
+
   const highlights = [
     { icon: 'diamond', label: ap.fabric || 'Premium fabric' },
     { icon: 'event_available', label: ap.occasion + ' wear' },
@@ -77,16 +75,15 @@ export function ProductDetail() {
     { label: 'Fabric', value: ap.fabric || 'Premium fabric' },
     { label: 'Category', value: ap.cat },
     { label: 'Occasion', value: `${ap.occasion} wear` },
-    { label: 'Colour', value: COLORS[colorIdx].name },
-    { label: 'Blouse', value: 'Unstitched piece included' },
-    { label: 'Wash care', value: 'Dry clean only' },
+    { label: 'Colour', value: ap.color || '—' },
+    { label: 'Wash care', value: ap.washCare || 'Dry clean only' },
     { label: 'Crafted in', value: ap.city },
     { label: 'SKU', value: ap.id.toUpperCase() },
   ];
 
-  const thumbs = [0, 1, 2, 3].map((i) => ({
+  const thumbs = (gallery.length ? gallery : [ap.image]).slice(0, 4).map((src, i) => ({
     id: `prod-${ap.id}-t${i}`,
-    toneHex: TONES[(ap.tone + i) % TONES.length],
+    src,
     ring: i === 0 ? '2px #D6336C' : '1px #EFDCE4',
   }));
 
@@ -173,9 +170,8 @@ export function ProductDetail() {
 
       <div className="agx-pdp" style={css('max-width:1300px;margin:0 auto;')}>
         <div className="agx-pdp-media" style={css('padding:clamp(16px,2.5vw,28px) 0 clamp(16px,2.5vw,28px) clamp(16px,4vw,44px);')}>
-          <div className="agx-zoom" style={css(`position:relative;aspect-ratio:4/5;max-height:78vh;background:${COLORS[colorIdx].hex};overflow:hidden;border-radius:24px;box-shadow:0 24px 54px -34px rgba(107,20,54,.5);`)}>
+          <div className="agx-zoom" style={css(`position:relative;aspect-ratio:4/5;max-height:78vh;background:${TONES[ap.tone]};overflow:hidden;border-radius:24px;box-shadow:0 24px 54px -34px rgba(107,20,54,.5);`)}>
             <ImageSlot src={ap.image} placeholder={ap.title} style={css('position:absolute;inset:0;')} />
-            <div style={css(`position:absolute;inset:0;background:${COLORS[colorIdx].hex};mix-blend-mode:color;opacity:.55;pointer-events:none;`)} />
             <button onClick={() => navigate('/buyer/home')} style={css('position:absolute;left:16px;top:16px;width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}>
               <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
             </button>
@@ -190,8 +186,8 @@ export function ProductDetail() {
           </div>
           <div style={css('display:flex;gap:10px;margin-top:14px;')}>
             {thumbs.map((t) => (
-              <div key={t.id} className="agx-zoom" style={css(`width:64px;height:64px;flex:none;border-radius:12px;overflow:hidden;background:${t.toneHex};box-shadow:0 0 0 ${t.ring};cursor:pointer;position:relative;`)}>
-                <ImageSlot src={ap.image} style={css('position:absolute;inset:0;')} />
+              <div key={t.id} className="agx-zoom" style={css(`width:64px;height:64px;flex:none;border-radius:12px;overflow:hidden;background:${TONES[ap.tone]};box-shadow:0 0 0 ${t.ring};cursor:pointer;position:relative;`)}>
+                <ImageSlot src={t.src} style={css('position:absolute;inset:0;')} />
               </div>
             ))}
           </div>
@@ -202,6 +198,12 @@ export function ProductDetail() {
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(30px,3.2vw,46px);line-height:1.06;letter-spacing:-.015em;margin-top:10px;padding-bottom:2px;")}>{ap.title}</div>
           <div style={css('display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap;')}>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:clamp(26px,2.8vw,38px);")}>{fmt(ap.price)}</div>
+            {hasMrp && (
+              <>
+                <span style={css('text-decoration:line-through;color:#B79AA6;font-size:16px;font-weight:700;')}>{fmt(ap.mrp as number)}</span>
+                <span style={css('background:#E9F6EF;color:#2FA36B;font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;')}>{discountPct}% off</span>
+              </>
+            )}
             <span style={css('display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:#5C4650;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:10px;padding:6px 10px;')}>
               <span style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#E0B84B;")}>star</span>{ap.rating} <span style={css('color:#8A7078;font-weight:500;')}>· {reviewsF(ap.reviews)} reviews</span>
             </span>
@@ -236,8 +238,8 @@ export function ProductDetail() {
                   <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>straighten</span>Size guide
                 </a>
               </div>
-              <div style={css('display:flex;gap:8px;margin-top:9px;')}>
-                {SIZES.map((s) => {
+              <div style={css('display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;')}>
+                {sizeOptions.map((s) => {
                   const on = selectedSize === s;
                   return (
                     <span key={s} onClick={() => setSelectedSize(s)} style={css(`width:44px;height:44px;border-radius:12px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : 'transparent'};color:${on ? '#B02454' : '#4B3840'};display:flex;align-items:center;justify-content:center;font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;`)}>{s}</span>
@@ -245,20 +247,12 @@ export function ProductDetail() {
                 })}
               </div>
             </div>
-            <div>
-              <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Colour · {COLORS[colorIdx].name}</div>
-              <div style={css('display:flex;gap:10px;margin-top:9px;')}>
-                {COLORS.map((c, i) => {
-                  const on = colorIdx === i;
-                  return (
-                    <div key={c.name} title={c.name} onClick={() => setColorIdx(i)} style={css(`position:relative;width:52px;height:52px;flex:none;border-radius:14px;overflow:hidden;background:${c.hex};cursor:pointer;box-shadow:${on ? '0 0 0 2px #fff,0 0 0 4px #D6336C' : '0 0 0 1px #EFDCE4'};`)}>
-                      <ImageSlot src={ap.image} style={css('position:absolute;inset:0;')} />
-                      <div style={css(`position:absolute;inset:0;background:${c.hex};mix-blend-mode:color;opacity:.55;pointer-events:none;`)} />
-                    </div>
-                  );
-                })}
+            {ap.color && (
+              <div>
+                <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Colour</div>
+                <div style={css('display:flex;align-items:center;height:44px;margin-top:9px;padding:0 16px;border-radius:12px;border:1.5px solid #F0D8E2;background:#FBF6F2;font-weight:700;font-size:14px;color:#4B3840;')}>{ap.color}</div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="agx-pdp-actions" style={css('display:flex;gap:12px;margin-top:26px;flex-wrap:wrap;')}>
@@ -275,7 +269,7 @@ export function ProductDetail() {
             {renderPanel('details', 'description', 'Product details', '', (
               <>
                 <div style={css('color:#5C4650;font-size:14.5px;line-height:1.65;')}>
-                  {ap.fabric} · {ap.occasion} wear. Handcrafted with intricate zari work and tailored for a graceful drape. Blouse fabric included.
+                  {ap.description || `${ap.fabric} · ${ap.occasion} wear. Handcrafted with intricate zari work and tailored for a graceful drape.`}
                 </div>
                 <div style={css('margin-top:12px;border:1px solid #F0E2E9;border-radius:14px;overflow:hidden;')}>
                   {specs.map((s, i) => (

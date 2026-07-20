@@ -58,6 +58,12 @@ export async function createProduct(input: {
   color?: string;
   occasion?: string;
   tone?: number;
+  description?: string;
+  mrp?: number | null;
+  sizes?: string[];
+  wash_care?: string;
+  image_url?: string;
+  images?: string[];
 }) {
   const { error } = await supabase.from('products').insert(input);
   if (error) throw error;
@@ -65,7 +71,21 @@ export async function createProduct(input: {
 
 export async function updateProduct(
   id: string,
-  patch: Partial<{ title: string; price: number; stock: number; category: string; color: string; occasion: string; fabric: string }>,
+  patch: Partial<{
+    title: string;
+    price: number;
+    stock: number;
+    category: string;
+    color: string;
+    occasion: string;
+    fabric: string;
+    description: string;
+    mrp: number | null;
+    sizes: string[];
+    wash_care: string;
+    image_url: string;
+    images: string[];
+  }>,
 ) {
   const { error } = await supabase.from('products').update(patch).eq('id', id);
   if (error) throw error;
@@ -74,4 +94,15 @@ export async function updateProduct(
 export async function deleteProduct(id: string) {
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) throw error;
+}
+
+/** Uploads a product photo to the public `product-images` bucket, scoped under
+ *  the boutique's id so storage RLS can verify ownership from the path alone. */
+export async function uploadProductImage(boutiqueId: string, file: File): Promise<string> {
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `${boutiqueId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from('product-images').upload(path, file, { upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+  return data.publicUrl;
 }

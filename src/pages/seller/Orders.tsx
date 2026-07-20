@@ -44,8 +44,13 @@ export function Orders() {
           const st = statusStyle(o.status);
           return (
             <div key={o.id} onClick={() => navigate(`/seller/orders/${encodeURIComponent(o.id)}`)} style={css('background:#fff;border-radius:16px;padding:13px;cursor:pointer;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
-              <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
-                <span style={css('font-weight:800;font-size:13px;color:#8A7078;')}>{o.number}</span>
+              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;')}>
+                <span style={css('display:flex;align-items:center;gap:7px;')}>
+                  <span style={css('font-weight:800;font-size:13px;color:#8A7078;')}>{o.number}</span>
+                  {o.channel === 'offline' && (
+                    <span style={css('font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:#EAE3F5;color:#7B5FB0;')}>Offline</span>
+                  )}
+                </span>
                 <span style={css(`font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
               </div>
               <div style={css('display:flex;gap:11px;align-items:center;margin-top:10px;')}>

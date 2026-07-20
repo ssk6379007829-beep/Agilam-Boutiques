@@ -48,6 +48,11 @@ function toProduct(p: ProductWithBoutique): Product {
     stock: p.stock,
     fabric: p.fabric ?? '',
     image: p.image_url ?? '',
+    description: p.description ?? '',
+    mrp: p.mrp ?? null,
+    sizes: p.sizes ?? [],
+    washCare: p.wash_care ?? '',
+    images: p.images ?? [],
   };
 }
 

@@ -21,6 +21,8 @@ export type OrderView = {
   date: string;     // '15 Jul'
   tone: number;
   items: OrderWithDetails['items'];
+  channel: 'online' | 'offline';
+  paymentMethod: string | null;
 };
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -49,5 +51,7 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
     date: fmtDate(o.created_at),
     tone: (o.boutique?.tone ?? i) % 8,
     items,
+    channel: o.channel ?? 'online',
+    paymentMethod: o.payment_method ?? null,
   };
 }
