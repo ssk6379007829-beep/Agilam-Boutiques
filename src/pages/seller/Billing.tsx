@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
@@ -7,7 +7,9 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchProductsByBoutique } from '@/data/products';
 import { createOfflineSale, type OfflineSaleItem, type OfflineSaleResult } from '@/data/offlineSales';
-import { buildWhatsAppLink, formatBillMessage } from '@/lib/whatsapp';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
+import { shareOrDownloadBillImage, downloadBillPdf } from '@/lib/billImage';
+import { BillReceipt } from '@/components/seller/BillReceipt';
 import { TONES, fmt } from '@/data/demo';
 
 type CartLine = OfflineSaleItem & { key: string; stock: number | null };
@@ -32,6 +34,8 @@ export function Billing() {
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [creating, setCreating] = useState(false);
   const [receipt, setReceipt] = useState<OfflineSaleResult | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   const filtered = (products ?? []).filter((p) => p.title.toLowerCase().includes(search.trim().toLowerCase()));
 
@@ -120,19 +124,37 @@ export function Billing() {
     setReceipt(null);
   };
 
-  const sendWhatsApp = () => {
-    if (!receipt) return;
-    const message = formatBillMessage({
-      boutiqueName: boutique?.name ?? 'Agilam Boutique',
-      boutiquePhone: boutique?.phone,
-      billNumber: receipt.order_number,
-      date: new Date(receipt.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      buyerName,
-      items: cart.map((l) => ({ title: l.title, qty: l.qty, price: l.price })),
-      discount: discountVal,
-      total: receipt.total,
-    });
-    window.open(buildWhatsAppLink(buyerPhone, message), '_blank', 'noopener,noreferrer');
+  const billDate = receipt ? new Date(receipt.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+  const shareBillImage = async () => {
+    if (!receiptRef.current || !receipt) return;
+    setSharing(true);
+    try {
+      const result = await shareOrDownloadBillImage(
+        receiptRef.current,
+        `Bill-${receipt.order_number}.png`,
+        `Bill ${receipt.order_number} from ${boutique?.name ?? 'Agilam Boutique'} — total ${fmt(receipt.total)}`,
+      );
+      if (result === 'downloaded') {
+        showToast('Bill image saved — attach it in the WhatsApp chat that just opened');
+        window.open(buildWhatsAppLink(buyerPhone, ''), '_blank', 'noopener,noreferrer');
+      } else if (result === 'shared') {
+        showToast('Bill shared');
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not generate the bill image');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const downloadPdf = async () => {
+    if (!receiptRef.current || !receipt) return;
+    try {
+      await downloadBillPdf(receiptRef.current, `Bill-${receipt.order_number}.pdf`);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not generate the PDF');
+    }
   };
 
   if (receipt) {
@@ -145,37 +167,28 @@ export function Billing() {
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Bill generated</div>
         </div>
 
-        <div style={css('padding:6px 20px 0;')}>
-          <div style={css(`${cardStyle}padding:22px;`)}>
-            <div style={css('text-align:center;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>{boutique?.name ?? 'Agilam Boutique'}</div>
-              <div style={css('color:#8A7078;font-size:12.5px;margin-top:4px;')}>Bill {receipt.order_number} · {new Date(receipt.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-            </div>
-            <div style={css('margin-top:16px;padding-top:14px;border-top:1px dashed #F0E2E9;font-size:13.5px;')}>
-              <div style={css('display:flex;justify-content:space-between;color:#8A7078;')}><span>Billed to</span><span style={css('font-weight:700;color:#241019;')}>{buyerName}</span></div>
-              <div style={css('display:flex;justify-content:space-between;color:#8A7078;margin-top:4px;')}><span>Phone</span><span style={css('font-weight:700;color:#241019;')}>{buyerPhone}</span></div>
-              <div style={css('display:flex;justify-content:space-between;color:#8A7078;margin-top:4px;')}><span>Payment</span><span style={css('font-weight:700;color:#241019;')}>{paymentMethod}</span></div>
-            </div>
-            <div style={css('margin-top:14px;padding-top:14px;border-top:1px dashed #F0E2E9;')}>
-              {cart.map((l) => (
-                <div key={l.key} style={css('display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;')}>
-                  <span style={css('color:#4B3840;')}>{l.title} <span style={css('color:#B79AA6;')}>× {l.qty}</span></span>
-                  <span style={css('font-weight:700;')}>{fmt(l.price * l.qty)}</span>
-                </div>
-              ))}
-            </div>
-            <div style={css('margin-top:10px;padding-top:10px;border-top:1px dashed #F0E2E9;font-size:13.5px;')}>
-              <div style={css('display:flex;justify-content:space-between;color:#8A7078;')}><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
-              {discountVal > 0 && <div style={css('display:flex;justify-content:space-between;color:#2FA36B;margin-top:4px;')}><span>Discount</span><span>-{fmt(discountVal)}</span></div>}
-              <div style={css('display:flex;justify-content:space-between;font-weight:800;font-size:16px;margin-top:8px;')}><span>Total</span><span style={css('color:#B02454;')}>{fmt(receipt.total)}</span></div>
-            </div>
+        <div style={css('padding:6px 20px 0;display:flex;flex-direction:column;align-items:center;')}>
+          <div style={css('width:100%;max-width:420px;border-radius:18px;overflow:hidden;box-shadow:0 20px 46px -26px rgba(107,20,54,.6);')}>
+            <BillReceipt
+              ref={receiptRef}
+              boutiqueName={boutique?.name ?? 'Agilam Boutique'}
+              boutiquePhone={boutique?.phone}
+              billNumber={receipt.order_number}
+              date={billDate}
+              buyerName={buyerName}
+              buyerPhone={buyerPhone}
+              items={cart.map((l) => ({ title: l.title, qty: l.qty, price: l.price }))}
+              discount={discountVal}
+              total={receipt.total}
+              paymentMethod={paymentMethod}
+            />
           </div>
 
-          <div className="agx-no-print" style={css('display:flex;flex-direction:column;gap:10px;margin-top:16px;')}>
-            <button onClick={sendWhatsApp} style={css('width:100%;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#2FA36B,#1E8A57);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>Send via WhatsApp
+          <div className="agx-no-print" style={css('display:flex;flex-direction:column;gap:10px;margin-top:16px;width:100%;max-width:420px;')}>
+            <button onClick={shareBillImage} disabled={sharing} style={css(`width:100%;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#2FA36B,#1E8A57);color:#fff;font-weight:800;font-size:15px;cursor:${sharing ? 'default' : 'pointer'};opacity:${sharing ? 0.7 : 1};display:flex;align-items:center;justify-content:center;gap:8px;`)}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>share</span>{sharing ? 'Preparing…' : 'Share Bill on WhatsApp'}
             </button>
-            <button onClick={() => window.print()} style={css('width:100%;height:48px;border:1.5px solid #F0D8E2;background:#fff;color:#4B3840;border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;')}>Print / Save</button>
+            <button onClick={downloadPdf} style={css('width:100%;height:48px;border:1.5px solid #F0D8E2;background:#fff;color:#4B3840;border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;')}>Download PDF</button>
             <button onClick={() => navigate(`/seller/orders/${encodeURIComponent(receipt.id)}`)} style={css('width:100%;height:48px;border:1.5px solid #F0D8E2;background:#fff;color:#4B3840;border-radius:14px;font-weight:800;font-size:14px;cursor:pointer;')}>View in Orders</button>
             <button onClick={newBill} style={css('width:100%;height:48px;border:none;background:transparent;color:#B02454;font-weight:800;font-size:14px;cursor:pointer;')}>New bill</button>
           </div>

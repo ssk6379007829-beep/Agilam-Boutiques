@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
@@ -6,7 +7,9 @@ import { useAsync } from '@/hooks/useAsync';
 import { fetchOrder, updateOrderStatus } from '@/data/orders';
 import { toOrderView } from '@/lib/orderView';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
-import { buildWhatsAppLink, formatBillMessage } from '@/lib/whatsapp';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
+import { shareOrDownloadBillImage } from '@/lib/billImage';
+import { BillReceipt } from '@/components/seller/BillReceipt';
 
 export function OrderDetail() {
   const navigate = useNavigate();
@@ -16,6 +19,8 @@ export function OrderDetail() {
   const { boutique } = useMyBoutique();
   const orderId = decodeURIComponent(id ?? '');
   const { data: row, loading, reload } = useAsync(() => (orderId ? fetchOrder(orderId) : Promise.resolve(null)), [orderId]);
+  const [sharing, setSharing] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   if (!row) {
     return (
@@ -38,21 +43,30 @@ export function OrderDetail() {
     }
   };
 
-  const sendWhatsApp = () => {
+  const shareBillImage = async () => {
     if (!o.phone) {
       showToast('No phone number on this order');
       return;
     }
-    const message = formatBillMessage({
-      boutiqueName: boutique?.name ?? 'Agilam Boutique',
-      boutiquePhone: boutique?.phone,
-      billNumber: o.number,
-      date: o.date,
-      buyerName: o.customer,
-      items: o.items.map((it) => ({ title: it.title, qty: it.qty, price: Number(it.price) })),
-      total: o.amount,
-    });
-    window.open(buildWhatsAppLink(o.phone, message), '_blank', 'noopener,noreferrer');
+    if (!receiptRef.current) return;
+    setSharing(true);
+    try {
+      const result = await shareOrDownloadBillImage(
+        receiptRef.current,
+        `Bill-${o.number.replace('#', '')}.png`,
+        `Bill ${o.number} from ${boutique?.name ?? 'Agilam Boutique'} — total ${fmt(o.amount)}`,
+      );
+      if (result === 'downloaded') {
+        showToast('Bill image saved — attach it in the WhatsApp chat that just opened');
+        window.open(buildWhatsAppLink(o.phone, ''), '_blank', 'noopener,noreferrer');
+      } else if (result === 'shared') {
+        showToast('Bill shared');
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not generate the bill image');
+    } finally {
+      setSharing(false);
+    }
   };
 
   return (
@@ -80,9 +94,24 @@ export function OrderDetail() {
               <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>chat</span>
             </button>
           </div>
-          <button onClick={sendWhatsApp} style={css('width:100%;margin-top:12px;height:44px;border:none;border-radius:13px;background:linear-gradient(135deg,#2FA36B,#1E8A57);color:#fff;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>chat</span>Send bill via WhatsApp
+          <button onClick={shareBillImage} disabled={sharing} style={css(`width:100%;margin-top:12px;height:44px;border:none;border-radius:13px;background:linear-gradient(135deg,#2FA36B,#1E8A57);color:#fff;font-weight:800;font-size:13.5px;cursor:${sharing ? 'default' : 'pointer'};opacity:${sharing ? 0.7 : 1};display:flex;align-items:center;justify-content:center;gap:7px;`)}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>share</span>{sharing ? 'Preparing…' : 'Share bill via WhatsApp'}
           </button>
+        </div>
+
+        {/* Off-screen premium bill card, captured to an image/PDF on demand — never shown to the seller directly. */}
+        <div style={css('position:fixed;left:-9999px;top:0;')} aria-hidden="true">
+          <BillReceipt
+            ref={receiptRef}
+            boutiqueName={boutique?.name ?? 'Agilam Boutique'}
+            boutiquePhone={boutique?.phone}
+            billNumber={o.number}
+            date={o.date}
+            buyerName={o.customer}
+            buyerPhone={o.phone ?? undefined}
+            items={o.items.map((it) => ({ title: it.title, qty: it.qty, price: Number(it.price) }))}
+            total={o.amount}
+          />
         </div>
 
         <div style={css('background:#fff;border-radius:16px;padding:14px;margin-top:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
