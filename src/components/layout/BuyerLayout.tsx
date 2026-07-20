@@ -1,5 +1,6 @@
 import { AppShell, type TabDef } from './AppShell';
 import { useShop } from '@/state/ShopContext';
+import { LoginPrompt } from '@/components/buyer/LoginPrompt';
 
 export function BuyerLayout() {
   const { cartCount } = useShop();
@@ -12,5 +13,10 @@ export function BuyerLayout() {
     { label: 'Messages', icon: 'chat', to: '/buyer/messages', match: ['/buyer/messages', '/buyer/chat'] },
   ];
 
-  return <AppShell tabs={tabs} profileTo="/buyer/profile" />;
+  return (
+    <>
+      <AppShell tabs={tabs} profileTo="/buyer/profile" />
+      <LoginPrompt />
+    </>
+  );
 }
