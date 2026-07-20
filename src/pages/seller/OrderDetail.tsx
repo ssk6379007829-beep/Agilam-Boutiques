@@ -91,7 +91,24 @@ export function OrderDetail() {
             <div style={css("width:44px;height:44px;border-radius:13px;background:#F4D6E2;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.5);")}>{o.customer[0]}</div>
             <div style={css('flex:1;')}>
               <div style={css('font-weight:800;font-size:14px;')}>{o.customer}</div>
-              <div style={css('font-size:12px;color:#8A7078;')}>{[o.city, o.phone].filter(Boolean).join(' · ') || 'Customer'}</div>
+              <div style={css('font-size:12px;color:#8A7078;display:flex;align-items:center;gap:5px;flex-wrap:wrap;')}>
+                <span>{o.city || 'Customer'}</span>
+                {o.phone && (
+                  <>
+                    <span>·</span>
+                    <a
+                      href={buildWhatsAppLink(o.phone, '')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      style={css('display:inline-flex;align-items:center;gap:3px;color:#2FA36B;font-weight:700;text-decoration:none;')}
+                    >
+                      {o.phone}
+                      <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>open_in_new</span>
+                    </a>
+                  </>
+                )}
+              </div>
             </div>
             <button onClick={() => navigate('/seller/messages')} style={css('width:38px;height:38px;border-radius:11px;border:none;background:#FCE0EC;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
               <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>chat</span>
