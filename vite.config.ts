@@ -15,6 +15,7 @@ function devApi(env: Record<string, string>): Plugin {
     '/api/verify-payment': './api/verify-payment.js',
     '/api/place-order': './api/place-order.js',
     '/api/admin-create-user': './api/admin-create-user.js',
+    '/api/razorpay-webhook': './api/razorpay-webhook.js',
   };
   // Variable specifier + @vite-ignore: resolved by Node at request time, not
   // bundled or statically type-checked (the handlers are plain .js).
@@ -28,6 +29,7 @@ function devApi(env: Record<string, string>): Plugin {
       // The handlers read secrets from process.env; loadEnv doesn't set it.
       process.env.RAZORPAY_KEY_ID ??= env.RAZORPAY_KEY_ID;
       process.env.RAZORPAY_KEY_SECRET ??= env.RAZORPAY_KEY_SECRET;
+      process.env.RAZORPAY_WEBHOOK_SECRET ??= env.RAZORPAY_WEBHOOK_SECRET;
       // place-order writes with the Supabase service role (bypasses RLS).
       process.env.SUPABASE_URL ??= env.SUPABASE_URL || env.VITE_SUPABASE_URL;
       process.env.SUPABASE_SERVICE_ROLE_KEY ??= env.SUPABASE_SERVICE_ROLE_KEY;

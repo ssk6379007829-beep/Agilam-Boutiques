@@ -5,7 +5,7 @@ export function ScreenHeader({ title, onBack, action, size = 26 }: { title: Reac
   return (
     <div className="flex items-center justify-between gap-2.5 px-5 pb-3 pt-1.5">
       <div className="flex items-center gap-2.5">
-        {onBack && <IconButton icon="arrow_back" onClick={onBack} />}
+        {onBack && <IconButton icon="arrow_back" onClick={onBack} aria-label="Go back" />}
         <div className="font-serif font-bold leading-none" style={{ fontSize: size }}>
           {title}
         </div>

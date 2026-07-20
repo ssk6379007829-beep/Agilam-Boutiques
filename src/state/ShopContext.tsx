@@ -90,6 +90,13 @@ type ShopValue = {
   applyCoupon: (code: string) => void;
   removeCoupon: () => void;
 
+  /**
+   * The cart as the server-priced order payload — product ids + quantities +
+   * size. Sent to /api/create-order so the Razorpay amount is derived from
+   * DB prices, not the browser's totals.
+   */
+  orderItems: { product_id: string; qty: number; size: string }[];
+
   payMethod: string;
   setPayMethod: (m: string) => void;
 
@@ -363,6 +370,11 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const total = useMemo(() => Math.max(0, subtotal - discount) + shipFee, [subtotal, discount, shipFee]);
 
+  const orderItems = useMemo(
+    () => Object.entries(cart).map(([product_id, line]) => ({ product_id, qty: line.qty, size: line.size })),
+    [cart],
+  );
+
   const setGuest = useCallback(
     (patch: Partial<Guest>) =>
       setGuestState((g) => {
@@ -457,6 +469,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     filters, setFilters, toggleFilter, setSort, setMaxPrice, resetFilters,
     query, setQuery,
     appliedCoupon, applyCoupon, removeCoupon,
+    orderItems,
     payMethod, setPayMethod,
     guest, setGuest, clearGuest, hasBuyerDetails,
     lastOrderId, placeOrder,

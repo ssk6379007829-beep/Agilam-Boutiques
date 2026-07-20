@@ -9,9 +9,12 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   bg?: string;
 };
 
-export function IconButton({ icon, size = 42, iconSize = 20, color = '#B02454', bg = '#fff', className = '', style, ...rest }: Props) {
+export function IconButton({ icon, size = 42, iconSize = 20, color = '#B02454', bg = '#fff', className = '', style, type = 'button', 'aria-label': ariaLabel, title, ...rest }: Props) {
   return (
     <button
+      type={type}
+      title={title}
+      aria-label={ariaLabel ?? title}
       className={`flex items-center justify-center rounded-xl border-none cursor-pointer shadow-raised ${className}`}
       style={{ width: size, height: size, background: bg, ...style }}
       {...rest}

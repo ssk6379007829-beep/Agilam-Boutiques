@@ -1,0 +1,135 @@
+import crypto from 'node:crypto';
+import { createClient } from '@supabase/supabase-js';
+
+/**
+ * Vercel serverless function: Razorpay webhook backstop.
+ *
+ * api/place-order.js already confirms payments synchronously (fetch order +
+ * verify signature + assert amount/paid), so the happy path never depends on
+ * this endpoint. Its job is the edge case where a buyer's payment is captured
+ * but the browser dies before place-order runs: Razorpay still delivers a
+ * `payment.captured` / `order.paid` webhook, and this handler reconciles it.
+ *
+ * Reconciliation is deliberately conservative:
+ *   • It verifies the webhook HMAC (RAZORPAY_WEBHOOK_SECRET) over the RAW body.
+ *   • If an order already carries this payment_id, it's a no-op (the sync path
+ *     won the race) — nothing to do.
+ *   • If no order exists after a short grace window, the captured-but-unfulfilled
+ *     payment is recorded to `payment_events` (when that table exists) and logged
+ *     so it can be refunded / fulfilled by an operator. It does NOT auto-refund,
+ *     because place-order legitimately writes the order milliseconds after
+ *     capture and racing a refund would cancel good orders.
+ *
+ * Setup: add this URL as a webhook in the Razorpay dashboard for the
+ * `payment.captured` and `order.paid` events, using RAZORPAY_WEBHOOK_SECRET as
+ * the secret. Without the secret configured the endpoint is an inert 200 no-op.
+ *
+ * IMPORTANT: signature verification needs the unparsed body, so body parsing is
+ * disabled for this route.
+ */
+
+export const config = { api: { bodyParser: false } };
+
+const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+async function readRawBody(req) {
+  // Vercel may pre-parse; prefer the raw stream, fall back to a stringified body.
+  if (typeof req.body === 'string') return req.body;
+  if (req.body && typeof req.body === 'object' && !req.on) return JSON.stringify(req.body);
+  let raw = '';
+  for await (const chunk of req) raw += chunk;
+  return raw;
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // No secret configured → inert. Return 200 so Razorpay doesn't retry-storm.
+  if (!webhookSecret) return res.status(200).json({ ok: true, skipped: 'webhook not configured' });
+
+  let raw;
+  try {
+    raw = await readRawBody(req);
+  } catch {
+    return res.status(400).json({ error: 'Could not read webhook body' });
+  }
+
+  const signature = req.headers?.['x-razorpay-signature'];
+  const expected = crypto.createHmac('sha256', webhookSecret).update(raw).digest('hex');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(String(signature || ''));
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(400).json({ error: 'Invalid webhook signature' });
+  }
+
+  let event;
+  try {
+    event = JSON.parse(raw);
+  } catch {
+    return res.status(400).json({ error: 'Malformed webhook payload' });
+  }
+
+  const type = event?.event;
+  const paymentEntity = event?.payload?.payment?.entity;
+  const paymentId = paymentEntity?.id ?? null;
+  const orderId = paymentEntity?.order_id ?? event?.payload?.order?.entity?.id ?? null;
+
+  // Only captured-payment events need reconciling; ack everything else.
+  if (!paymentId || (type !== 'payment.captured' && type !== 'order.paid')) {
+    return res.status(200).json({ ok: true, ignored: type ?? 'unknown' });
+  }
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    // Can't reconcile without DB access; ack so Razorpay stops retrying, but log.
+    console.error('razorpay-webhook: Supabase not configured; cannot reconcile', paymentId);
+    return res.status(200).json({ ok: true, reconciled: false });
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  try {
+    const { data: order } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('payment_id', paymentId)
+      .limit(1)
+      .maybeSingle();
+
+    if (order) {
+      // Sync path already placed the order — nothing to do.
+      return res.status(200).json({ ok: true, reconciled: true, alreadyFulfilled: true });
+    }
+
+    // Captured but no order yet. Record for operator follow-up. The insert is
+    // best-effort and idempotent on payment_id; a missing table is not an error.
+    const { error: logErr } = await supabase.from('payment_events').upsert(
+      {
+        payment_id: paymentId,
+        order_ref: orderId,
+        event_type: type,
+        amount: paymentEntity?.amount ?? null,
+        status: 'captured_unfulfilled',
+        raw: event,
+      },
+      { onConflict: 'payment_id' },
+    );
+    if (logErr && logErr.code !== 'PGRST205' && !/relation .* does not exist/i.test(logErr.message || '')) {
+      console.error('razorpay-webhook: could not record event', logErr.message ?? logErr);
+    }
+
+    console.warn('razorpay-webhook: captured payment with no order (needs review):', paymentId);
+    return res.status(200).json({ ok: true, reconciled: false, needsReview: true });
+  } catch (err) {
+    // Never 5xx a webhook we've already authenticated — that just triggers
+    // Razorpay retries. Log and ack.
+    console.error('razorpay-webhook: reconciliation failed', err?.message ?? err);
+    return res.status(200).json({ ok: true, reconciled: false });
+  }
+}

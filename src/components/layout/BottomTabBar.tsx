@@ -17,8 +17,11 @@ export function BottomTabBar({ tabs }: { tabs: TabDef[] }) {
         return (
           <button
             key={t.to}
+            type="button"
             onClick={() => navigate(t.to)}
-            className="flex flex-1 cursor-pointer flex-col items-center gap-0.5 border-none bg-transparent py-1"
+            aria-label={t.label}
+            aria-current={active ? 'page' : undefined}
+            className="flex min-h-[44px] flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 border-none bg-transparent py-1"
             style={{ color: active ? '#D6336C' : '#B79AA6' }}
           >
             <Icon name={t.icon} className="text-2xl" />

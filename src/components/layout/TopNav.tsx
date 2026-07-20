@@ -23,7 +23,9 @@ export function TopNav({ tabs, brand }: { tabs: TabDef[]; brand: string }) {
           return (
             <button
               key={t.to}
+              type="button"
               onClick={() => navigate(t.to)}
+              aria-current={active ? 'page' : undefined}
               className="flex items-center gap-1.5 rounded-xl border-none px-3.5 py-2 text-[13.5px] font-bold"
               style={{ background: active ? '#FCE0EC' : 'transparent', color: active ? '#B02454' : '#6B5560' }}
             >

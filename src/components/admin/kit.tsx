@@ -20,7 +20,7 @@ export const T = {
 
 export function Icon({ name, size = 20, color }: { name: string; size?: number; color?: string }) {
   return (
-    <span style={css(`font-family:'Material Symbols Outlined';font-size:${size}px;line-height:1;${color ? `color:${color};` : ''}`)}>
+    <span translate="no" aria-hidden style={css(`font-family:'Material Symbols Outlined';font-size:${size}px;line-height:1;${color ? `color:${color};` : ''}`)}>
       {name}
     </span>
   );
@@ -98,7 +98,7 @@ export function SearchInput({ value, onChange, placeholder }: { value: string; o
     <div style={css(`display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid ${T.field};border-radius:12px;padding:0 12px;height:42px;flex:1;min-width:180px;`)}>
       <Icon name="search" size={19} color="#B79AA6" />
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? 'Search…'} style={css('border:none;background:none;flex:1;font-size:13.5px;min-width:0;font-family:inherit;color:#2A1A20;')} />
-      {value && <button type="button" onClick={() => onChange('')} style={css('border:none;background:none;cursor:pointer;color:#B79AA6;display:flex;')}><Icon name="close" size={18} /></button>}
+      {value && <button type="button" aria-label="Clear search" onClick={() => onChange('')} style={css('border:none;background:none;cursor:pointer;color:#B79AA6;display:flex;')}><Icon name="close" size={18} /></button>}
     </div>
   );
 }
@@ -133,7 +133,7 @@ export function IconButton({ icon, onClick, tone = 'default', title }: { icon: s
     warn: 'border:none;background:#FBF0DA;color:#B8860B;',
   }[tone];
   return (
-    <button type="button" title={title} onClick={onClick} style={css(`width:34px;height:34px;flex:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;${styles}`)}>
+    <button type="button" title={title} aria-label={title ?? icon} onClick={onClick} style={css(`width:34px;height:34px;flex:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;${styles}`)}>
       <Icon name={icon} size={18} />
     </button>
   );

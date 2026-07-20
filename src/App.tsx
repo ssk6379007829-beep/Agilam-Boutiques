@@ -1,6 +1,7 @@
+import { lazy, Suspense, type ComponentType } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import { RequireRole } from '@/auth/RequireRole';
+import { RequireRole, FullscreenLoader } from '@/auth/RequireRole';
 
 import { Loading } from '@/pages/Loading';
 import { SignIn } from '@/pages/auth/SignIn';
@@ -30,34 +31,44 @@ import { Messages as BuyerMessages } from '@/pages/buyer/Messages';
 import { Chat as BuyerChat } from '@/pages/buyer/Chat';
 import { Profile as BuyerProfile } from '@/pages/buyer/Profile';
 
-import { SellerLayout } from '@/components/layout/SellerLayout';
-import { Dashboard } from '@/pages/seller/Dashboard';
-import { AddProduct } from '@/pages/seller/AddProduct';
-import { MyProducts } from '@/pages/seller/MyProducts';
-import { Orders } from '@/pages/seller/Orders';
-import { OrderDetail } from '@/pages/seller/OrderDetail';
-import { Customers } from '@/pages/seller/Customers';
-import { Notifications } from '@/pages/seller/Notifications';
-import { Messages as SellerMessages } from '@/pages/seller/Messages';
-import { Chat as SellerChat } from '@/pages/seller/Chat';
-import { Billing } from '@/pages/seller/Billing';
-import { Earnings } from '@/pages/seller/Earnings';
-import { Analytics } from '@/pages/seller/Analytics';
-import { BoutiqueProfileEdit } from '@/pages/seller/BoutiqueProfileEdit';
-import { ProfileHub } from '@/pages/seller/ProfileHub';
-import { Settings } from '@/pages/seller/Settings';
-import { Help } from '@/pages/seller/Help';
+/**
+ * The seller and admin consoles are only ever reached by signed-in
+ * sellers/admins (gated by RequireRole), so their code is split into
+ * per-route chunks with React.lazy. A first-time buyer no longer downloads
+ * the entire seller + admin bundle just to view a product. The page modules
+ * use named exports, so each import is remapped to a default for lazy().
+ */
+const lazyNamed = <M, K extends keyof M>(loader: () => Promise<M>, name: K) =>
+  lazy(() => loader().then((m) => ({ default: m[name] as ComponentType })));
 
-import { AdminLayout } from '@/components/layout/AdminLayout';
-import { Overview } from '@/pages/admin/Overview';
-import { Approvals } from '@/pages/admin/Approvals';
-import { BoutiquesTable } from '@/pages/admin/BoutiquesTable';
-import { Users } from '@/pages/admin/Users';
-import { ProductsAdmin } from '@/pages/admin/ProductsAdmin';
-import { OrdersAdmin } from '@/pages/admin/OrdersAdmin';
-import { Reports } from '@/pages/admin/Reports';
-import { Payments } from '@/pages/admin/Payments';
-import { Ads } from '@/pages/admin/Ads';
+const SellerLayout = lazyNamed(() => import('@/components/layout/SellerLayout'), 'SellerLayout');
+const Dashboard = lazyNamed(() => import('@/pages/seller/Dashboard'), 'Dashboard');
+const AddProduct = lazyNamed(() => import('@/pages/seller/AddProduct'), 'AddProduct');
+const MyProducts = lazyNamed(() => import('@/pages/seller/MyProducts'), 'MyProducts');
+const Orders = lazyNamed(() => import('@/pages/seller/Orders'), 'Orders');
+const OrderDetail = lazyNamed(() => import('@/pages/seller/OrderDetail'), 'OrderDetail');
+const Customers = lazyNamed(() => import('@/pages/seller/Customers'), 'Customers');
+const Notifications = lazyNamed(() => import('@/pages/seller/Notifications'), 'Notifications');
+const SellerMessages = lazyNamed(() => import('@/pages/seller/Messages'), 'Messages');
+const SellerChat = lazyNamed(() => import('@/pages/seller/Chat'), 'Chat');
+const Billing = lazyNamed(() => import('@/pages/seller/Billing'), 'Billing');
+const Earnings = lazyNamed(() => import('@/pages/seller/Earnings'), 'Earnings');
+const Analytics = lazyNamed(() => import('@/pages/seller/Analytics'), 'Analytics');
+const BoutiqueProfileEdit = lazyNamed(() => import('@/pages/seller/BoutiqueProfileEdit'), 'BoutiqueProfileEdit');
+const ProfileHub = lazyNamed(() => import('@/pages/seller/ProfileHub'), 'ProfileHub');
+const Settings = lazyNamed(() => import('@/pages/seller/Settings'), 'Settings');
+const Help = lazyNamed(() => import('@/pages/seller/Help'), 'Help');
+
+const AdminLayout = lazyNamed(() => import('@/components/layout/AdminLayout'), 'AdminLayout');
+const Overview = lazyNamed(() => import('@/pages/admin/Overview'), 'Overview');
+const Approvals = lazyNamed(() => import('@/pages/admin/Approvals'), 'Approvals');
+const BoutiquesTable = lazyNamed(() => import('@/pages/admin/BoutiquesTable'), 'BoutiquesTable');
+const Users = lazyNamed(() => import('@/pages/admin/Users'), 'Users');
+const ProductsAdmin = lazyNamed(() => import('@/pages/admin/ProductsAdmin'), 'ProductsAdmin');
+const OrdersAdmin = lazyNamed(() => import('@/pages/admin/OrdersAdmin'), 'OrdersAdmin');
+const Reports = lazyNamed(() => import('@/pages/admin/Reports'), 'Reports');
+const Payments = lazyNamed(() => import('@/pages/admin/Payments'), 'Payments');
+const Ads = lazyNamed(() => import('@/pages/admin/Ads'), 'Ads');
 
 export default function App() {
   return (
@@ -106,7 +117,9 @@ export default function App() {
         path="/seller"
         element={
           <RequireRole role="seller">
-            <SellerLayout />
+            <Suspense fallback={<FullscreenLoader />}>
+              <SellerLayout />
+            </Suspense>
           </RequireRole>
         }
       >
@@ -133,7 +146,9 @@ export default function App() {
         path="/admin"
         element={
           <RequireRole role="admin">
-            <AdminLayout />
+            <Suspense fallback={<FullscreenLoader />}>
+              <AdminLayout />
+            </Suspense>
           </RequireRole>
         }
       >

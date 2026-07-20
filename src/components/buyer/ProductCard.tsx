@@ -27,8 +27,11 @@ export function ProductCard({ product: p, onOpen, wished, onToggleWish, showRati
         )}
         {onToggleWish && (
           <button
+            type="button"
             onClick={onToggleWish}
-            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-[10px] border-none bg-white/85"
+            aria-label={wished ? `Remove ${p.title} from wishlist` : `Add ${p.title} to wishlist`}
+            aria-pressed={!!wished}
+            className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-[10px] border-none bg-white/85"
           >
             <Icon name={wished ? 'favorite' : 'favorite_border'} className="text-lg" style={{ color: wished ? '#D6336C' : '#B79AA6' }} />
           </button>

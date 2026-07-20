@@ -4,20 +4,14 @@ import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
+import { ProductReviews } from '@/components/buyer/ProductReviews';
 import { TONES, fmt } from '@/data/demo';
 
 const RATING_BARS = [
   { stars: 5, pct: 72 }, { stars: 4, pct: 19 }, { stars: 3, pct: 6 }, { stars: 2, pct: 2 }, { stars: 1, pct: 1 },
 ];
 
-const REVIEWS = [
-  { name: 'Anitha R.', rating: 5, date: '2 weeks ago', text: 'The zari work is even more stunning in person. The drape fell beautifully at my sister’s wedding — so many compliments.', tone: 0, verified: true },
-  { name: 'Meena K.', rating: 5, date: '1 month ago', text: 'Rich colour and premium silk. The boutique answered all my questions on WhatsApp before I ordered. Highly recommend.', tone: 2, verified: true },
-  { name: 'Divya S.', rating: 4, date: '1 month ago', text: 'Lovely saree and true to the photos. Delivery took a little longer than expected but the quality made up for it.', tone: 4, verified: false },
-];
-
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
-const starsFor = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
 const FALLBACK_SIZES = ['S', 'M', 'L', 'XL'];
 
@@ -49,6 +43,7 @@ export function ProductDetail() {
   }
   // More from the same boutique/shop
   const sameBoutique = PRODUCTS.filter((p) => p.boutique === ap.boutique && p.id !== ap.id).slice(0, 12);
+  const boutiqueId = BOUTIQUES.find((x) => x.name === ap.boutique)?.id ?? '';
   // Broad "you may also like" — same category surfaced first, up to 30 items
   const youMayLike = [...PRODUCTS.filter((p) => p.id !== ap.id)]
     .sort((a, b) => (b.cat === ap.cat ? 1 : 0) - (a.cat === ap.cat ? 1 : 0))
@@ -320,35 +315,14 @@ export function ProductDetail() {
                     ))}
                   </div>
                 </div>
-                <button onClick={openChat} style={css('width:100%;margin-top:18px;height:44px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:13px;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
+                <button onClick={() => setOpenPanels((p) => ({ ...p, reviews: true }))} style={css('width:100%;margin-top:18px;height:44px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:13px;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>rate_review</span>Write a review
                 </button>
               </div>
             ))}
 
             {renderPanel('reviews', 'reviews', 'Customer reviews', `${reviewsF(ap.reviews)}`, (
-              <div style={css('display:flex;flex-direction:column;gap:12px;')}>
-                {REVIEWS.map((rv) => (
-                  <div key={rv.name} style={css('background:#fff;border:1px solid #F0E2E9;border-radius:16px;padding:16px 18px;')}>
-                    <div style={css('display:flex;align-items:center;gap:12px;')}>
-                      <div style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${TONES[rv.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:rgba(42,26,32,.55);`)}>{rv.name[0]}</div>
-                      <div style={css('flex:1;min-width:0;')}>
-                        <div style={css('display:flex;align-items:center;gap:7px;')}>
-                          <span style={css('font-weight:700;font-size:14px;')}>{rv.name}</span>
-                          {rv.verified && (
-                            <span style={css('display:inline-flex;align-items:center;gap:3px;background:#E9F6EF;color:#2FA36B;border-radius:7px;padding:2px 7px;font-size:10px;font-weight:800;')}>
-                              <span style={css("font-family:'Material Symbols Outlined';font-size:12px;")}>verified</span>Verified
-                            </span>
-                          )}
-                        </div>
-                        <div style={css('color:#8A7078;font-size:12px;margin-top:2px;')}>{rv.date}</div>
-                      </div>
-                      <span style={css('color:#E0B84B;font-size:13px;letter-spacing:1px;')}>{starsFor(rv.rating)}</span>
-                    </div>
-                    <div style={css('color:#5C4650;font-size:13.5px;line-height:1.6;margin-top:10px;')}>{rv.text}</div>
-                  </div>
-                ))}
-              </div>
+              <ProductReviews productId={ap.id} boutiqueId={boutiqueId} />
             ))}
           </div>
         </div>

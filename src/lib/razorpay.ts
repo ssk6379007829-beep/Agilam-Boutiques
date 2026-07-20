@@ -48,7 +48,15 @@ function loadCheckout(): Promise<void> {
 }
 
 type PayArgs = {
-  /** Amount in paise (₹1 = 100). Must be at least 100. */
+  /**
+   * Cart lines the server prices the order from (product id + quantity + size).
+   * When provided, /api/create-order derives the Razorpay amount from DB prices
+   * and `couponCode`, so the browser's own total is never trusted. `amountPaise`
+   * is kept only as a fallback for the amount actually shown in the modal.
+   */
+  items?: { product_id: string; qty: number; size: string }[];
+  couponCode?: string | null;
+  /** Amount in paise (₹1 = 100). Must be at least 100. Fallback when `items` is absent. */
   amountPaise: number;
   name: string;
   description?: string;
@@ -62,6 +70,8 @@ type PayArgs = {
  * Rejects with a user-facing message on cancel, failure, or verification error.
  */
 export async function payWithRazorpay({
+  items,
+  couponCode,
   amountPaise,
   name,
   description,
@@ -74,7 +84,16 @@ export async function payWithRazorpay({
   const orderRes = await fetch('/api/create-order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount: amountPaise, currency: 'INR', receipt }),
+    // Send the cart so the server can price the order itself (defense-in-depth),
+    // plus the displayed amount as a resilient fallback. The authoritative check
+    // still happens at /api/place-order, which re-binds the paid amount.
+    body: JSON.stringify({
+      items: items && items.length ? items : undefined,
+      couponCode: couponCode ?? null,
+      amount: amountPaise,
+      currency: 'INR',
+      receipt,
+    }),
   });
 
   // The endpoint can return HTML (e.g. an SPA fallback when /api isn't served),

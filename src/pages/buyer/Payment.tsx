@@ -8,7 +8,7 @@ import { PAY_METHODS, fmt } from '@/data/demo';
 
 export function Payment() {
   const navigate = useNavigate();
-  const { payMethod, setPayMethod, subtotal, discount, shipFee, total, guest, placeOrder, showToast } = useShop();
+  const { payMethod, setPayMethod, subtotal, discount, shipFee, total, guest, orderItems, appliedCoupon, placeOrder, showToast } = useShop();
   const [processing, setProcessing] = useState(false);
 
   const isOnline = payMethod !== 'cod';
@@ -31,6 +31,8 @@ export function Payment() {
       // the order server-side with the verified payment.
       const payment = isOnline
         ? await payWithRazorpay({
+            items: orderItems,
+            couponCode: appliedCoupon,
             amountPaise: Math.round(total * 100),
             name: 'Agilam Boutiques',
             description: 'Order payment',

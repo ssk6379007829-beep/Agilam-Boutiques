@@ -57,7 +57,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!enforceRateLimit(req, res, { key: 'place-order', limit: 20, windowMs: 60_000 })) return;
+  if (!(await enforceRateLimit(req, res, { key: 'place-order', limit: 20, windowMs: 60_000 }))) return;
 
   if (!supabaseUrl || !serviceRoleKey) {
     return res.status(500).json({ error: 'Order service is not configured (missing Supabase service role)' });

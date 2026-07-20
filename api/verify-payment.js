@@ -11,13 +11,13 @@ import { enforceRateLimit } from './_rateLimit.js';
 
 const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!enforceRateLimit(req, res, { key: 'verify-payment', limit: 30, windowMs: 60_000 })) return;
+  if (!(await enforceRateLimit(req, res, { key: 'verify-payment', limit: 30, windowMs: 60_000 }))) return;
 
   if (!keySecret) {
     return res.status(401).json({ error: 'Razorpay credentials are not configured' });

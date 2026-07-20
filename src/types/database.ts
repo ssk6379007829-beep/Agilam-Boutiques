@@ -95,6 +95,28 @@ export interface Database {
         Update: Partial<{ buyer_id: string; boutique_id: string }>;
         Relationships: [];
       };
+      reviews: {
+        Row: {
+          id: string;
+          product_id: string;
+          boutique_id: string;
+          buyer_id: string;
+          rating: number;
+          body: string;
+          author_name: string | null;
+          verified_purchase: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['reviews']['Row']> & {
+          product_id: string;
+          boutique_id: string;
+          buyer_id: string;
+          rating: number;
+        };
+        Update: Partial<Database['public']['Tables']['reviews']['Row']>;
+        Relationships: [];
+      };
       orders: {
         Row: {
           id: string;
