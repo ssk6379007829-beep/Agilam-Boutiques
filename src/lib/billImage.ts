@@ -22,6 +22,25 @@ export async function downloadBillPdf(el: HTMLElement, filename: string): Promis
   pdf.save(filename);
 }
 
+/** Opens a blank tab synchronously, inside the click handler's user gesture,
+ *  and shows a loading placeholder in it. Call this BEFORE any await in a
+ *  share click-handler — browsers only allow window.open to bypass the popup
+ *  blocker when it's called directly from a user gesture, and the bill image
+ *  render (html2canvas) is async, so a window.open() issued after awaiting it
+ *  gets silently blocked. Redirect the returned handle once the real URL is
+ *  known (`tab.location.href = url`), which is allowed even after the await. */
+export function openPendingWhatsAppTab(): Window | null {
+  const win = window.open('', '_blank');
+  try {
+    win?.document.write(
+      '<title>Preparing your bill…</title><body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;background:#FBF6F2;color:#8A7078;">Preparing your bill…</body>',
+    );
+  } catch {
+    // Best-effort placeholder only — a blocked/null window is handled by the caller.
+  }
+  return win;
+}
+
 function downloadFile(file: File) {
   const url = URL.createObjectURL(file);
   const a = document.createElement('a');

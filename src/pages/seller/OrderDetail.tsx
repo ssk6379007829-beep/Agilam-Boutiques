@@ -8,7 +8,7 @@ import { fetchOrder, updateOrderStatus } from '@/data/orders';
 import { toOrderView } from '@/lib/orderView';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { buildWhatsAppLink, buildBillShareCaption } from '@/lib/whatsapp';
-import { shareOrDownloadBillImage } from '@/lib/billImage';
+import { shareOrDownloadBillImage, openPendingWhatsAppTab } from '@/lib/billImage';
 import { BillReceipt } from '@/components/seller/BillReceipt';
 
 export function OrderDetail() {
@@ -49,6 +49,11 @@ export function OrderDetail() {
       return;
     }
     if (!receiptRef.current) return;
+    // Must open synchronously, still inside this click's user gesture — the
+    // bill render below is async, and a window.open() issued after an await
+    // gets silently blocked by the browser's popup blocker on most desktop
+    // browsers, which is why this button could look like it does nothing.
+    const pendingTab = openPendingWhatsAppTab();
     setSharing(true);
     try {
       const caption = buildBillShareCaption({
@@ -61,11 +66,13 @@ export function OrderDetail() {
       const result = await shareOrDownloadBillImage(receiptRef.current, `Bill-${o.number.replace('#', '')}.png`, caption);
       if (result === 'downloaded') {
         showToast('Bill image saved — attach it in the WhatsApp chat that just opened');
-        window.open(buildWhatsAppLink(o.phone, caption), '_blank', 'noopener,noreferrer');
-      } else if (result === 'shared') {
-        showToast('Bill shared');
+        if (pendingTab) pendingTab.location.href = buildWhatsAppLink(o.phone, caption);
+      } else {
+        pendingTab?.close();
+        if (result === 'shared') showToast('Bill shared');
       }
     } catch (e) {
+      pendingTab?.close();
       showToast(e instanceof Error ? e.message : 'Could not generate the bill image');
     } finally {
       setSharing(false);
@@ -119,8 +126,11 @@ export function OrderDetail() {
           </button>
         </div>
 
-        {/* Off-screen premium bill card, captured to an image/PDF on demand — never shown to the seller directly. */}
-        <div style={css('position:fixed;left:-9999px;top:0;')} aria-hidden="true">
+        {/* Hidden premium bill card, captured to an image on demand — never shown
+            to the seller directly. Kept within normal viewport coordinates
+            (opacity 0, not translated far off-screen) because html2canvas can
+            fail to capture elements positioned way outside the viewport. */}
+        <div style={css('position:absolute;top:0;left:0;opacity:0;pointer-events:none;z-index:-1;')} aria-hidden="true">
           <BillReceipt
             ref={receiptRef}
             boutiqueName={boutique?.name ?? 'Agilam Boutique'}

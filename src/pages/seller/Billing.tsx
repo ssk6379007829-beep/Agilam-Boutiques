@@ -8,7 +8,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { fetchProductsByBoutique } from '@/data/products';
 import { createOfflineSale, type OfflineSaleItem, type OfflineSaleResult } from '@/data/offlineSales';
 import { buildWhatsAppLink, buildBillShareCaption } from '@/lib/whatsapp';
-import { shareOrDownloadBillImage, downloadBillPdf } from '@/lib/billImage';
+import { shareOrDownloadBillImage, downloadBillPdf, openPendingWhatsAppTab } from '@/lib/billImage';
 import { BillReceipt } from '@/components/seller/BillReceipt';
 import { TONES, fmt } from '@/data/demo';
 
@@ -128,6 +128,10 @@ export function Billing() {
 
   const shareBillImage = async () => {
     if (!receiptRef.current || !receipt) return;
+    // Must open synchronously, still inside this click's user gesture — see
+    // openPendingWhatsAppTab's doc comment for why (a window.open() issued
+    // after the async bill render below gets silently popup-blocked).
+    const pendingTab = openPendingWhatsAppTab();
     setSharing(true);
     try {
       const caption = buildBillShareCaption({
@@ -140,11 +144,13 @@ export function Billing() {
       const result = await shareOrDownloadBillImage(receiptRef.current, `Bill-${receipt.order_number}.png`, caption);
       if (result === 'downloaded') {
         showToast('Bill image saved — attach it in the WhatsApp chat that just opened');
-        window.open(buildWhatsAppLink(buyerPhone, caption), '_blank', 'noopener,noreferrer');
-      } else if (result === 'shared') {
-        showToast('Bill shared');
+        if (pendingTab) pendingTab.location.href = buildWhatsAppLink(buyerPhone, caption);
+      } else {
+        pendingTab?.close();
+        if (result === 'shared') showToast('Bill shared');
       }
     } catch (e) {
+      pendingTab?.close();
       showToast(e instanceof Error ? e.message : 'Could not generate the bill image');
     } finally {
       setSharing(false);
