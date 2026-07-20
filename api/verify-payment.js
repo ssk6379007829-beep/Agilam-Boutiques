@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { enforceRateLimit } from './_rateLimit.js';
 
 /**
  * Vercel serverless function: verify a Razorpay payment signature.
@@ -15,6 +16,8 @@ export default function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!enforceRateLimit(req, res, { key: 'verify-payment', limit: 30, windowMs: 60_000 })) return;
 
   if (!keySecret) {
     return res.status(401).json({ error: 'Razorpay credentials are not configured' });

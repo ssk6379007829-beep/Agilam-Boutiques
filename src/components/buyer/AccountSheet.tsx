@@ -10,7 +10,20 @@ const emailOk = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
  * Google, an emailed one-time code, or email + password. On success the browser
  * holds a Supabase session and `onDone` fires so the caller can sync.
  */
-export function AccountSheet({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
+export function AccountSheet({
+  onDone,
+  onClose,
+  title,
+  subtitle,
+}: {
+  onDone: () => void;
+  onClose: () => void;
+  /** Override the form-view heading/subtext so the sheet can be reused as a
+   * context-specific gate (e.g. "Sign in to chat"). The code-entry view keeps
+   * its own copy. */
+  title?: string;
+  subtitle?: string;
+}) {
   const { signInWithPassword, signUpWithPassword } = useAuth();
   const [view, setView] = useState<'form' | 'code'>('form');
   const [mode, setMode] = useState<'signin' | 'create'>('signin');
@@ -100,10 +113,10 @@ export function AccountSheet({ onDone, onClose }: { onDone: () => void; onClose:
           <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:28px;")}>{view === 'code' ? 'mark_email_read' : 'account_circle'}</span>
         </div>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;text-align:center;margin-top:15px;line-height:1.15;")}>
-          {view === 'code' ? 'Enter the code' : mode === 'create' ? 'Create your account' : 'Sign in to sync'}
+          {view === 'code' ? 'Enter the code' : mode === 'create' ? 'Create your account' : title ?? 'Sign in to sync'}
         </div>
         <div style={css('text-align:center;color:#8A7078;font-size:13.5px;margin-top:8px;line-height:1.5;max-width:330px;margin-left:auto;margin-right:auto;')}>
-          {view === 'code' ? `We emailed a 6-digit code to ${email}` : 'Keep your orders & details on any device.'}
+          {view === 'code' ? `We emailed a 6-digit code to ${email}` : subtitle ?? 'Keep your orders & details on any device.'}
         </div>
 
         {view === 'form' ? (

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ChatView } from '@/components/chat/ChatView';
-import { BuyerDetailsSheet } from '@/components/buyer/BuyerDetailsSheet';
+import { AccountSheet } from '@/components/buyer/AccountSheet';
+import { useAuth } from '@/auth/AuthContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { useShop } from '@/state/ShopContext';
 import {
@@ -13,24 +14,25 @@ import {
   parseOrderCard,
   parseProductCard,
   sendMessage,
-  syncBuyerProfile,
   type OrderCard,
   type ProductCard,
 } from '@/data/chat';
 
 /**
  * Buyer conversation. The route param is the boutique id (chats are opened from
- * a product or boutique page). Before running we make sure the buyer has given
- * their name + phone (the lightweight identity gate); then we mint/reuse their
- * anonymous identity and the one conversation they have with that boutique.
+ * a product or boutique page). Chatting requires a signed-in account: the buyer
+ * logs in / signs up once, and their name comes straight from the account
+ * profile (Google / email) — no separate name + phone form. Once signed in we
+ * reuse that identity and the one conversation they have with that boutique.
  */
 export function Chat() {
   const { id: boutiqueId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const { boutiqueById } = useCatalog();
-  const { hasBuyerDetails, showToast } = useShop();
-  const [gateOpen, setGateOpen] = useState(!hasBuyerDetails);
+  const { showToast } = useShop();
+  const { session, loading: authLoading } = useAuth();
+  const signedIn = !!session;
   const [live, setLive] = useState<{ conversationId: string; senderId: string } | null>(null);
   const [failed, setFailed] = useState(false);
   const navState = location.state as { product?: ProductCard; order?: OrderCard } | null;
@@ -40,14 +42,14 @@ export function Chat() {
   const sharedOrderRef = useRef(false);
 
   useEffect(() => {
-    // Hold until the buyer has provided contact details.
-    if (!boutiqueId || gateOpen) return;
+    // Hold until the buyer is signed in; their profile identity is the chat
+    // participant, so the seller sees the account's real name.
+    if (!boutiqueId || !signedIn) return;
     let active = true;
     setLive(null);
     setFailed(false);
     (async () => {
       const buyerId = await ensureBuyerIdentity();
-      await syncBuyerProfile();
       const conversationId = await getOrCreateConversation(buyerId, boutiqueId);
       if (active) setLive({ conversationId, senderId: buyerId });
     })().catch((e) => {
@@ -58,7 +60,7 @@ export function Chat() {
     return () => {
       active = false;
     };
-  }, [boutiqueId, gateOpen, showToast]);
+  }, [boutiqueId, signedIn, showToast]);
 
   // Once live, if the buyer arrived from a product's Chat button, post that
   // product as a card so the seller sees which item the enquiry is about. Skip
@@ -109,16 +111,15 @@ export function Chat() {
         backTo="/buyer/messages"
         conversationId={live?.conversationId}
         senderId={live?.senderId}
-        pending={!gateOpen && !live && !failed}
+        pending={(authLoading || (signedIn && !live)) && !failed}
         onProductClick={(pid) => navigate(`/buyer/product/${pid}`)}
         onOrderClick={(oid) => navigate(`/buyer/orders/${encodeURIComponent(oid)}/track`)}
       />
-      {gateOpen && (
-        <BuyerDetailsSheet
-          title={`Chat with ${name}`}
-          subtitle="Share your name and number so the boutique knows who they're talking to."
-          cta="Start chat"
-          onDone={() => setGateOpen(false)}
+      {!authLoading && !signedIn && (
+        <AccountSheet
+          title={`Sign in to chat with ${name}`}
+          subtitle="Sign in or create an account to start chatting — the boutique sees your name straight from your profile."
+          onDone={() => showToast('Signed in')}
           onClose={() => navigate('/buyer/messages')}
         />
       )}

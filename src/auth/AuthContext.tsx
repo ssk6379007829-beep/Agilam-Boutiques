@@ -28,8 +28,8 @@ type AuthContextValue = {
   adminSignIn: (email: string, password: string) => Promise<Role>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  /** Promote the signed-in user to a role (used after Google OAuth). */
-  claimRole: (role: Role) => Promise<void>;
+  /** Promote the signed-in user (buyer→seller only) after Google OAuth. Admin is never self-claimable. */
+  claimRole: (role: Extract<Role, 'buyer' | 'seller'>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -181,8 +181,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Google users are created with the default buyer role; when they explicitly
   // signed in as a seller, promote the profile row (self-update RLS) so the
-  // seller console renders. This is the one sanctioned role change.
-  async function claimRole(role: Role) {
+  // seller console renders. This is the one sanctioned role change — and it is
+  // deliberately limited to 'seller'. The admin role is never self-claimable
+  // (the DB trigger in migration 0010 enforces this server-side too).
+  async function claimRole(role: Extract<Role, 'buyer' | 'seller'>) {
     const { data } = await supabase.auth.getSession();
     const uid = data.session?.user?.id;
     if (!uid) return;

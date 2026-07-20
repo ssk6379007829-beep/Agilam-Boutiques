@@ -1,4 +1,5 @@
 import Razorpay from 'razorpay';
+import { enforceRateLimit } from './_rateLimit.js';
 
 /**
  * Vercel serverless function: create a Razorpay order.
@@ -16,6 +17,8 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!enforceRateLimit(req, res, { key: 'create-order', limit: 20, windowMs: 60_000 })) return;
 
   if (!keyId || !keySecret) {
     return res.status(401).json({ error: 'Razorpay credentials are not configured' });

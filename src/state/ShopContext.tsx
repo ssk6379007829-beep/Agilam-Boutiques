@@ -253,10 +253,12 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers.Authorization = `Bearer ${token}`;
 
+    // The server re-derives the discount/shipping from this code and binds the
+    // paid amount to it — the browser's discount value is never trusted.
     const res = await fetch('/api/place-order', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ items, guest, payment }),
+      body: JSON.stringify({ items, guest, payment, couponCode: appliedCoupon }),
     });
     const data = (await res.json().catch(() => ({}))) as {
       orders?: { order_number: string; boutique_id: string }[];
@@ -302,7 +304,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     setLastOrderId(oid);
     showToast('Order placed successfully');
     return oid;
-  }, [cart, guest, boutiques, productById, showToast]);
+  }, [cart, guest, appliedCoupon, boutiques, productById, showToast]);
 
   const value: ShopValue = {
     wishlist, toggleWish,
