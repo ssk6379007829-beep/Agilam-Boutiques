@@ -1,8 +1,29 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { COUPONS, type Coupon } from '@/data/demo';
 import { useCatalog } from '@/state/CatalogContext';
+import { useAuth } from '@/auth/AuthContext';
 import { EMPTY_GUEST, readGuest, writeGuest, hasContactDetails } from '@/lib/buyerDetails';
 import { addOrders, type PlacedOrder, type PlacedOrderItem } from '@/lib/orderHistory';
+import {
+  readLocalCart,
+  writeLocalCart,
+  readLocalWishlist,
+  writeLocalWishlist,
+  readLocalFollows,
+  writeLocalFollows,
+  clearLocalCollections,
+} from '@/lib/buyerLocal';
+import {
+  loadCollections,
+  mergeGuestCollections,
+  dbUpsertCartItem,
+  dbRemoveCartItem,
+  dbClearCart,
+  dbAddWishlist,
+  dbRemoveWishlist,
+  dbAddFollow,
+  dbRemoveFollow,
+} from '@/data/buyerCollections';
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -40,6 +61,11 @@ export const DEFAULT_GUEST: Guest = EMPTY_GUEST;
 type ShopValue = {
   wishlist: Record<string, boolean>;
   toggleWish: (id: string) => void;
+
+  /** Boutiques the buyer follows. Persisted to their account when signed in. */
+  follows: Record<string, boolean>;
+  isFollowing: (boutiqueId: string) => boolean;
+  toggleFollow: (boutiqueId: string) => boolean;
 
   cart: Cart;
   cartCount: number;
@@ -101,9 +127,16 @@ const ShopContext = createContext<ShopValue | null>(null);
 
 export function ShopProvider({ children }: { children: ReactNode }) {
   const { productById, boutiques } = useCatalog();
-  // Cart and wishlist start empty — real shoppers build them from the catalogue.
-  const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
-  const [cart, setCart] = useState<Cart>({});
+  const { session } = useAuth();
+  const signedIn = !!session;
+
+  // Collections are seeded from local storage so guests keep their bag / saved
+  // items / follows across refreshes. On sign-in they're merged up into the
+  // account and reloaded from the DB, which then becomes the source of truth
+  // (see the account-sync effect below).
+  const [wishlist, setWishlist] = useState<Record<string, boolean>>(() => readLocalWishlist());
+  const [cart, setCart] = useState<Cart>(() => readLocalCart());
+  const [follows, setFollows] = useState<Record<string, boolean>>(() => readLocalFollows());
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [query, setQuery] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -122,23 +155,53 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     toastTimer.current = setTimeout(() => setToast(null), 2200);
   }, []);
 
+  // The signed-in buyer's id, or null for a guest. Held in a ref so the
+  // (stable) mutators below can decide at call time whether to write through to
+  // the account without being re-created when the session changes.
+  const buyerIdRef = useRef<string | null>(session?.user?.id ?? null);
+  useEffect(() => {
+    buyerIdRef.current = session?.user?.id ?? null;
+  }, [session]);
+
+  // Run an account write-through, fire-and-forget. Local state is already
+  // updated optimistically; a failure only surfaces a toast (the change is kept
+  // locally and re-synced on the next sign-in), so the UI never blocks on the DB.
+  const pushToAccount = useCallback((op: () => Promise<unknown>) => {
+    if (!buyerIdRef.current) return;
+    op().catch(() => showToast("Couldn't sync — will retry when you're back online"));
+  }, [showToast]);
+
   const toggleWish = useCallback((id: string) => {
     setWishlist((w) => {
       const next = { ...w };
-      if (next[id]) delete next[id];
-      else next[id] = true;
+      const nowSaved = !next[id];
+      if (nowSaved) next[id] = true;
+      else delete next[id];
+      const uid = buyerIdRef.current;
+      if (uid) pushToAccount(() => (nowSaved ? dbAddWishlist(uid, id) : dbRemoveWishlist(uid, id)));
       return next;
     });
-  }, []);
+  }, [pushToAccount]);
 
   const addToCart = useCallback((id: string) => {
-    setCart((c) => ({ ...c, [id]: { qty: (c[id]?.qty ?? 0) + 1, size: c[id]?.size ?? 'M' } }));
+    setCart((c) => {
+      const line = { qty: (c[id]?.qty ?? 0) + 1, size: c[id]?.size ?? 'M' };
+      const uid = buyerIdRef.current;
+      if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, line.qty, line.size));
+      return { ...c, [id]: line };
+    });
     showToast('Added to cart');
-  }, [showToast]);
+  }, [showToast, pushToAccount]);
 
   const buyNow = useCallback((id: string) => {
-    setCart((c) => (c[id] ? c : { ...c, [id]: { qty: 1, size: 'M' } }));
-  }, []);
+    setCart((c) => {
+      if (c[id]) return c;
+      const line = { qty: 1, size: 'M' };
+      const uid = buyerIdRef.current;
+      if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, line.qty, line.size));
+      return { ...c, [id]: line };
+    });
+  }, [pushToAccount]);
 
   const cartQty = useCallback((id: string, delta: number) => {
     setCart((c) => {
@@ -146,26 +209,107 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       if (!line) return c;
       const qty = line.qty + delta;
       const next = { ...c };
-      if (qty <= 0) delete next[id];
-      else next[id] = { ...line, qty };
+      const uid = buyerIdRef.current;
+      if (qty <= 0) {
+        delete next[id];
+        if (uid) pushToAccount(() => dbRemoveCartItem(uid, id));
+      } else {
+        next[id] = { ...line, qty };
+        if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, qty, line.size));
+      }
       return next;
     });
-  }, []);
+  }, [pushToAccount]);
 
   const setCartSize = useCallback((id: string, size: string) => {
-    setCart((c) => (c[id] ? { ...c, [id]: { ...c[id], size } } : c));
-  }, []);
+    setCart((c) => {
+      if (!c[id]) return c;
+      const uid = buyerIdRef.current;
+      if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, c[id].qty, size));
+      return { ...c, [id]: { ...c[id], size } };
+    });
+  }, [pushToAccount]);
 
   const removeCart = useCallback((id: string) => {
     setCart((c) => {
       const next = { ...c };
       delete next[id];
+      const uid = buyerIdRef.current;
+      if (uid) pushToAccount(() => dbRemoveCartItem(uid, id));
       return next;
     });
     showToast('Removed from cart');
-  }, [showToast]);
+  }, [showToast, pushToAccount]);
 
-  const clearCart = useCallback(() => setCart({}), []);
+  const clearCart = useCallback(() => {
+    setCart({});
+    const uid = buyerIdRef.current;
+    if (uid) pushToAccount(() => dbClearCart(uid));
+  }, [pushToAccount]);
+
+  const isFollowing = useCallback((boutiqueId: string) => !!follows[boutiqueId], [follows]);
+
+  const toggleFollow = useCallback((boutiqueId: string): boolean => {
+    const next = !follows[boutiqueId];
+    setFollows((f) => {
+      const m = { ...f };
+      if (next) m[boutiqueId] = true;
+      else delete m[boutiqueId];
+      return m;
+    });
+    const uid = buyerIdRef.current;
+    if (uid) pushToAccount(() => (next ? dbAddFollow(uid, boutiqueId) : dbRemoveFollow(uid, boutiqueId)));
+    return next;
+  }, [follows, pushToAccount]);
+
+  // Guest durability: while browsing without an account, mirror every change to
+  // local storage so a refresh keeps the bag / saved items / follows. When
+  // signed in the account is the source of truth (write-through above), so we
+  // skip local writes to avoid leaking one account's data onto the device.
+  useEffect(() => { if (!signedIn) writeLocalCart(cart); }, [cart, signedIn]);
+  useEffect(() => { if (!signedIn) writeLocalWishlist(wishlist); }, [wishlist, signedIn]);
+  useEffect(() => { if (!signedIn) writeLocalFollows(follows); }, [follows, signedIn]);
+
+  // Account sync on sign-in / sign-out.
+  //  • Sign-in: merge whatever the guest built locally up into the account,
+  //    then reload all three collections from the DB (source of truth) and
+  //    clear the local copy.
+  //  • Sign-out: drop the in-memory + local collections so the next person on
+  //    this device starts clean (their data is safe on their account).
+  const prevUidRef = useRef<string | null>(null);
+  useEffect(() => {
+    const uid = session?.user?.id ?? null;
+    if (uid) {
+      let active = true;
+      (async () => {
+        const local = { cart: readLocalCart(), wishlist: readLocalWishlist(), follows: readLocalFollows() };
+        try {
+          await mergeGuestCollections(uid, local);
+        } catch {
+          /* merge is best-effort; still load what the account has */
+        }
+        const loaded = await loadCollections(uid);
+        if (!active) return;
+        setCart(loaded.cart);
+        setWishlist(loaded.wishlist);
+        setFollows(loaded.follows);
+        clearLocalCollections();
+      })().catch(() => {
+        /* offline / RLS lag — keep whatever's on screen */
+      });
+      prevUidRef.current = uid;
+      return () => { active = false; };
+    }
+    // uid is null: only wipe if we were previously signed in (a real logout).
+    // A first-load guest keeps the collections seeded from local storage.
+    if (prevUidRef.current) {
+      prevUidRef.current = null;
+      setCart({});
+      setWishlist({});
+      setFollows({});
+      clearLocalCollections();
+    }
+  }, [session?.user?.id]);
 
   const toggleFilter = useCallback((group: 'cats' | 'colors' | 'occasions' | 'sizes', value: string) => {
     setFilters((f) => {
@@ -308,6 +452,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const value: ShopValue = {
     wishlist, toggleWish,
+    follows, isFollowing, toggleFollow,
     cart, cartCount, addToCart, buyNow, cartQty, setCartSize, removeCart, clearCart,
     filters, setFilters, toggleFilter, setSort, setMaxPrice, resetFilters,
     query, setQuery,

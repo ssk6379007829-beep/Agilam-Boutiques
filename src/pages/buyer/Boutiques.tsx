@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { TONES } from '@/data/demo';
-import { readFollows, setFollow, FOLLOW_EVENT } from '@/lib/follows';
 
 /** Compact review counts the way the design shows them: 2100 → "2.1k". */
 function formatCount(n: number): string {
@@ -24,11 +23,13 @@ const SORTS: { key: SortKey; label: string }[] = [
 
 export function Boutiques() {
   const navigate = useNavigate();
-  const { showToast } = useShop();
+  // Follows are shared through the shop context: persisted to the buyer's
+  // account when signed in, or to local storage as a guest — always in sync
+  // with the boutique profile page.
+  const { showToast, follows: following, toggleFollow: toggleFollowAccount } = useShop();
   const { boutiques: BOUTIQUES } = useCatalog();
 
   const [query, setQuery] = useState('');
-  const [following, setFollowingMap] = useState<Record<string, boolean>>(() => readFollows());
 
   // Browse mode + filter state
   const [followingOnly, setFollowingOnly] = useState(false);
@@ -36,18 +37,6 @@ export function Boutiques() {
   const [sort, setSort] = useState<SortKey>('rating');
   const [city, setCity] = useState<string | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
-
-  // Keep the map in sync if follow state changes elsewhere (the profile page,
-  // another tab). Directory + profile share the same localStorage store.
-  useEffect(() => {
-    const sync = () => setFollowingMap(readFollows());
-    window.addEventListener(FOLLOW_EVENT, sync);
-    window.addEventListener('storage', sync);
-    return () => {
-      window.removeEventListener(FOLLOW_EVENT, sync);
-      window.removeEventListener('storage', sync);
-    };
-  }, []);
 
   const cities = useMemo(
     () => Array.from(new Set(BOUTIQUES.map((b) => b.city))).sort(),
@@ -90,9 +79,7 @@ export function Boutiques() {
 
   function toggleFollow(e: MouseEvent, id: string, name: string) {
     e.stopPropagation();
-    const next = !following[id];
-    setFollow(id, next);
-    setFollowingMap((prev) => ({ ...prev, [id]: next }));
+    const next = toggleFollowAccount(id);
     showToast(next ? 'Following ' + name : 'Unfollowed ' + name);
   }
 

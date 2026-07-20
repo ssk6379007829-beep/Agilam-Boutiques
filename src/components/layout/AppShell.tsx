@@ -12,6 +12,11 @@ function initialsFrom(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/** "selva.kumar" / "selva_kumar" -> "Selva Kumar" for an email-derived name. */
+function prettifyName(local: string): string {
+  return local.replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+}
+
 /**
  * Premium header profile button — shows the user's initials in a gradient
  * avatar (falling back to an icon before they've told us their name). Reused
@@ -68,10 +73,22 @@ export function AppShell({ tabs, profileTo }: { tabs: TabDef[]; profileTo: strin
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { toast, sellModal, guest } = useShop();
-  const { profile } = useAuth();
-  // Logged-in seller/admin get their account name; anonymous buyers get the
-  // name they saved at the checkout/chat gate.
-  const initials = initialsFrom(profile?.full_name || guest.name || '');
+  const { profile, session } = useAuth();
+  // Resolve a display name for the avatar initials, most-trusted first:
+  // the saved profile name, then the Google/OAuth metadata name, then any
+  // locally-saved guest name, then a name derived from the account email
+  // (so a signed-in user always gets initials instead of the fallback icon).
+  const meta = session?.user?.user_metadata as { full_name?: string; name?: string } | undefined;
+  const email = session?.user?.email ?? '';
+  const emailName = email ? prettifyName(email.split('@')[0]) : '';
+  const displayName =
+    (profile?.full_name && profile.full_name !== 'New user' ? profile.full_name : '') ||
+    meta?.full_name ||
+    meta?.name ||
+    guest.name ||
+    emailName ||
+    '';
+  const initials = initialsFrom(displayName);
 
   return (
     <div style={css('min-height:100vh;background:#FBF6F2;')}>

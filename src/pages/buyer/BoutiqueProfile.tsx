@@ -5,7 +5,7 @@ import { ImageSlot } from '@/components/ui/ImageSlot';
 import { ShareBoutiqueSheet } from '@/components/ShareBoutiqueSheet';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
-import { followBoutique, subscribeToBoutiqueFollowers } from '@/data/boutiques';
+import { subscribeToBoutiqueFollowers } from '@/data/boutiques';
 import { TONES, fmt } from '@/data/demo';
 
 /**
@@ -19,19 +19,10 @@ import { TONES, fmt } from '@/data/demo';
  *
  * It reads live data from `useCatalog()` (approved boutiques + their products
  * are public, so this works for anonymous buyers) and wires every control to a
- * real flow: back, wishlist, cart, follow (persisted client-side — anonymous
- * buyers have no id to key a DB row on), chat, call, share and product nav.
+ * real flow: back, wishlist, cart, follow (persisted to the buyer's account
+ * when signed in, or local storage as a guest — via the shop context), chat,
+ * call, share and product nav.
  */
-
-const FOLLOW_KEY = 'agx:following';
-
-function readFollows(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(FOLLOW_KEY) || '{}') as Record<string, boolean>;
-  } catch {
-    return {};
-  }
-}
 
 function monogram(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
@@ -49,57 +40,43 @@ function compact(n: number): string {
 export function BoutiqueProfile() {
   const navigate = useNavigate();
   const { id, slug } = useParams();
-  const { showToast } = useShop();
+  const { showToast, follows, toggleFollow: toggleFollowAccount } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   const [bqFilter, setBqFilter] = useState('All');
   const [shareOpen, setShareOpen] = useState(false);
-  const [following, setFollowing] = useState(false);
   const [liveFollowers, setLiveFollowers] = useState(0);
 
   // Resolved from either the in-app route (/buyer/boutique/:id) or the clean,
   // shareable public link (/b/:slug).
   const ab = BOUTIQUES.find((b) => (id ? b.id === id : b.slug === slug));
 
-  // Sync the persisted follow state + baseline count once the boutique resolves
-  // (the slug route has no id until the catalogue loads).
+  // Follow state comes straight from the shared context (account- or
+  // device-backed), so it stays in sync with the boutique directory.
+  const following = ab ? !!follows[ab.id] : false;
+
+  // Seed the baseline count once the boutique resolves (the slug route has no
+  // id until the catalogue loads).
   useEffect(() => {
     if (!ab) return;
-    setFollowing(!!readFollows()[ab.id]);
     setLiveFollowers(ab.followers);
   }, [ab?.id, ab?.followers]);
 
-  // Live follower count — updates in real time as anyone follows/unfollows.
+  // Live follower count — updates in real time as any account follows/unfollows
+  // (the DB trigger keeps boutiques.followers_count accurate).
   useEffect(() => {
     if (!ab) return;
     return subscribeToBoutiqueFollowers(ab.id, setLiveFollowers);
   }, [ab?.id]);
 
-  const toggleFollow = useCallback(async () => {
+  const toggleFollow = useCallback(() => {
     if (!ab) return;
-    const next = !following;
-
-    // Optimistic: flip the label and nudge the count immediately.
-    setFollowing(next);
+    // Persist through the context (account when signed in, else local) and nudge
+    // the count optimistically; the realtime subscription reconciles it to the
+    // authoritative total the trigger writes.
+    const next = toggleFollowAccount(ab.id);
     setLiveFollowers((c) => Math.max(0, c + (next ? 1 : -1)));
-    const map = readFollows();
-    if (next) map[ab.id] = true;
-    else delete map[ab.id];
-    try {
-      localStorage.setItem(FOLLOW_KEY, JSON.stringify(map));
-    } catch {
-      /* storage may be unavailable (private mode) — the in-memory toggle still holds */
-    }
     showToast(next ? `Following ${ab.name}` : `Unfollowed ${ab.name}`);
-
-    // Persist to the shared count; adopt the authoritative total it returns.
-    try {
-      const count = await followBoutique(ab.id, next);
-      setLiveFollowers(count);
-    } catch {
-      // Roll back only the count on failure — the device-local follow stands.
-      setLiveFollowers((c) => Math.max(0, c + (next ? -1 : 1)));
-    }
-  }, [ab, following, showToast]);
+  }, [ab, toggleFollowAccount, showToast]);
 
   const bqCats = useMemo(
     () => (ab ? ['All', ...Array.from(new Set(PRODUCTS.filter((p) => p.boutique === ab.name).map((p) => p.cat)))] : ['All']),

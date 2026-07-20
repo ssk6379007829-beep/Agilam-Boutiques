@@ -83,6 +83,18 @@ export interface Database {
         Update: Partial<{ buyer_id: string; product_id: string }>;
         Relationships: [];
       };
+      cart_items: {
+        Row: { buyer_id: string; product_id: string; qty: number; size: string; updated_at: string };
+        Insert: { buyer_id: string; product_id: string; qty?: number; size?: string; updated_at?: string };
+        Update: Partial<{ qty: number; size: string; updated_at: string }>;
+        Relationships: [];
+      };
+      boutique_followers: {
+        Row: { buyer_id: string; boutique_id: string; created_at: string };
+        Insert: { buyer_id: string; boutique_id: string };
+        Update: Partial<{ buyer_id: string; boutique_id: string }>;
+        Relationships: [];
+      };
       orders: {
         Row: {
           id: string;
