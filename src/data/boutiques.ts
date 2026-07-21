@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { uploadImage } from '@/lib/uploadImage';
 import type { BoutiqueRow } from './types';
 
 export async function fetchApprovedBoutiques(): Promise<BoutiqueRow[]> {
@@ -60,9 +61,25 @@ export async function createMyBoutique(ownerId: string, input: { name: string; c
   return data as BoutiqueRow;
 }
 
-export async function updateBoutique(id: string, patch: Partial<{ name: string; city: string; description: string }>) {
+export type BoutiquePatch = Partial<{
+  name: string;
+  city: string;
+  area: string;
+  description: string;
+  phone: string | null;
+  instagram: string | null;
+  cover_url: string | null;
+  logo_url: string | null;
+}>;
+
+export async function updateBoutique(id: string, patch: BoutiquePatch) {
   const { error } = await supabase.from('boutiques').update(patch).eq('id', id);
   if (error) throw error;
+}
+
+/** Uploads a boutique logo/cover to the public `boutique-images` bucket. */
+export async function uploadBoutiqueImage(boutiqueId: string, kind: 'logo' | 'cover', file: File): Promise<string> {
+  return uploadImage('boutique-images', `${boutiqueId}/${kind}`, file, '0019');
 }
 
 export interface AdminBoutiqueRow extends BoutiqueRow {

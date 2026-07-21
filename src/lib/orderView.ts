@@ -11,6 +11,8 @@ export type OrderView = {
   customer: string;
   city: string | null;
   phone: string | null;
+  /** Street address to ship to — the seller can't fulfil the order without it. */
+  address: string | null;
   item: string;     // first item title (+ "+N more")
   color: string | null;
   size: string | null;
@@ -41,6 +43,7 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
     customer: o.buyer?.full_name ?? o.guest_name ?? 'Customer',
     city: o.buyer?.city ?? o.guest_city ?? null,
     phone: o.buyer?.phone ?? o.guest_phone ?? null,
+    address: o.guest_address ?? null,
     item: (first?.title ?? 'Item') + extra,
     color: first?.color ?? null,
     size: first?.size ?? null,

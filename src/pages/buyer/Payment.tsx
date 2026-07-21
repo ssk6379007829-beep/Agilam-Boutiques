@@ -4,12 +4,17 @@ import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { hasDeliveryDetails } from '@/lib/buyerDetails';
 import { payWithRazorpay } from '@/lib/razorpay';
+import { readPendingPayment, clearPendingPayment } from '@/lib/pendingPayment';
 import { PAY_METHODS, fmt } from '@/data/demo';
 
 export function Payment() {
   const navigate = useNavigate();
-  const { payMethod, setPayMethod, subtotal, discount, shipFee, total, guest, orderItems, appliedCoupon, placeOrder, showToast } = useShop();
+  const { payMethod, setPayMethod, subtotal, discount, shipFee, total, guest, orderItems, appliedCoupon, placeOrder, retryPendingPayment, showToast } = useShop();
   const [processing, setProcessing] = useState(false);
+  // A payment that was captured but never became an order (dropped connection,
+  // server hiccup, closed tab). Read once on mount so the buyer is offered the
+  // free retry instead of being asked to pay a second time.
+  const [pending, setPending] = useState(() => readPendingPayment());
 
   const isOnline = payMethod !== 'cod';
 
@@ -51,10 +56,43 @@ export function Payment() {
       );
       navigate('/buyer/order-confirmation');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Payment failed');
+      const msg = err instanceof Error ? err.message : 'Payment failed';
+      // If the money left the buyer's account but the order didn't land, say so
+      // plainly and show the retry — "Payment failed" would be a lie that sends
+      // them to pay twice.
+      const stranded = readPendingPayment();
+      setPending(stranded);
+      showToast(stranded ? `${msg} Your payment is safe — tap Complete my order.` : msg);
     } finally {
       setProcessing(false);
     }
+  };
+
+  const onCompletePending = async () => {
+    setProcessing(true);
+    try {
+      await retryPendingPayment();
+      setPending(null);
+      navigate('/buyer/order-confirmation');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not complete the order';
+      // `retryPendingPayment` clears the record when the payment turns out to
+      // have already been used, so re-read rather than assuming it survived.
+      const still = readPendingPayment();
+      setPending(still);
+      if (!still) navigate('/buyer/orders');
+      showToast(msg);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const onDismissPending = () => {
+    clearPendingPayment();
+    setPending(null);
+    // Razorpay's webhook flags a captured-but-unfulfilled payment for an
+    // operator; it is not refunded automatically, so don't promise that it is.
+    showToast('Dismissed. Contact support with your payment reference for a refund.');
   };
 
   return (
@@ -64,6 +102,26 @@ export function Payment() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Step 3 of 3 · Payment</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>How would you like to pay?</div>
         </div>
+
+        {pending && (
+          <div style={css('margin-top:16px;background:#FFF8E8;border:1.5px solid #F0D8A2;border-radius:18px;padding:16px;display:flex;gap:13px;align-items:flex-start;')}>
+            <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:24px;")}>error</span>
+            <div style={css('flex:1;min-width:0;')}>
+              <div style={css('font-weight:800;font-size:14.5px;')}>We received your {fmt(pending.total)} payment</div>
+              <div style={css('color:#7A6450;font-size:12.5px;margin-top:3px;line-height:1.5;')}>
+                Your last order didn’t finish saving. Tap below to complete it — you won’t be charged again.
+              </div>
+              <div style={css('display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;')}>
+                <button onClick={onCompletePending} disabled={processing} style={css(`height:44px;padding:0 18px;border:none;border-radius:13px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13.5px;cursor:${processing ? 'wait' : 'pointer'};opacity:${processing ? '.7' : '1'};`)}>
+                  {processing ? 'Completing…' : 'Complete my order'}
+                </button>
+                <button onClick={onDismissPending} disabled={processing} style={css('height:44px;padding:0 14px;border:none;background:none;color:#8A7078;font-weight:800;font-size:13px;cursor:pointer;')}>
+                  Not now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="agx-cart-grid" style={css('display:grid;gap:22px;align-items:start;margin-top:18px;')}>
           <div style={css('display:flex;flex-direction:column;gap:12px;')}>

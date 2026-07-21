@@ -5,6 +5,12 @@ import { useAuth } from '@/auth/AuthContext';
 import { EMPTY_GUEST, readGuest, writeGuest, hasContactDetails } from '@/lib/buyerDetails';
 import { addOrders, type PlacedOrder, type PlacedOrderItem } from '@/lib/orderHistory';
 import {
+  savePendingPayment,
+  readPendingPayment,
+  clearPendingPayment,
+  type PendingOrderItem,
+} from '@/lib/pendingPayment';
+import {
   readLocalCart,
   writeLocalCart,
   readLocalWishlist,
@@ -114,6 +120,11 @@ type ShopValue = {
    * or `null` for Cash on Delivery. Throws with a user-facing message on failure.
    */
   placeOrder: (payment: PaymentInfo | null) => Promise<string>;
+  /**
+   * Completes an order whose payment was captured but never settled (see
+   * `@/lib/pendingPayment`). Replays the stored payment — it never re-charges.
+   */
+  retryPendingPayment: () => Promise<string>;
 
   toast: string | null;
   showToast: (msg: string) => void;
@@ -149,7 +160,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [payMethod, setPayMethod] = useState('cod');
   const [guest, setGuestState] = useState<Guest>(() => readGuest());
-  const [lastOrderId, setLastOrderId] = useState('#AGL-2481');
+  // Empty until this session actually places an order — the confirmation screen
+  // uses it to tell a real completion apart from someone landing on the URL.
+  const [lastOrderId, setLastOrderId] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [sellModal, setSellModal] = useState(false);
 
@@ -392,16 +405,16 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const hasBuyerDetails = useMemo(() => hasContactDetails(guest), [guest]);
 
-  const placeOrder = useCallback(async (payment: PaymentInfo | null): Promise<string> => {
-    // The server prices the order from the product ids, so the browser only
-    // sends what it can't derive: which products, how many, and the size.
-    const items = Object.entries(cart).map(([product_id, line]) => ({
-      product_id,
-      qty: line.qty,
-      size: line.size,
-    }));
-    if (items.length === 0) throw new Error('Your bag is empty');
-
+  /**
+   * Settles one order payload against the server. Split out of `placeOrder` so
+   * the recovery path can replay a stranded payment with the exact cart it was
+   * authorised for, rather than whatever happens to be in the bag now.
+   */
+  const settleOrder = useCallback(async (
+    items: PendingOrderItem[],
+    couponCode: string | null,
+    payment: PaymentInfo | null,
+  ): Promise<string> => {
     // A signed-in buyer sends their token so the order is tied to their account
     // (readable cross-device via RLS); guests omit it and stay phone-keyed.
     const { data: sessionData } = await supabase.auth.getSession();
@@ -414,12 +427,20 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     const res = await fetch('/api/place-order', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ items, guest, payment, couponCode: appliedCoupon }),
+      body: JSON.stringify({ items, guest, payment, couponCode }),
     });
     const data = (await res.json().catch(() => ({}))) as {
-      orders?: { order_number: string; boutique_id: string }[];
+      orders?: { order_number: string; boutique_id: string; total?: number }[];
       error?: string;
     };
+
+    // 409 means this payment already produced an order (the replay guard fired):
+    // a previous attempt actually succeeded and we only lost the response. That
+    // is a settled payment, not a failure — stop retrying it.
+    if (res.status === 409 && payment) {
+      clearPendingPayment();
+      throw new Error(data.error || 'This payment has already been used for an order.');
+    }
     if (!res.ok || !data.orders?.length) {
       throw new Error(data.error || 'Could not place the order. Please try again.');
     }
@@ -429,18 +450,18 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     // from Supabase (RLS), so this is what powers "My orders" and tracking.
     const boutiqueIdByName = new Map(boutiques.map((b) => [b.name, b.id]));
     const itemsByBoutique = new Map<string, PlacedOrderItem[]>();
-    for (const [pid, line] of Object.entries(cart)) {
-      const p = productById(pid);
+    for (const line of items) {
+      const p = productById(line.product_id);
       if (!p) continue;
       const bid = boutiqueIdByName.get(p.boutique);
       if (!bid) continue;
       const arr = itemsByBoutique.get(bid) ?? [];
-      arr.push({ pid, title: p.title, tone: p.tone, qty: line.qty, size: line.size, price: p.price });
+      arr.push({ pid: line.product_id, title: p.title, tone: p.tone, qty: line.qty, size: line.size, price: p.price });
       itemsByBoutique.set(bid, arr);
     }
     const placedAt = new Date().toISOString();
     const placed: PlacedOrder[] = data.orders.map((o) => {
-      const items = itemsByBoutique.get(o.boutique_id) ?? [];
+      const orderLines = itemsByBoutique.get(o.boutique_id) ?? [];
       return {
         id: '#' + o.order_number,
         orderNumber: o.order_number,
@@ -448,11 +469,18 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         boutique: boutiques.find((b) => b.id === o.boutique_id)?.name ?? 'Boutique',
         boutiqueId: o.boutique_id,
         status: 'pending',
-        total: items.reduce((s, it) => s + it.price * it.qty, 0),
-        items,
+        // Prefer the server's total: it's the authoritative figure the buyer
+        // was actually charged, including this boutique's share of shipping.
+        total: o.total ?? orderLines.reduce((s, it) => s + it.price * it.qty, 0),
+        items: orderLines,
       };
     });
     addOrders(placed);
+
+    // This order is on record, so its payment is no longer at risk. Only an
+    // online settlement clears the record — a Cash on Delivery order placed
+    // afterwards must not discard someone's still-stranded card payment.
+    if (payment) clearPendingPayment();
 
     const oid = data.orders[0].order_number;
     setCart({});
@@ -460,7 +488,37 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     setLastOrderId(oid);
     showToast('Order placed successfully');
     return oid;
-  }, [cart, guest, appliedCoupon, boutiques, productById, showToast]);
+  }, [guest, boutiques, productById, showToast]);
+
+  const placeOrder = useCallback(async (payment: PaymentInfo | null): Promise<string> => {
+    // The server prices the order from the product ids, so the browser only
+    // sends what it can't derive: which products, how many, and the size.
+    const items = Object.entries(cart).map(([product_id, line]) => ({
+      product_id,
+      qty: line.qty,
+      size: line.size,
+    }));
+    if (items.length === 0) throw new Error('Your bag is empty');
+
+    // Park the verified payment BEFORE attempting settlement. If this call never
+    // returns — dropped network, closed tab, server error — the money is already
+    // captured, and this record is what lets the buyer finish the order instead
+    // of waiting on a manual refund.
+    if (payment) savePendingPayment({ payment, items, couponCode: appliedCoupon, total });
+
+    return settleOrder(items, appliedCoupon, payment);
+  }, [cart, appliedCoupon, total, settleOrder]);
+
+  /**
+   * Finishes a payment that was captured but never became an order. Replays the
+   * stored cart and payment id; the server's replay guard guarantees this can't
+   * double-charge or double-create.
+   */
+  const retryPendingPayment = useCallback(async (): Promise<string> => {
+    const pending = readPendingPayment();
+    if (!pending) throw new Error('Nothing left to complete.');
+    return settleOrder(pending.items, pending.couponCode, pending.payment);
+  }, [settleOrder]);
 
   const value: ShopValue = {
     wishlist, toggleWish,
@@ -472,7 +530,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     orderItems,
     payMethod, setPayMethod,
     guest, setGuest, clearGuest, hasBuyerDetails,
-    lastOrderId, placeOrder,
+    lastOrderId, placeOrder, retryPendingPayment,
     toast, showToast,
     sellModal,
     openSellModal: useCallback(() => setSellModal(true), []),

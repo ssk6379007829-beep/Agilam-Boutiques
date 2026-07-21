@@ -121,6 +121,20 @@ export function OrderDetail() {
               <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>chat</span>
             </button>
           </div>
+          {/* The delivery address lives on the order (guest checkout keeps no
+              account), so this card is the only place the seller can read it. */}
+          {(o.address || o.city) && (
+            <div style={css('margin-top:12px;padding:11px 12px;border-radius:12px;background:#FBF6F2;display:flex;gap:9px;align-items:flex-start;')}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#B02454;")}>home_pin</span>
+              <div style={css('flex:1;min-width:0;')}>
+                <div style={css('font-size:11px;font-weight:800;color:#8A7078;letter-spacing:.05em;')}>DELIVER TO</div>
+                <div style={css('font-size:13px;color:#2A1A20;margin-top:3px;line-height:1.45;')}>
+                  {[o.address, o.city].filter(Boolean).join(', ')}
+                </div>
+              </div>
+            </div>
+          )}
+
           <button onClick={shareBillImage} disabled={sharing} style={css(`width:100%;margin-top:12px;height:44px;border:none;border-radius:13px;background:linear-gradient(135deg,#2FA36B,#1E8A57);color:#fff;font-weight:800;font-size:13.5px;cursor:${sharing ? 'default' : 'pointer'};opacity:${sharing ? 0.7 : 1};display:flex;align-items:center;justify-content:center;gap:7px;`)}>
             <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>share</span>{sharing ? 'Preparing…' : 'Share bill via WhatsApp'}
           </button>
@@ -165,6 +179,16 @@ export function OrderDetail() {
           <div style={css('display:flex;justify-content:space-between;margin-top:8px;font-weight:800;font-size:15px;')}>
             <span>Total</span><span style={css('color:#B02454;')}>{fmt(subtotal)}</span>
           </div>
+          {/* Prepaid vs cash-on-delivery changes what the seller does at the
+              door, so it's stated next to the amount rather than buried. */}
+          {o.paymentMethod && (
+            <div style={css('display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid #F5E4EC;font-size:13px;')}>
+              <span style={css('color:#8A7078;')}>Payment · {o.paymentMethod}</span>
+              <span style={css(`font-weight:800;padding:3px 10px;border-radius:8px;background:${o.paymentMethod === 'COD' ? '#FBF0DA' : '#E5F3EC'};color:${o.paymentMethod === 'COD' ? '#B0862B' : '#2FA36B'};`)}>
+                {o.paymentMethod === 'COD' ? 'Collect on delivery' : 'Paid online'}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
+import { useMyBoutique } from '@/hooks/useMyBoutique';
+import { updateBoutique } from '@/data/boutiques';
 
 const INITIAL_ROWS = [
   { label: 'Push notifications', icon: 'notifications', on: true },
@@ -14,12 +16,39 @@ const INITIAL_ROWS = [
 export function Settings() {
   const navigate = useNavigate();
   const { showToast } = useShop();
+  const { boutique, reload } = useMyBoutique();
   const [rows, setRows] = useState(INITIAL_ROWS);
-  const [insta, setInsta] = useState('elegance.boutique');
-  const [addr, setAddr] = useState('RS Puram, Coimbatore');
+  const [insta, setInsta] = useState('');
+  const [addr, setAddr] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Seed from the signed-in seller's own boutique row rather than sample copy.
+  useEffect(() => {
+    if (!boutique) return;
+    setInsta(boutique.instagram ?? '');
+    setAddr([boutique.area, boutique.city].filter(Boolean).join(', '));
+  }, [boutique]);
 
   const toggle = (label: string) =>
     setRows((rs) => rs.map((r) => (r.label === label ? { ...r, on: !r.on } : r)));
+
+  // "RS Puram, Coimbatore" -> area + city; a single value is treated as the city.
+  const save = async () => {
+    if (!boutique) return showToast('No boutique linked to this account yet');
+    const parts = addr.split(',').map((p) => p.trim()).filter(Boolean);
+    const city = parts.length > 1 ? parts[parts.length - 1] : parts[0] ?? '';
+    const area = parts.length > 1 ? parts.slice(0, -1).join(', ') : '';
+    setSaving(true);
+    try {
+      await updateBoutique(boutique.id, { instagram: insta.trim().replace(/^@/, '') || null, area, city });
+      reload();
+      showToast('Profile saved');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save your profile');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
@@ -50,8 +79,8 @@ export function Settings() {
           <input value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Area, City" style={css('flex:1;border:none;outline:none;background:none;padding:13px 0;font-size:14px;font-weight:600;color:#241019;min-width:0;')} />
         </div>
 
-        <button onClick={() => showToast('Profile saved')} style={css('margin-top:16px;width:100%;height:48px;border:none;border-radius:13px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 12px 26px -14px rgba(214,51,108,.8);')}>
-          Save profile
+        <button onClick={save} disabled={saving || !boutique} style={css(`margin-top:16px;width:100%;height:48px;border:none;border-radius:13px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 12px 26px -14px rgba(214,51,108,.8);opacity:${saving || !boutique ? 0.6 : 1};`)}>
+          {saving ? 'Saving…' : 'Save profile'}
         </button>
       </div>
 

@@ -1,10 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useAuth } from '@/auth/AuthContext';
+import { useMyBoutique } from '@/hooks/useMyBoutique';
+import { resolveDisplayName } from '@/lib/displayName';
 
 export function ProfileHub() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, profile, session } = useAuth();
+  const { boutique, loading } = useMyBoutique();
+
+  // Header identity comes from the signed-in account: the seller's own boutique
+  // row plus their profile/OAuth name — never a hardcoded sample boutique.
+  const ownerName = resolveDisplayName(profile, session);
+  const boutiqueName = boutique?.name || (loading ? '' : ownerName ? `${ownerName}'s Boutique` : 'Your Boutique');
+  const initial = (boutiqueName || ownerName || 'B').trim().charAt(0).toUpperCase();
+  const subline = [boutique?.city, ownerName && `Owner: ${ownerName}`].filter(Boolean).join(' · ');
 
   const rows = [
     { label: 'Billing (Offline Sales)', icon: 'receipt_long', border: '1px solid #F5E4EC', to: '/seller/billing' },
@@ -26,13 +36,16 @@ export function ProfileHub() {
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
       <div style={css('background:linear-gradient(150deg,#D6336C,#B02454);padding:24px 20px 30px;color:#fff;')}>
         <div style={css('display:flex;align-items:center;gap:14px;')}>
-          <div style={css("width:64px;height:64px;border-radius:20px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>E</div>
+          <div style={css("width:64px;height:64px;flex:none;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>
+            {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
+          </div>
           <div>
             <div style={css('display:flex;align-items:center;gap:5px;')}>
-              <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;")}>Elegance Boutique</span>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>verified</span>
+              <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;")}>{boutiqueName || '…'}</span>
+              {boutique?.verified && <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>verified</span>}
             </div>
-            <div style={css('opacity:.85;font-size:13px;')}>Coimbatore · Owner: Lakshmi N</div>
+            {subline && <div style={css('opacity:.85;font-size:13px;')}>{subline}</div>}
+            {session?.user?.email && <div style={css('opacity:.7;font-size:12px;margin-top:2px;')}>{session.user.email}</div>}
           </div>
         </div>
       </div>

@@ -50,6 +50,13 @@ export function Orders() {
                   {o.channel === 'offline' && (
                     <span style={css('font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:#EAE3F5;color:#7B5FB0;')}>Offline</span>
                   )}
+                  {/* Whether the money is already collected decides how the
+                      seller hands the parcel over, so it belongs on the list. */}
+                  {o.channel === 'online' && o.paymentMethod && (
+                    <span style={css(`font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:${o.paymentMethod === 'COD' ? '#FBF0DA' : '#E5F3EC'};color:${o.paymentMethod === 'COD' ? '#B0862B' : '#2FA36B'};`)}>
+                      {o.paymentMethod === 'COD' ? 'COD' : 'Paid'}
+                    </span>
+                  )}
                 </span>
                 <span style={css(`font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
               </div>

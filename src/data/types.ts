@@ -32,6 +32,7 @@ export interface BoutiqueRow {
   description: string;
   tone: number;
   cover_url: string | null;
+  logo_url: string | null;
   phone: string | null;
   instagram: string | null;
   established_year: number | null;

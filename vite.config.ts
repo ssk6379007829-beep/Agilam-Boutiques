@@ -41,11 +41,19 @@ function devApi(env: Record<string, string>): Plugin {
 
         let raw = '';
         for await (const chunk of req) raw += chunk;
+
+        // The webhook verifies an HMAC over the UNPARSED body, so it must get
+        // the raw string; every other route expects Vercel's parsed JSON.
+        const wantsRawBody = path === '/api/razorpay-webhook';
         let body: unknown;
-        try {
-          body = raw ? JSON.parse(raw) : undefined;
-        } catch {
-          body = undefined;
+        if (wantsRawBody) {
+          body = raw;
+        } else {
+          try {
+            body = raw ? JSON.parse(raw) : undefined;
+          } catch {
+            body = undefined;
+          }
         }
 
         // Adapt Node's res to the Vercel-style `res.status().json()` API.
@@ -64,7 +72,15 @@ function devApi(env: Record<string, string>): Plugin {
 
         try {
           const mod = await load(spec);
-          await mod.default({ method: req.method, body }, res);
+          // Forward `headers`/`socket` too: the handlers read the buyer's bearer
+          // token (place-order) and the client IP (rate limiter) off them. Passing
+          // only { method, body } made `req.headers.authorization` throw a
+          // TypeError *after* the buyer had already paid, so the payment was
+          // captured but the order never got written.
+          await mod.default(
+            { method: req.method, url: req.url, headers: req.headers, socket: req.socket, body },
+            res,
+          );
         } catch (err) {
           console.error('[dev-api]', path, err);
           if (!res.writableEnded) {
