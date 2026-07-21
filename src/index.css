@@ -43,6 +43,12 @@ input:focus, textarea:focus { outline: none; }
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:2.5px solid #C7275E; outline-offset:2px; border-radius:10px; }
 .agx-lift { transition: transform .4s cubic-bezier(.2,.7,.2,1), box-shadow .4s ease; }
 .agx-lift:hover { transform: translateY(-6px); box-shadow: 0 30px 60px -34px rgba(107,20,54,.55) !important; }
+/* Home "Shop by collection": ringed circles. The ring lifts and brightens on
+   hover; the label stays put so the rail doesn't feel jumpy. */
+.agx-circle-ring { transition: transform .38s cubic-bezier(.2,.7,.2,1), box-shadow .38s ease; }
+.agx-circle:hover .agx-circle-ring { transform: translateY(-5px) scale(1.04); box-shadow: 0 22px 40px -18px rgba(107,20,54,.95); }
+.agx-circle:focus-visible { outline:none; }
+.agx-circle:focus-visible .agx-circle-ring { outline:2.5px solid #C7275E; outline-offset:3px; }
 .agx-zoom { overflow:hidden; }
 .agx-zoom > .agx-zoomable, .agx-zoom image-slot { transition: transform .8s cubic-bezier(.2,.7,.2,1); }
 .agx-zoom:hover .agx-zoomable, .agx-zoom:hover image-slot { transform: scale(1.06); }
@@ -72,6 +78,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .agx-blend-root{ margin-top:-16px; }
 .agx-pdp { display:grid; grid-template-columns:1fr; }
 @media (min-width:900px){ .agx-pdp{ grid-template-columns:1.05fr .95fr; align-items:start; } .agx-pdp-media{ position:sticky; top:76px; } .agx-ord-grid{ grid-template-columns:1fr 1fr; } .agx-reviews{ grid-template-columns:340px 1fr; } }
+/* PDP gallery: the photo strip is swiped on touch, so the prev/next arrows are
+   only rendered where there is a real pointer (mouse/trackpad). */
+.agx-gal-arrow { display:none; }
+@media (hover:hover) and (pointer:fine) { .agx-gal-arrow { display:flex; } }
 /* PDP action buttons: inline on desktop, sticky bottom bar on mobile (≤899px) */
 .agx-pdp-sticky { display:none; }
 @media (max-width:899px){

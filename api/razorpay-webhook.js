@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { createClient } from '@supabase/supabase-js';
+import { serviceClient } from './_supabase.js';
 
 /**
  * Vercel serverless function: Razorpay webhook backstop.
@@ -84,15 +84,12 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, ignored: type ?? 'unknown' });
   }
 
-  if (!supabaseUrl || !serviceRoleKey) {
+  const supabase = serviceClient(supabaseUrl, serviceRoleKey);
+  if (!supabase) {
     // Can't reconcile without DB access; ack so Razorpay stops retrying, but log.
     console.error('razorpay-webhook: Supabase not configured; cannot reconcile', paymentId);
     return res.status(200).json({ ok: true, reconciled: false });
   }
-
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
 
   try {
     const { data: order } = await supabase

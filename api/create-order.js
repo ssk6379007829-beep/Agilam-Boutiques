@@ -1,5 +1,5 @@
 import Razorpay from 'razorpay';
-import { createClient } from '@supabase/supabase-js';
+import { serviceClient } from './_supabase.js';
 import { computeTotals } from './_pricing.js';
 import { enforceRateLimit } from './_rateLimit.js';
 
@@ -30,13 +30,12 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Sum the server-priced goods value for the given cart items. Returns null when
 // no items resolve to a real product, so the caller can reject.
 async function subtotalFromItems(items) {
-  if (!supabaseUrl || !serviceRoleKey) return null;
   const ids = [...new Set(items.map((it) => it?.product_id).filter(Boolean))];
   if (ids.length === 0) return null;
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const supabase = serviceClient(supabaseUrl, serviceRoleKey);
+  if (!supabase) return null;
+
   const { data: products, error } = await supabase
     .from('products')
     .select('id, price')

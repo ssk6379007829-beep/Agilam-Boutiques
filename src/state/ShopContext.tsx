@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { COUPONS, type Coupon } from '@/data/demo';
+import { PAY_METHODS, type Coupon } from '@/data/demo';
+import { computeTotals } from '@/lib/pricing';
 import { useCatalog } from '@/state/CatalogContext';
 import { useAuth } from '@/auth/AuthContext';
 import { EMPTY_GUEST, readGuest, writeGuest, hasContactDetails } from '@/lib/buyerDetails';
@@ -75,7 +76,7 @@ type ShopValue = {
 
   cart: Cart;
   cartCount: number;
-  addToCart: (id: string) => void;
+  addToCart: (id: string, size?: string) => void;
   buyNow: (id: string) => void;
   cartQty: (id: string, delta: number) => void;
   setCartSize: (id: string, size: string) => void;
@@ -116,10 +117,10 @@ type ShopValue = {
   lastOrderId: string;
   /**
    * Creates the real order(s) server-side (one per boutique) and returns the
-   * primary order number. Pass the verified Razorpay payment for online orders,
-   * or `null` for Cash on Delivery. Throws with a user-facing message on failure.
+   * primary order number. Every order is prepaid, so this takes the verified
+   * Razorpay payment. Throws with a user-facing message on failure.
    */
-  placeOrder: (payment: PaymentInfo | null) => Promise<string>;
+  placeOrder: (payment: PaymentInfo) => Promise<string>;
   /**
    * Completes an order whose payment was captured but never settled (see
    * `@/lib/pendingPayment`). Replays the stored payment — it never re-charges.
@@ -158,7 +159,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [query, setQuery] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [payMethod, setPayMethod] = useState('cod');
+  const [payMethod, setPayMethod] = useState(PAY_METHODS[0].key);
   const [guest, setGuestState] = useState<Guest>(() => readGuest());
   // Empty until this session actually places an order — the confirmation screen
   // uses it to tell a real completion apart from someone landing on the URL.
@@ -203,9 +204,11 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     });
   }, [pushToAccount]);
 
-  const addToCart = useCallback((id: string) => {
+  // `size` comes from screens that let the buyer pick one (the product page);
+  // grid cards omit it and keep whatever the line already had.
+  const addToCart = useCallback((id: string, size?: string) => {
     setCart((c) => {
-      const line = { qty: (c[id]?.qty ?? 0) + 1, size: c[id]?.size ?? 'M' };
+      const line = { qty: (c[id]?.qty ?? 0) + 1, size: size ?? c[id]?.size ?? 'M' };
       const uid = buyerIdRef.current;
       if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, line.qty, line.size));
       return { ...c, [id]: line };
@@ -342,10 +345,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const setMaxPrice = useCallback((v: number) => setFilters((f) => ({ ...f, maxPrice: v })), []);
   const resetFilters = useCallback(() => setFilters(DEFAULT_FILTERS), []);
 
-  const applyCoupon = useCallback((code: string) => {
-    setAppliedCoupon(code);
-    showToast(code + ' applied');
-  }, [showToast]);
+  // Validation and the confirmation message live on the coupon screen, which
+  // knows the bag's subtotal and what the code is worth on it.
+  const applyCoupon = useCallback((code: string) => setAppliedCoupon(code), []);
 
   const removeCoupon = useCallback(() => setAppliedCoupon(null), []);
 
@@ -363,25 +365,13 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   );
 
   // Mirrors the design: a flat coupon only counts once its minimum is met.
-  const coupon = useMemo(
-    () => COUPONS.find((c) => c.code === appliedCoupon && (c.type !== 'flat' || subtotal >= c.min)),
-    [appliedCoupon, subtotal],
+  // Coupon eligibility, discount, delivery and total all come from the shared
+  // rules in `@/lib/pricing`, so the coupon screen previews exactly what
+  // checkout will charge (and both stay aligned with api/_pricing.js).
+  const { coupon, discount, shipFee, total } = useMemo(
+    () => computeTotals(subtotal, appliedCoupon),
+    [subtotal, appliedCoupon],
   );
-
-  const discount = useMemo(() => {
-    if (!coupon) return 0;
-    if (coupon.type === 'pct') return Math.min(Math.round((subtotal * coupon.off) / 100), coupon.cap ?? Infinity);
-    if (coupon.type === 'flat') return coupon.off;
-    return 0;
-  }, [coupon, subtotal]);
-
-  const shipFee = useMemo(() => {
-    const freeShip = coupon?.type === 'ship';
-    const base = subtotal === 0 || subtotal >= 2000 ? 0 : 99;
-    return freeShip ? 0 : base;
-  }, [coupon, subtotal]);
-
-  const total = useMemo(() => Math.max(0, subtotal - discount) + shipFee, [subtotal, discount, shipFee]);
 
   const orderItems = useMemo(
     () => Object.entries(cart).map(([product_id, line]) => ({ product_id, qty: line.qty, size: line.size })),
@@ -413,7 +403,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const settleOrder = useCallback(async (
     items: PendingOrderItem[],
     couponCode: string | null,
-    payment: PaymentInfo | null,
+    payment: PaymentInfo,
   ): Promise<string> => {
     // A signed-in buyer sends their token so the order is tied to their account
     // (readable cross-device via RLS); guests omit it and stay phone-keyed.
@@ -437,7 +427,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     // 409 means this payment already produced an order (the replay guard fired):
     // a previous attempt actually succeeded and we only lost the response. That
     // is a settled payment, not a failure — stop retrying it.
-    if (res.status === 409 && payment) {
+    if (res.status === 409) {
       clearPendingPayment();
       throw new Error(data.error || 'This payment has already been used for an order.');
     }
@@ -477,10 +467,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     });
     addOrders(placed);
 
-    // This order is on record, so its payment is no longer at risk. Only an
-    // online settlement clears the record — a Cash on Delivery order placed
-    // afterwards must not discard someone's still-stranded card payment.
-    if (payment) clearPendingPayment();
+    // This order is on record, so its payment is no longer at risk.
+    clearPendingPayment();
 
     const oid = data.orders[0].order_number;
     setCart({});
@@ -490,7 +478,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     return oid;
   }, [guest, boutiques, productById, showToast]);
 
-  const placeOrder = useCallback(async (payment: PaymentInfo | null): Promise<string> => {
+  const placeOrder = useCallback(async (payment: PaymentInfo): Promise<string> => {
     // The server prices the order from the product ids, so the browser only
     // sends what it can't derive: which products, how many, and the size.
     const items = Object.entries(cart).map(([product_id, line]) => ({
@@ -504,7 +492,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     // returns — dropped network, closed tab, server error — the money is already
     // captured, and this record is what lets the buyer finish the order instead
     // of waiting on a manual refund.
-    if (payment) savePendingPayment({ payment, items, couponCode: appliedCoupon, total });
+    savePendingPayment({ payment, items, couponCode: appliedCoupon, total });
 
     return settleOrder(items, appliedCoupon, payment);
   }, [cart, appliedCoupon, total, settleOrder]);

@@ -201,8 +201,8 @@ export const COUPONS: Coupon[] = [
   { code: 'FREESHIP', desc: 'Free delivery on any order value', off: 0, type: 'ship', min: 0, tone: 5, expires: '30 Sep 2026' },
 ];
 
+// Prepaid only — every order settles through the gateway before it is placed.
 export const PAY_METHODS = [
-  { key: 'cod', label: 'Cash on Delivery', sub: 'Pay when your order arrives', icon: 'payments' },
   { key: 'upi', label: 'UPI', sub: 'GPay, PhonePe, Paytm & more', icon: 'qr_code_2' },
   { key: 'card', label: 'Credit / Debit Card', sub: 'Visa, Mastercard, RuPay', icon: 'credit_card' },
   { key: 'netbanking', label: 'Net Banking', sub: 'All major banks supported', icon: 'account_balance' },

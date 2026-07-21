@@ -27,12 +27,28 @@ function devApi(env: Record<string, string>): Plugin {
     apply: 'serve',
     configureServer(server) {
       // The handlers read secrets from process.env; loadEnv doesn't set it.
-      process.env.RAZORPAY_KEY_ID ??= env.RAZORPAY_KEY_ID;
-      process.env.RAZORPAY_KEY_SECRET ??= env.RAZORPAY_KEY_SECRET;
-      process.env.RAZORPAY_WEBHOOK_SECRET ??= env.RAZORPAY_WEBHOOK_SECRET;
+      //
+      // Assigned through a helper because `process.env.X = undefined` stores the
+      // *string* "undefined" — truthy, so a missing key sails past the handlers'
+      // `if (!key)` config guards and fails much later as an opaque auth error.
+      // Skipping the assignment leaves the var genuinely absent instead.
+      const pass = (name: string, value: string | undefined) => {
+        if (process.env[name] === undefined && value) process.env[name] = value;
+      };
+      pass('RAZORPAY_KEY_ID', env.RAZORPAY_KEY_ID);
+      pass('RAZORPAY_KEY_SECRET', env.RAZORPAY_KEY_SECRET);
+      pass('RAZORPAY_WEBHOOK_SECRET', env.RAZORPAY_WEBHOOK_SECRET);
       // place-order writes with the Supabase service role (bypasses RLS).
-      process.env.SUPABASE_URL ??= env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-      process.env.SUPABASE_SERVICE_ROLE_KEY ??= env.SUPABASE_SERVICE_ROLE_KEY;
+      pass('SUPABASE_URL', env.SUPABASE_URL || env.VITE_SUPABASE_URL);
+      pass('SUPABASE_SERVICE_ROLE_KEY', env.SUPABASE_SERVICE_ROLE_KEY);
+
+      // Fail loudly at startup rather than at the worst possible moment —
+      // mid-checkout, after the buyer's card has already been charged.
+      for (const name of ['SUPABASE_SERVICE_ROLE_KEY', 'RAZORPAY_KEY_SECRET']) {
+        if (!process.env[name]) {
+          console.warn(`\n  ⚠  ${name} is not set — /api checkout routes will fail. Add it to .env and restart.\n`);
+        }
+      }
 
       server.middlewares.use(async (req, res, next) => {
         const path = (req.url || '').split('?')[0];

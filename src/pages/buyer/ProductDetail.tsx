@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
@@ -26,12 +26,42 @@ const SIZE_CHART = [
 export function ProductDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { wishlist, toggleWish, addToCart } = useShop();
+  const { wishlist, toggleWish, addToCart, cart, cartQty, setCartSize, showToast } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
-  const [selectedSize, setSelectedSize] = useState('M');
+  // Null until the buyer picks one, so the shown size can fall back to what the
+  // bag already holds for this piece (see `selectedSize` below).
+  const [pickedSize, setPickedSize] = useState<string | null>(null);
   const [showSizeChart, setShowSizeChart] = useState(false);
   const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({ details: true });
   const togglePanel = (k: string) => setOpenPanels((p) => ({ ...p, [k]: !p[k] }));
+
+  // Gallery: the main frame is a horizontal snap-scroller so the photo can be
+  // swiped on touch; thumbnails and the arrows scroll it to the picked slide.
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const [activeImg, setActiveImg] = useState(0);
+
+  // Navigating straight from one product to another reuses this component, so
+  // reset the gallery and the size choice instead of carrying the previous
+  // product's slide and size over.
+  useEffect(() => {
+    setActiveImg(0);
+    setPickedSize(null);
+    galleryRef.current?.scrollTo({ left: 0 });
+  }, [id]);
+
+  const goToImage = (i: number) => {
+    const el = galleryRef.current;
+    if (!el) return;
+    setActiveImg(i);
+    el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
+  };
+
+  const onGalleryScroll = () => {
+    const el = galleryRef.current;
+    if (!el || !el.clientWidth) return;
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    setActiveImg((prev) => (prev === i ? prev : i));
+  };
 
   const ap = PRODUCTS.find((p) => p.id === id);
   if (!ap) {
@@ -56,9 +86,18 @@ export function ProductDetail() {
   const stockFg = ap.stock === 0 ? '#D6455A' : ap.stock <= 5 ? '#C99A3F' : '#2FA36B';
 
   const sizeOptions = ap.sizes?.length ? ap.sizes : FALLBACK_SIZES;
+  // What the buyer picked, else the size this piece is already in the bag at,
+  // else M when the boutique offers it — never a size that isn't on sale.
+  const bagLine = cart[ap.id];
+  const selectedSize =
+    (pickedSize && sizeOptions.includes(pickedSize) ? pickedSize : null) ??
+    (bagLine && sizeOptions.includes(bagLine.size) ? bagLine.size : null) ??
+    (sizeOptions.includes('M') ? 'M' : sizeOptions[0]);
   const hasMrp = !!ap.mrp && ap.mrp > ap.price;
   const discountPct = hasMrp ? Math.round((1 - ap.price / (ap.mrp as number)) * 100) : null;
-  const gallery = [ap.image, ...(ap.images ?? [])].filter(Boolean);
+  const gallery = [...new Set([ap.image, ...(ap.images ?? [])].filter(Boolean))];
+  if (!gallery.length) gallery.push(ap.image);
+  const imgIndex = Math.min(activeImg, gallery.length - 1);
 
   const highlights = [
     { icon: 'diamond', label: ap.fabric || 'Premium fabric' },
@@ -76,10 +115,10 @@ export function ProductDetail() {
     { label: 'SKU', value: ap.id.toUpperCase() },
   ];
 
-  const thumbs = (gallery.length ? gallery : [ap.image]).slice(0, 4).map((src, i) => ({
+  const thumbs = gallery.map((src, i) => ({
     id: `prod-${ap.id}-t${i}`,
     src,
-    ring: i === 0 ? '2px #D6336C' : '1px #EFDCE4',
+    ring: i === imgIndex ? '2px #D6336C' : '1px #EFDCE4',
   }));
 
   const openBoutique = () => {
@@ -107,6 +146,70 @@ export function ProductDetail() {
     } catch {
       /* share cancelled or unavailable */
     }
+  };
+
+  // Once the piece is in the bag the "Add to Bag" button becomes a quantity
+  // stepper, so a second tap adjusts the count instead of silently re-adding.
+  const bagQty = bagLine?.qty ?? 0;
+  const atStockCap = bagQty >= ap.stock;
+
+  // Changing the size while the piece is already in the bag has to follow it
+  // through, or the bag would keep whichever size was picked at add time.
+  const pickSize = (s: string) => {
+    setPickedSize(s);
+    if (bagQty > 0) setCartSize(ap.id, s);
+  };
+
+  const onAddToBag = () => {
+    if (ap.stock === 0) {
+      showToast('This piece is out of stock');
+      return;
+    }
+    addToCart(ap.id, selectedSize);
+  };
+
+  const onIncrease = () => {
+    if (atStockCap) {
+      showToast(`Only ${ap.stock} left in stock`);
+      return;
+    }
+    cartQty(ap.id, 1);
+  };
+
+  const renderBagControl = (height: number) => {
+    if (bagQty === 0) {
+      return (
+        <button onClick={onAddToBag} style={css(`flex:1;min-width:160px;height:${height}px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
+          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>Add to Bag
+        </button>
+      );
+    }
+    const step = height - 12;
+    return (
+      <div style={css(`flex:1;min-width:160px;height:${height}px;display:flex;align-items:center;gap:6px;padding:6px;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
+        <button
+          onClick={() => cartQty(ap.id, -1)}
+          aria-label={bagQty === 1 ? 'Remove from bag' : 'Reduce quantity'}
+          style={css(`width:${step}px;height:${step}px;flex:none;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;`)}
+        >
+          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
+        </button>
+        <button
+          onClick={() => navigate('/buyer/cart')}
+          style={css('flex:1;min-width:0;height:100%;padding:0;border:none;background:none;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;')}
+        >
+          <span style={css('font-weight:800;font-size:15px;')}>{bagQty} in bag</span>
+          <span className="agx-eyebrow" style={css('font-size:8.5px;color:rgba(255,255,255,.8);')}>View bag</span>
+        </button>
+        <button
+          onClick={onIncrease}
+          aria-label="Increase quantity"
+          style={css(`width:${step}px;height:${step}px;flex:none;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${atStockCap ? '.45' : '1'};`)}
+        >
+          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>add</span>
+        </button>
+      </div>
+    );
   };
 
   const renderPanel = (id: string, icon: string, title: string, meta: string, body: JSX.Element) => {
@@ -165,8 +268,19 @@ export function ProductDetail() {
 
       <div className="agx-pdp" style={css('max-width:1300px;margin:0 auto;')}>
         <div className="agx-pdp-media" style={css('padding:clamp(16px,2.5vw,28px) 0 clamp(16px,2.5vw,28px) clamp(16px,4vw,44px);')}>
-          <div className="agx-zoom" style={css(`position:relative;aspect-ratio:4/5;max-height:78vh;background:${TONES[ap.tone]};overflow:hidden;border-radius:24px;box-shadow:0 24px 54px -34px rgba(107,20,54,.5);`)}>
-            <ImageSlot src={ap.image} placeholder={ap.title} style={css('position:absolute;inset:0;')} />
+          <div style={css(`position:relative;aspect-ratio:4/5;max-height:78vh;background:${TONES[ap.tone]};overflow:hidden;border-radius:24px;box-shadow:0 24px 54px -34px rgba(107,20,54,.5);`)}>
+            <div
+              ref={galleryRef}
+              onScroll={onGalleryScroll}
+              className="agx-scroll"
+              style={css('position:absolute;inset:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;')}
+            >
+              {gallery.map((src, i) => (
+                <div key={`${ap.id}-g${i}`} style={css('position:relative;flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;')}>
+                  <ImageSlot src={src} placeholder={ap.title} alt={`${ap.title} — photo ${i + 1}`} style={css('position:absolute;inset:0;')} />
+                </div>
+              ))}
+            </div>
             <button onClick={() => navigate('/buyer/home')} style={css('position:absolute;left:16px;top:16px;width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}>
               <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
             </button>
@@ -178,14 +292,46 @@ export function ProductDetail() {
                 <span style={css(`font-family:'Material Symbols Outlined';color:${wishColor};`)}>{wishIcon}</span>
               </button>
             </div>
+
+            {gallery.length > 1 && (
+              <>
+                {imgIndex > 0 && (
+                  <button aria-label="Previous photo" className="agx-gal-arrow" onClick={() => goToImage(imgIndex - 1)} style={css('position:absolute;left:14px;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.94);cursor:pointer;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.45);')}>
+                    <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>chevron_left</span>
+                  </button>
+                )}
+                {imgIndex < gallery.length - 1 && (
+                  <button aria-label="Next photo" className="agx-gal-arrow" onClick={() => goToImage(imgIndex + 1)} style={css('position:absolute;right:14px;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.94);cursor:pointer;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.45);')}>
+                    <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>chevron_right</span>
+                  </button>
+                )}
+                <div style={css('position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;background:rgba(36,16,25,.42);backdrop-filter:blur(6px);')}>
+                  {gallery.map((_, i) => (
+                    <button
+                      key={`${ap.id}-d${i}`}
+                      aria-label={`Go to photo ${i + 1}`}
+                      onClick={() => goToImage(i)}
+                      style={css(`width:${i === imgIndex ? 18 : 7}px;height:7px;padding:0;border:none;border-radius:999px;cursor:pointer;background:${i === imgIndex ? '#fff' : 'rgba(255,255,255,.5)'};transition:width .25s ease,background .25s ease;`)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-          <div style={css('display:flex;gap:10px;margin-top:14px;')}>
-            {thumbs.map((t) => (
-              <div key={t.id} className="agx-zoom" style={css(`width:64px;height:64px;flex:none;border-radius:12px;overflow:hidden;background:${TONES[ap.tone]};box-shadow:0 0 0 ${t.ring};cursor:pointer;position:relative;`)}>
-                <ImageSlot src={t.src} style={css('position:absolute;inset:0;')} />
-              </div>
-            ))}
-          </div>
+          {thumbs.length > 1 && (
+            <div className="agx-scroll" style={css('display:flex;gap:10px;margin-top:14px;overflow-x:auto;padding-bottom:2px;')}>
+              {thumbs.map((t, i) => (
+                <button
+                  key={t.id}
+                  onClick={() => goToImage(i)}
+                  aria-label={`Show photo ${i + 1}`}
+                  style={css(`width:64px;height:64px;flex:none;padding:0;border:none;border-radius:12px;overflow:hidden;background:${TONES[ap.tone]};box-shadow:0 0 0 ${t.ring};cursor:pointer;position:relative;opacity:${i === imgIndex ? 1 : 0.72};transition:opacity .2s ease,box-shadow .2s ease;`)}
+                >
+                  <ImageSlot src={t.src} style={css('position:absolute;inset:0;')} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={css('padding:clamp(20px,3vw,40px) clamp(16px,4vw,44px);display:flex;flex-direction:column;')}>
@@ -237,7 +383,7 @@ export function ProductDetail() {
                 {sizeOptions.map((s) => {
                   const on = selectedSize === s;
                   return (
-                    <span key={s} onClick={() => setSelectedSize(s)} style={css(`width:44px;height:44px;border-radius:12px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : 'transparent'};color:${on ? '#B02454' : '#4B3840'};display:flex;align-items:center;justify-content:center;font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;`)}>{s}</span>
+                    <span key={s} onClick={() => pickSize(s)} style={css(`width:44px;height:44px;border-radius:12px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : 'transparent'};color:${on ? '#B02454' : '#4B3840'};display:flex;align-items:center;justify-content:center;font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;`)}>{s}</span>
                   );
                 })}
               </div>
@@ -254,9 +400,7 @@ export function ProductDetail() {
             <button onClick={openChat} style={css('flex:1;min-width:160px;height:56px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
               <span style={css("font-family:'Material Symbols Outlined';font-size:21px;")}>chat</span>Chat
             </button>
-            <button onClick={() => addToCart(ap.id)} style={css('flex:1;min-width:160px;height:56px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:21px;")}>shopping_bag</span>Add to Bag
-            </button>
+            {renderBagControl(56)}
           </div>
 
           {/* ACCORDION PANELS */}
@@ -294,35 +438,35 @@ export function ProductDetail() {
               </div>
             ))}
 
-            {renderPanel('ratings', 'star', 'Ratings', `${ap.rating} ★`, (
-              <div style={css('background:#FBF6F2;border:1px solid #F0E2E9;border-radius:16px;padding:18px;')}>
-                <div style={css('display:flex;align-items:center;gap:18px;')}>
-                  <div style={css('text-align:center;')}>
-                    <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:44px;line-height:1;color:#B02454;")}>{ap.rating}</div>
-                    <div style={css('color:#E0B84B;font-size:15px;letter-spacing:2px;margin-top:4px;')}>★★★★★</div>
-                    <div style={css('color:#8A7078;font-size:12px;margin-top:6px;')}>{reviewsF(ap.reviews)} reviews</div>
-                  </div>
-                  <div style={css('flex:1;display:flex;flex-direction:column;gap:7px;')}>
-                    {RATING_BARS.map((r) => (
-                      <div key={r.stars} style={css('display:flex;align-items:center;gap:9px;')}>
-                        <span style={css('font-size:11px;font-weight:700;color:#8A7078;width:10px;')}>{r.stars}</span>
-                        <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>
-                        <span style={css('flex:1;height:7px;border-radius:4px;background:#EFDCE4;overflow:hidden;')}>
-                          <span style={css(`display:block;height:100%;width:${r.pct}%;background:linear-gradient(90deg,#D6336C,#B02454);border-radius:4px;`)} />
-                        </span>
-                        <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8A7078;width:30px;text-align:right;")}>{r.pct}%</span>
-                      </div>
-                    ))}
+            {/* Ratings and reviews are one thing to the buyer — the score, the
+                spread, then the reviews themselves — so they share one panel. */}
+            {renderPanel('ratings', 'star', 'Ratings & reviews', `${ap.rating} ★ · ${reviewsF(ap.reviews)}`, (
+              <>
+                <div style={css('background:#FBF6F2;border:1px solid #F0E2E9;border-radius:16px;padding:18px;')}>
+                  <div style={css('display:flex;align-items:center;gap:18px;')}>
+                    <div style={css('text-align:center;')}>
+                      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:44px;line-height:1;color:#B02454;")}>{ap.rating}</div>
+                      <div style={css('color:#E0B84B;font-size:15px;letter-spacing:2px;margin-top:4px;')}>★★★★★</div>
+                      <div style={css('color:#8A7078;font-size:12px;margin-top:6px;')}>{reviewsF(ap.reviews)} reviews</div>
+                    </div>
+                    <div style={css('flex:1;display:flex;flex-direction:column;gap:7px;')}>
+                      {RATING_BARS.map((r) => (
+                        <div key={r.stars} style={css('display:flex;align-items:center;gap:9px;')}>
+                          <span style={css('font-size:11px;font-weight:700;color:#8A7078;width:10px;')}>{r.stars}</span>
+                          <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>
+                          <span style={css('flex:1;height:7px;border-radius:4px;background:#EFDCE4;overflow:hidden;')}>
+                            <span style={css(`display:block;height:100%;width:${r.pct}%;background:linear-gradient(90deg,#D6336C,#B02454);border-radius:4px;`)} />
+                          </span>
+                          <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8A7078;width:30px;text-align:right;")}>{r.pct}%</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <button onClick={() => setOpenPanels((p) => ({ ...p, reviews: true }))} style={css('width:100%;margin-top:18px;height:44px;border:1.5px solid #D6336C;background:#fff;color:#B02454;border-radius:13px;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>rate_review</span>Write a review
-                </button>
-              </div>
-            ))}
-
-            {renderPanel('reviews', 'reviews', 'Customer reviews', `${reviewsF(ap.reviews)}`, (
-              <ProductReviews productId={ap.id} boutiqueId={boutiqueId} />
+                <div style={css('margin-top:14px;')}>
+                  <ProductReviews productId={ap.id} boutiqueId={boutiqueId} />
+                </div>
+              </>
             ))}
           </div>
         </div>
@@ -364,9 +508,7 @@ export function ProductDetail() {
         <button onClick={openChat} style={css('flex:none;width:128px;height:52px;border:1.5px solid #ECC6D6;background:#fff;color:#B02454;border-radius:16px;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>chat</span>Chat
         </button>
-        <button onClick={() => addToCart(ap.id)} style={css('flex:1;height:52px;border:none;border-radius:16px;background:linear-gradient(135deg,#E14A7E,#B02454 70%,#8E1C44);color:#fff;font-weight:800;font-size:15px;letter-spacing:.01em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 0 rgba(255,255,255,.28) inset,0 12px 26px -14px rgba(176,36,84,.9);')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>Add to Bag
-        </button>
+        {renderBagControl(52)}
       </div>
 
       {/* SIZE CHART MODAL */}
@@ -397,7 +539,7 @@ export function ProductDetail() {
                   {SIZE_CHART.map((r) => {
                     const on = r.size === selectedSize;
                     return (
-                      <tr key={r.size} onClick={() => { setSelectedSize(r.size); setShowSizeChart(false); }} style={css(`cursor:pointer;border-top:1px solid #F0E2E9;background:${on ? '#FCE0EC' : '#fff'};`)}>
+                      <tr key={r.size} onClick={() => { pickSize(r.size); setShowSizeChart(false); }} style={css(`cursor:pointer;border-top:1px solid #F0E2E9;background:${on ? '#FCE0EC' : '#fff'};`)}>
                         <td style={css(`padding:12px;font-weight:800;color:${on ? '#B02454' : '#241019'};`)}>{r.size}</td>
                         <td style={css('padding:12px;color:#4B3840;')}>{r.bust}"</td>
                         <td style={css('padding:12px;color:#4B3840;')}>{r.waist}"</td>

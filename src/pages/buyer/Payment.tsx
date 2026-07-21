@@ -9,14 +9,12 @@ import { PAY_METHODS, fmt } from '@/data/demo';
 
 export function Payment() {
   const navigate = useNavigate();
-  const { payMethod, setPayMethod, subtotal, discount, shipFee, total, guest, orderItems, appliedCoupon, placeOrder, retryPendingPayment, showToast } = useShop();
+  const { payMethod, setPayMethod, subtotal, discount, shipFee, total, guest, orderItems, appliedCoupon, coupon, placeOrder, retryPendingPayment, showToast } = useShop();
   const [processing, setProcessing] = useState(false);
   // A payment that was captured but never became an order (dropped connection,
   // server hiccup, closed tab). Read once on mount so the buyer is offered the
   // free retry instead of being asked to pay a second time.
   const [pending, setPending] = useState(() => readPendingPayment());
-
-  const isOnline = payMethod !== 'cod';
 
   const onPlaceOrder = async () => {
     if (total < 1) {
@@ -32,28 +30,22 @@ export function Payment() {
 
     setProcessing(true);
     try {
-      // Cash on Delivery skips the gateway; online pays first, then we record
-      // the order server-side with the verified payment.
-      const payment = isOnline
-        ? await payWithRazorpay({
-            items: orderItems,
-            couponCode: appliedCoupon,
-            amountPaise: Math.round(total * 100),
-            name: 'Agilam Boutiques',
-            description: 'Order payment',
-            prefill: { name: guest.name, contact: guest.phone },
-          })
-        : null;
+      // Orders are prepaid: the gateway settles first, then we record the order
+      // server-side with the verified payment.
+      const payment = await payWithRazorpay({
+        items: orderItems,
+        couponCode: appliedCoupon,
+        amountPaise: Math.round(total * 100),
+        name: 'Agilam Boutiques',
+        description: 'Order payment',
+        prefill: { name: guest.name, contact: guest.phone },
+      });
 
-      await placeOrder(
-        payment
-          ? {
-              razorpay_order_id: payment.orderId,
-              razorpay_payment_id: payment.paymentId,
-              razorpay_signature: payment.signature,
-            }
-          : null,
-      );
+      await placeOrder({
+        razorpay_order_id: payment.orderId,
+        razorpay_payment_id: payment.paymentId,
+        razorpay_signature: payment.signature,
+      });
       navigate('/buyer/order-confirmation');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Payment failed';
@@ -86,6 +78,8 @@ export function Payment() {
       setProcessing(false);
     }
   };
+
+  const openCoupons = () => navigate('/buyer/coupons', { state: { from: '/buyer/payment' } });
 
   const onDismissPending = () => {
     clearPendingPayment();
@@ -151,6 +145,22 @@ export function Payment() {
 
           <div className="agx-cart-sticky" style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;padding:20px;box-shadow:0 20px 44px -30px rgba(107,20,54,.55);position:sticky;top:80px;')}>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Order total</div>
+            {/* Coupons are worth one last offer here: this is the screen where
+                the buyer is looking hardest at the number they're about to pay. */}
+            {coupon ? (
+              <div style={css('display:flex;align-items:center;gap:10px;margin-top:15px;background:#F3FBF5;border:1px dashed #9BD3B0;border-radius:13px;padding:11px 13px;')}>
+                <span style={css("font-family:'Material Symbols Outlined';color:#2FA36B;")}>verified</span>
+                <div style={css('flex:1;min-width:0;font-weight:800;font-size:13px;color:#218456;')}>{coupon.code} applied</div>
+                <button onClick={openCoupons} style={css('border:none;background:none;cursor:pointer;color:#4B7A61;font-size:12px;font-weight:800;')}>Change</button>
+              </div>
+            ) : (
+              <button onClick={openCoupons} style={css('width:100%;margin-top:15px;display:flex;align-items:center;gap:10px;padding:12px 13px;border:1.5px dashed #E7B7CB;background:#FCF3F7;border-radius:13px;cursor:pointer;text-align:left;')}>
+                <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>confirmation_number</span>
+                <span style={css('flex:1;font-weight:800;font-size:13px;color:#B02454;')}>Have a coupon?</span>
+                <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
+              </button>
+            )}
+
             <div style={css('display:flex;flex-direction:column;gap:11px;margin-top:16px;font-size:14px;')}>
               <div style={css('display:flex;justify-content:space-between;color:#5C4650;')}><span>Subtotal</span><span style={css('font-weight:700;')}>{fmt(subtotal)}</span></div>
               {discount > 0 && (
@@ -165,7 +175,7 @@ export function Payment() {
             </div>
             <button onClick={onPlaceOrder} disabled={processing} style={css(`width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:${processing ? 'wait' : 'pointer'};opacity:${processing ? '.7' : '1'};display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
               <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>lock</span>
-              {processing ? 'Processing…' : isOnline ? `Pay ${fmt(total)}` : 'Place order'}
+              {processing ? 'Processing…' : `Pay ${fmt(total)}`}
             </button>
             <button onClick={() => navigate('/buyer/checkout')} style={css('width:100%;height:44px;margin-top:9px;border:none;background:none;cursor:pointer;color:#8A7078;font-weight:800;font-size:13px;')}>Back to delivery</button>
           </div>

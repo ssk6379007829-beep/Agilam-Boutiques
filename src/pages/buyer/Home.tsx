@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
-import { useShop } from '@/state/ShopContext';
+import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { CATEGORIES, HOME_REVIEWS, TONES, fmt, img } from '@/data/demo';
 
@@ -23,7 +23,7 @@ const monogram = (name: string) => {
 
 export function Home() {
   const navigate = useNavigate();
-  const { wishlist, toggleWish } = useShop();
+  const { wishlist, toggleWish, setFilters } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
 
   // Home shows a curated slice of the catalogue in each rail.
@@ -45,6 +45,17 @@ export function Home() {
   };
 
   const goResults = () => navigate('/buyer/results');
+
+  // A collection circle lands on results already filtered. Which field it maps
+  // to is read off the catalogue rather than hardcoded, so a tile like "Bridal"
+  // (an occasion, not a category) still resolves — and anything the catalogue
+  // doesn't know, like "More", just opens the full grid.
+  const openCategory = (name: string) => {
+    if (PRODUCTS.some((p) => p.cat === name)) setFilters({ ...DEFAULT_FILTERS, cats: [name] });
+    else if (PRODUCTS.some((p) => p.occasion === name)) setFilters({ ...DEFAULT_FILTERS, occasions: [name] });
+    else setFilters(DEFAULT_FILTERS);
+    navigate('/buyer/results');
+  };
   const goBoutiques = () => navigate('/buyer/boutiques');
   const openProduct = (id: string) => navigate(`/buyer/product/${id}`);
   const openBoutique = (id: string) => navigate(`/buyer/boutique/${id}`);
@@ -95,8 +106,42 @@ export function Home() {
         </div>
       </div>
 
+      {/* SHOP BY COLLECTION — the first thing under the hero: one tap from
+          landing to a filtered edit, in a ringed circle rail that reads as
+          jewellery rather than as a row of buttons. */}
+      <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:28px 0 16px;')}>
+        <div>
+          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Browse every edit</div>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Shop by collection</div>
+        </div>
+        <a href="#" onClick={(e) => { e.preventDefault(); goResults(); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>View all →</a>
+      </div>
+      <div className="agx-scroll" style={css('display:flex;gap:clamp(14px,2.4vw,30px);overflow-x:auto;padding:2px 0 8px;')}>
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.name}
+            onClick={() => openCategory(c.name)}
+            className="agx-circle"
+            style={css('flex:none;display:flex;flex-direction:column;align-items:center;gap:11px;padding:0;border:none;background:none;cursor:pointer;')}
+          >
+            {/* Gradient ring → page-coloured gap → photo, so the circle reads as
+                a framed piece instead of a cropped thumbnail. */}
+            <span className="agx-circle-ring" style={css('display:block;width:clamp(84px,11vw,116px);height:clamp(84px,11vw,116px);border-radius:50%;padding:3px;background:linear-gradient(140deg,#F0C7D8,#D6336C 48%,#8E1C44);box-shadow:0 16px 32px -20px rgba(107,20,54,.85);')}>
+              <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:#FBF6F2;')}>
+                <span style={css(`position:relative;display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;background:${c.toneHex};`)}>
+                  <ImageSlot src={c.image} placeholder={c.name} style={css('position:absolute;inset:0;')} />
+                  <span style={css('position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,rgba(30,8,18,0) 55%,rgba(30,8,18,.42) 100%);')} />
+                  <span style={css("position:absolute;left:0;right:0;bottom:8px;text-align:center;font-family:'Material Symbols Outlined';font-size:17px;color:#F4D9A6;text-shadow:0 2px 8px rgba(0,0,0,.5);")}>{c.icon}</span>
+                </span>
+              </span>
+            </span>
+            <span style={css('font-size:13px;font-weight:800;color:#3F2E36;letter-spacing:-.005em;white-space:nowrap;')}>{c.name}</span>
+          </button>
+        ))}
+      </div>
+
       {/* NEW ARRIVALS */}
-      <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:34px 0 16px;')}>
+      <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:38px 0 16px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Fresh off the loom</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>New arrivals</div>
@@ -127,29 +172,6 @@ export function Home() {
               </div>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* SHOP BY COLLECTION */}
-      <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:40px 0 16px;')}>
-        <div>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Browse every edit</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Shop by collection</div>
-        </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); goResults(); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>View all →</a>
-      </div>
-      <div className="agx-scroll" style={css('display:flex;gap:16px;overflow-x:auto;padding-bottom:6px;')}>
-        {CATEGORIES.map((c) => (
-          <button key={c.name} onClick={goResults} className="agx-lift" style={css('flex:none;position:relative;display:flex;flex-direction:column;cursor:pointer;width:160px;border-radius:22px;padding:0;border:1px solid #F2E4EA;background:#fff;box-shadow:0 18px 40px -30px rgba(107,20,54,.5);overflow:hidden;')}>
-            <div className="agx-zoom" style={css(`position:relative;width:100%;aspect-ratio:4/5;background:${c.toneHex};overflow:hidden;`)}>
-              <ImageSlot src={c.image} placeholder={c.name} style={css('position:absolute;inset:0;')} />
-              <div style={css('position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,8,18,0) 42%,rgba(30,8,18,.68) 100%);pointer-events:none;')} />
-              <div style={css('position:absolute;left:14px;bottom:12px;display:flex;align-items:center;gap:7px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#F4D9A6;")}>{c.icon}</span>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.45);")}>{c.name}</span>
-              </div>
-            </div>
-          </button>
         ))}
       </div>
 
