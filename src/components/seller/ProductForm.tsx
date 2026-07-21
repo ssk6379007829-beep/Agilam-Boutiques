@@ -26,8 +26,6 @@ export const EMPTY_PRODUCT_FORM: ProductFormValues = {
 
 const SIZE_OPTIONS = ['S', 'M', 'L', 'XL', 'Free Size'];
 
-const isImageUrl = (u: string) => /^https?:\/\/.+/i.test(u);
-
 const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid #E7A7B4;background:#FFF7F8;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 const textAreaStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;font-family:inherit;resize:vertical;min-height:80px;';
@@ -61,8 +59,6 @@ export function ProductForm({
   const [form, setForm] = useState<ProductFormValues>({ ...EMPTY_PRODUCT_FORM, ...initial });
   const [errors, setErrors] = useState<Partial<Record<keyof ProductFormValues, string>>>({});
   const [uploading, setUploading] = useState<'cover' | 'gallery' | null>(null);
-  const [coverUrl, setCoverUrl] = useState('');
-  const [galleryUrl, setGalleryUrl] = useState('');
   const coverInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
 
@@ -97,31 +93,6 @@ export function ProductForm({
     } finally {
       setUploading(null);
     }
-  };
-
-  const addCoverUrl = () => {
-    const url = coverUrl.trim();
-    if (!isImageUrl(url)) {
-      showToast('Enter a valid image link (http/https)');
-      return;
-    }
-    set('imageUrl', url);
-    setErrors((e) => ({ ...e, imageUrl: undefined }));
-    setCoverUrl('');
-  };
-
-  const addGalleryUrl = () => {
-    const url = galleryUrl.trim();
-    if (!isImageUrl(url)) {
-      showToast('Enter a valid image link (http/https)');
-      return;
-    }
-    if (form.images.length >= 3) {
-      showToast('You can add up to 3 gallery photos');
-      return;
-    }
-    set('images', [...form.images, url]);
-    setGalleryUrl('');
   };
 
   const validate = (): boolean => {
@@ -195,30 +166,6 @@ export function ProductForm({
         <input ref={galleryInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => onGalleryPick(e.target.files?.[0])} />
       </div>
       {errors.imageUrl && <span style={css(errStyle)}>{errors.imageUrl}</span>}
-
-      <div style={css('background:#fff;border:1.5px solid #F0D8E2;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;')}>
-        <div style={css('font-size:12.5px;font-weight:700;color:#7A5C67;')}>Or paste an image link</div>
-        <div style={css('display:flex;gap:8px;')}>
-          <input
-            value={coverUrl}
-            onChange={(e) => setCoverUrl(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCoverUrl())}
-            placeholder="Cover image URL (https://…)"
-            style={css('flex:1;border:1.5px solid #F0D8E2;background:#FBF6F2;border-radius:11px;padding:0 12px;height:44px;font-size:13px;font-weight:600;')}
-          />
-          <button type="button" onClick={addCoverUrl} style={css('flex:none;padding:0 16px;height:44px;border:none;border-radius:11px;background:#FCE0EC;color:#B02454;font-weight:800;font-size:13px;cursor:pointer;')}>Set cover</button>
-        </div>
-        <div style={css('display:flex;gap:8px;')}>
-          <input
-            value={galleryUrl}
-            onChange={(e) => setGalleryUrl(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGalleryUrl())}
-            placeholder="Gallery image URL (up to 3)"
-            style={css('flex:1;border:1.5px solid #F0D8E2;background:#FBF6F2;border-radius:11px;padding:0 12px;height:44px;font-size:13px;font-weight:600;')}
-          />
-          <button type="button" onClick={addGalleryUrl} style={css('flex:none;padding:0 16px;height:44px;border:none;border-radius:11px;background:#FCE0EC;color:#B02454;font-weight:800;font-size:13px;cursor:pointer;')}>Add photo</button>
-        </div>
-      </div>
 
       {REQUIRED_FIELDS.map((fl) => (
         <label key={fl.key} style={css(labelStyle)}>
