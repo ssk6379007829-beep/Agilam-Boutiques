@@ -87,9 +87,13 @@ async function checkDatabase() {
   const supabase = serviceClient(supabaseUrl, serviceRoleKey);
   if (!supabase) return { ok: false, error: 'Supabase service client could not be created' };
 
+  // Deliberately no `head: true` probes anywhere here. postgrest-js rewrites a
+  // 404 with an empty body — exactly what a HEAD against a missing table
+  // returns — into a successful 204 with no error. A HEAD probe therefore
+  // reports a completely empty Supabase project as healthy, which is precisely
+  // the false clean bill of health that hid this bug. Every probe reads real
+  // columns so the table has to genuinely exist to pass.
   const probes = [];
-  probes.push(await probe('products.head', () =>
-    supabase.from('products').select('id', { count: 'exact', head: true }).limit(1)));
 
   // The place-order column list, first without a filter and then through the
   // same `.in()` filter, so a column-privilege problem is distinguishable from a
@@ -105,8 +109,8 @@ async function checkDatabase() {
 
   probes.push(await probe('boutiques.select', () =>
     supabase.from('boutiques').select('id, name, cod_enabled, status').limit(1)));
-  probes.push(await probe('orders.head', () =>
-    supabase.from('orders').select('id', { count: 'exact', head: true }).limit(1)));
+  probes.push(await probe('orders.select', () =>
+    supabase.from('orders').select('id, order_number, payment_status, cod_fee, shipping_fee').limit(1)));
   // Empty array is a deliberate no-op: it proves the function exists and is
   // callable by this role without touching a single unit of stock.
   probes.push(await probe('rpc.reserve_stock', () => supabase.rpc('reserve_stock', { p_items: [] })));
@@ -114,6 +118,13 @@ async function checkDatabase() {
   const failed = probes.filter((p) => !p.ok);
   return {
     ok: failed.length === 0,
+    // The single highest-value check here. The browser reads Supabase via the
+    // build-time VITE_SUPABASE_URL while the functions prefer the server-only
+    // SUPABASE_URL, so the two can silently address DIFFERENT projects: the shop
+    // browses perfectly against one while every order is written to another.
+    // If that second project is empty, checkout fails with errors that look
+    // nothing like a misrouted URL.
+    ...(urlMismatch() && { urlMismatch: urlMismatch() }),
     // Which Supabase project the FUNCTIONS are pointed at. The host is already
     // public (it ships in the browser bundle); the key never appears here.
     project: hostOf(supabaseUrl),
@@ -123,6 +134,25 @@ async function checkDatabase() {
     keyFormat: keyFormatOf(serviceRoleKey),
     probes,
     ...(failed.length > 0 && { error: `${failed[0].name}: ${failed[0].error}` }),
+  };
+}
+
+/**
+ * Describes the API/browser project split when there is one, or null when both
+ * point at the same Supabase project (including when SUPABASE_URL is unset and
+ * the functions simply inherit VITE_SUPABASE_URL, which is the safe default).
+ */
+function urlMismatch() {
+  const apiUrl = process.env.SUPABASE_URL;
+  const browserUrl = process.env.VITE_SUPABASE_URL;
+  if (!configured(apiUrl) || !configured(browserUrl)) return null;
+  const api = hostOf(apiUrl);
+  const browser = hostOf(browserUrl);
+  if (api === browser) return null;
+  return {
+    api,
+    browser,
+    fix: 'The /api functions and the shop are on different Supabase projects. Point SUPABASE_URL at the browser’s project and use THAT project’s service-role key, or unset SUPABASE_URL so the functions inherit VITE_SUPABASE_URL.',
   };
 }
 
