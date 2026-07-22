@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
@@ -22,18 +23,123 @@ function timeAgo(iso: string): string {
 
 const compact = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(n));
 
+/** How close two taps have to be to count as a double-tap. */
+const DOUBLE_TAP_MS = 320;
+
+/**
+ * The size sheet.
+ *
+ * The card never shows a size row up front — most pieces are browsed, not
+ * bought, and a strip of size chips on every card turns the feed into a form.
+ * The question is only asked at the moment it matters: the buyer taps Add to
+ * bag, the sheet comes up, they pick, and the piece goes in.
+ *
+ * Portalled to the body — the app header sets `backdrop-filter`, which makes it
+ * a containing block for any fixed-position descendant rendered inside it.
+ */
+function SizeSheet({
+  title,
+  image,
+  price,
+  tone,
+  options,
+  initial,
+  onConfirm,
+  onClose,
+}: {
+  title: string;
+  image?: string;
+  price: number;
+  tone: number;
+  options: string[];
+  initial: string | null;
+  onConfirm: (size: string) => void;
+  onClose: () => void;
+}) {
+  const [picked, setPicked] = useState<string | null>(initial);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={css('position:fixed;inset:0;z-index:1200;background:rgba(36,16,25,.5);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;animation:agx-fade .18s ease;')}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="Choose a size"
+        style={css('width:100%;max-width:620px;background:#fff;border-radius:26px 26px 0 0;padding:10px 18px calc(20px + env(safe-area-inset-bottom));animation:agx-sheet .26s cubic-bezier(.2,.8,.25,1);max-height:88vh;overflow-y:auto;')}
+      >
+        <div style={css('width:44px;height:4px;border-radius:999px;background:#EEDCE5;margin:0 auto 16px;')} />
+
+        <div style={css('display:flex;align-items:center;gap:12px;')}>
+          <span style={css(`flex:none;width:56px;height:70px;border-radius:14px;overflow:hidden;position:relative;background:${TONES[tone % TONES.length]};`)}>
+            <ImageSlot src={image} placeholder={title} alt={title} className="agx-prod-fill" />
+          </span>
+          <span style={css('flex:1;min-width:0;')}>
+            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:16.5px;color:#241019;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;")}>
+              {title}
+            </span>
+            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:19px;margin-top:4px;")}>
+              {fmt(price)}
+            </span>
+          </span>
+        </div>
+
+        <div className="agx-eyebrow" style={css('font-size:9.5px;color:#8A7078;margin-top:20px;')}>
+          {picked ? `Size · ${picked}` : 'Choose a size'}
+        </div>
+        <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
+          {options.map((s) => {
+            const on = picked === s;
+            return (
+              <button
+                key={s}
+                onClick={() => setPicked(s)}
+                aria-pressed={on}
+                style={css(`min-width:52px;height:48px;padding:0 15px;border-radius:14px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#4B3840'};font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;`)}
+              >
+                {s}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          disabled={!picked}
+          onClick={() => picked && onConfirm(picked)}
+          style={css(`width:100%;height:54px;margin-top:22px;border:none;border-radius:16px;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:${picked ? 'pointer' : 'not-allowed'};color:#fff;background:${picked ? 'linear-gradient(135deg,#D6336C,#B02454)' : '#E7D3DC'};box-shadow:${picked ? '0 16px 34px -16px rgba(214,51,108,.85)' : 'none'};transition:background .2s ease;`)}
+        >
+          <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>
+          {picked ? `Add ${picked} to bag` : 'Select a size'}
+        </button>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 /**
  * One piece in the Inspire feed.
  *
  * The card *is* the listing — the boutique's own photos, title, price and
- * description, with nothing re-entered. It carries exactly one buying action:
- * Add to bag, which becomes a quantity stepper once the piece is in. Anything
- * more (size chart, full description, reviews, zoom) is a tap away on the
- * product page, reachable from the photo, the title or the "View details" link.
+ * description, with nothing re-entered. It carries one buying action, Add to
+ * bag, which becomes a quantity stepper once the piece is in; where the boutique
+ * declared sizes, the sheet asks for one on the way through.
  *
- * Where the boutique declared sizes, one has to be chosen before the piece can
- * go in the bag — sending an order without a size just moves the problem to the
- * seller, who then has to chase the buyer on chat.
+ * The photo is for looking at, not for navigating: a double-tap likes it, the
+ * way it does in every other feed. "View details" is the deliberate route to the
+ * product page, where the size guide, full description and reviews live.
  */
 export function FeedPostCard({
   product,
@@ -47,12 +153,13 @@ export function FeedPostCard({
   onToggleLike: () => void;
 }) {
   const navigate = useNavigate();
-  const { showToast, addToCart, cart, cartQty } = useShop();
+  const { showToast, addToCart, cart, cartQty, isFollowing, toggleFollow } = useShop();
 
   const [slide, setSlide] = useState(0);
-  const [pickedSize, setPickedSize] = useState<string | null>(null);
-  const [sizeError, setSizeError] = useState(false);
+  const [askSize, setAskSize] = useState(false);
+  const [burst, setBurst] = useState(0);
   const stripRef = useRef<HTMLDivElement>(null);
+  const lastTapRef = useRef(0);
 
   const boutique = product.boutique;
   // The listing's own gallery: the cover first, then the rest, de-duped.
@@ -64,21 +171,26 @@ export function FeedPostCard({
   const discountPct = hasMrp ? Math.round((1 - price / (mrp as number)) * 100) : null;
 
   // Only the sizes the boutique actually listed. When it declared none, there is
-  // nothing to choose and the line goes in as free size.
+  // nothing to ask and the line goes in as free size.
   const sizeOptions = product.sizes ?? [];
   const needsSize = sizeOptions.length > 0;
   const bagLine = cart[product.id];
   const bagQty = bagLine?.qty ?? 0;
-  // What the buyer picked here, else the size this piece is already in the bag
-  // at — never a size that isn't on sale, and never a silent default.
-  const selectedSize =
-    (pickedSize && sizeOptions.includes(pickedSize) ? pickedSize : null) ??
-    (bagLine && sizeOptions.includes(bagLine.size) ? bagLine.size : null);
+  // The size this piece is already in the bag at, so re-opening the sheet starts
+  // where the buyer left off rather than blank.
+  const bagSize = bagLine && sizeOptions.includes(bagLine.size) ? bagLine.size : null;
 
+  const following = !!boutique && isFollowing(boutique.id);
   const soldOut = product.stock === 0;
   const lowStock = !soldOut && product.stock <= 5;
   const openProduct = () => navigate(`/buyer/product/${product.id}`);
   const openBoutique = () => boutique && navigate(`/buyer/boutique/${boutique.id}`);
+
+  const onFollow = () => {
+    if (!boutique) return;
+    const now = toggleFollow(boutique.id);
+    if (now) showToast(`Following ${boutique.name}`);
+  };
 
   const onStripScroll = () => {
     const el = stripRef.current;
@@ -94,6 +206,21 @@ export function FeedPostCard({
     el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
   };
 
+  // Double-tap to like. The first tap does nothing at all, so there is no
+  // disambiguation delay to sit through and no accidental navigation — the burst
+  // plays on every double-tap, but an already-liked piece is never un-liked by
+  // one (that would make a mis-tap destructive).
+  const onPhotoTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < DOUBLE_TAP_MS) {
+      lastTapRef.current = 0;
+      if (!liked) onToggleLike();
+      setBurst((n) => n + 1);
+    } else {
+      lastTapRef.current = now;
+    }
+  };
+
   const onShare = async () => {
     const result = await shareProduct({
       title: product.title,
@@ -106,22 +233,17 @@ export function FeedPostCard({
     else if (result === 'failed') showToast("Couldn't share this piece");
   };
 
-  const pickSize = (s: string) => {
-    setPickedSize(s);
-    setSizeError(false);
-  };
-
   const onAddToBag = () => {
     if (soldOut) {
       showToast('This piece is out of stock');
       return;
     }
-    if (needsSize && !selectedSize) {
-      setSizeError(true);
-      showToast('Please choose a size first');
+    // Ask for the size only now, on the way into the bag.
+    if (needsSize) {
+      setAskSize(true);
       return;
     }
-    addToCart(product.id, selectedSize ?? 'Free');
+    addToCart(product.id, 'Free');
   };
 
   const onIncrease = () => {
@@ -152,20 +274,27 @@ export function FeedPostCard({
             {timeAgo(product.created_at)}{boutique?.city ? ` · ${boutique.city}` : ''}
           </span>
         </button>
-        <span style={css('flex:none;font-size:11px;font-weight:800;color:#B02454;background:#FCE0EC;border-radius:999px;padding:5px 11px;')}>
-          {product.category}
-        </span>
+
+        {/* A shop the buyer already follows needs nothing here — the space stays
+            quiet. One they don't gets the only thing worth offering. */}
+        {boutique && !following && (
+          <button
+            onClick={onFollow}
+            style={css('flex:none;display:flex;align-items:center;gap:4px;height:34px;padding:0 14px;border:1.5px solid #D6336C;border-radius:999px;background:#fff;color:#B02454;font-size:12.5px;font-weight:800;cursor:pointer;')}
+          >
+            <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>add</span>Follow
+          </button>
+        )}
       </div>
 
-      {/* ── Photos. Tapping opens the full product page — the feed's route into
-             detail, so it's instant rather than waiting on a double-tap. ── */}
+      {/* ── Photos. Double-tap likes; the photo doesn't navigate. ── */}
       <div style={css('position:relative;')}>
         <div
           ref={stripRef}
           onScroll={onStripScroll}
-          onClick={openProduct}
+          onClick={onPhotoTap}
           className="agx-scroll"
-          style={css('display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;cursor:pointer;')}
+          style={css('display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;')}
         >
           {(images.length ? images : ['']).map((src, i) => (
             <div
@@ -176,6 +305,19 @@ export function FeedPostCard({
             </div>
           ))}
         </div>
+
+        {/* The double-tap burst. Keyed by tap count so a rapid second one restarts
+            the animation instead of being swallowed mid-flight. */}
+        {burst > 0 && (
+          <span
+            key={burst}
+            onAnimationEnd={() => setBurst(0)}
+            aria-hidden="true"
+            style={css("position:absolute;left:50%;top:50%;font-family:'Material Symbols Outlined';font-variation-settings:'FILL' 1;font-size:96px;color:rgba(255,255,255,.95);pointer-events:none;text-shadow:0 10px 30px rgba(107,20,54,.55);animation:agx-burst .85s cubic-bezier(.2,.7,.2,1) forwards;")}
+          >
+            favorite
+          </span>
+        )}
 
         {hasMrp && (
           <div style={css('position:absolute;left:12px;top:12px;background:linear-gradient(135deg,#2FA36B,#1E8455);color:#fff;font-size:11.5px;font-weight:800;padding:6px 11px;border-radius:999px;box-shadow:0 8px 20px -10px rgba(30,132,85,.9);')}>
@@ -264,92 +406,70 @@ export function FeedPostCard({
             {product.description}
           </div>
         )}
-
-        {/* Fabric / occasion / colour, straight off the listing — no re-entry. */}
-        <div style={css('display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;')}>
-          {[product.fabric, product.occasion && `${product.occasion} wear`, product.color].filter(Boolean).map((chip) => (
-            <span key={chip as string} style={css('font-size:11.5px;font-weight:700;color:#6B5560;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:9px;padding:5px 10px;')}>
-              {chip}
-            </span>
-          ))}
-        </div>
       </div>
 
-      {/* ── Buy, without leaving the feed ── */}
+      {/* ── Buy, without leaving the feed ──
+          One action. Once the piece is in the bag it becomes a stepper, so a
+          second tap adjusts the count instead of silently re-adding. */}
       <div style={css('padding:14px 16px 16px;')}>
-        {!soldOut && needsSize && (
-          <>
-            <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
-              <span className="agx-eyebrow" style={css(`font-size:9.5px;color:${sizeError ? '#C0455E' : '#8A7078'};`)}>
-                {selectedSize ? `Size · ${selectedSize}` : 'Choose a size'}
+        {soldOut ? (
+          <button
+            onClick={openProduct}
+            style={css('width:100%;height:52px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:15px;font-weight:800;font-size:14.5px;cursor:pointer;')}
+          >
+            View details
+          </button>
+        ) : bagQty === 0 ? (
+          <button
+            onClick={onAddToBag}
+            style={css('width:100%;height:52px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}
+          >
+            <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>Add to bag
+          </button>
+        ) : (
+          <div style={css('height:52px;display:flex;align-items:center;gap:6px;padding:6px;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
+            <button
+              onClick={() => cartQty(product.id, -1)}
+              aria-label={bagQty === 1 ? 'Remove from bag' : 'Reduce quantity'}
+              style={css('width:40px;height:40px;flex:none;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
+            </button>
+            <button
+              onClick={() => navigate('/buyer/cart')}
+              style={css('flex:1;min-width:0;height:100%;padding:0;border:none;background:none;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;')}
+            >
+              <span style={css('font-weight:800;font-size:15px;')}>
+                {bagQty} in bag{bagLine?.size && bagLine.size !== 'Free' ? ` · ${bagLine.size}` : ''}
               </span>
-              <button onClick={openProduct} style={css('border:none;background:none;cursor:pointer;color:#B02454;font-size:11.5px;font-weight:800;display:flex;align-items:center;gap:4px;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>straighten</span>Size guide
-              </button>
-            </div>
-            <div style={css(`display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;padding:${sizeError ? '8px' : '0'};border-radius:14px;border:${sizeError ? '1.5px solid #E9A9B6' : 'none'};background:${sizeError ? '#FDF2F4' : 'transparent'};transition:background .2s ease;`)}>
-              {sizeOptions.map((s) => {
-                const on = selectedSize === s;
-                return (
-                  <button
-                    key={s}
-                    onClick={() => pickSize(s)}
-                    style={css(`min-width:46px;height:42px;padding:0 13px;border-radius:12px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#4B3840'};font-weight:${on ? 800 : 700};font-size:13.5px;cursor:pointer;`)}
-                  >
-                    {s}
-                  </button>
-                );
-              })}
-            </div>
-          </>
+              <span className="agx-eyebrow" style={css('font-size:8px;color:rgba(255,255,255,.8);')}>View bag</span>
+            </button>
+            <button
+              onClick={onIncrease}
+              aria-label="Increase quantity"
+              style={css(`width:40px;height:40px;flex:none;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${bagQty >= product.stock ? '.45' : '1'};`)}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>add</span>
+            </button>
+          </div>
         )}
-
-        {/* One buying action. Once the piece is in the bag it becomes a stepper,
-            so a second tap adjusts the count instead of silently re-adding. */}
-        <div style={css(`margin-top:${!soldOut && needsSize ? '13px' : '0'};`)}>
-          {soldOut ? (
-            <button
-              onClick={openProduct}
-              style={css('width:100%;height:52px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:15px;font-weight:800;font-size:14.5px;cursor:pointer;')}
-            >
-              View details
-            </button>
-          ) : bagQty === 0 ? (
-            <button
-              onClick={onAddToBag}
-              style={css('width:100%;height:52px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}
-            >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>shopping_bag</span>Add to bag
-            </button>
-          ) : (
-            <div style={css('height:52px;display:flex;align-items:center;gap:6px;padding:6px;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
-              <button
-                onClick={() => cartQty(product.id, -1)}
-                aria-label={bagQty === 1 ? 'Remove from bag' : 'Reduce quantity'}
-                style={css('width:40px;height:40px;flex:none;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
-              >
-                <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>{bagQty === 1 ? 'delete' : 'remove'}</span>
-              </button>
-              <button
-                onClick={() => navigate('/buyer/cart')}
-                style={css('flex:1;min-width:0;height:100%;padding:0;border:none;background:none;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;')}
-              >
-                <span style={css('font-weight:800;font-size:15px;')}>
-                  {bagQty} in bag{bagLine?.size && bagLine.size !== 'Free' ? ` · ${bagLine.size}` : ''}
-                </span>
-                <span className="agx-eyebrow" style={css('font-size:8px;color:rgba(255,255,255,.8);')}>View bag</span>
-              </button>
-              <button
-                onClick={onIncrease}
-                aria-label="Increase quantity"
-                style={css(`width:40px;height:40px;flex:none;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${bagQty >= product.stock ? '.45' : '1'};`)}
-              >
-                <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#fff;")}>add</span>
-              </button>
-            </div>
-          )}
-        </div>
       </div>
+
+      {askSize && (
+        <SizeSheet
+          title={product.title}
+          image={images[slide] || images[0]}
+          price={price}
+          tone={product.tone}
+          options={sizeOptions}
+          initial={bagSize}
+          onClose={() => setAskSize(false)}
+          onConfirm={(size) => {
+            setAskSize(false);
+            addToCart(product.id, size);
+          }}
+        />
+      )}
     </article>
   );
 }
