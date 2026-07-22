@@ -103,7 +103,14 @@ export function SignIn() {
       </div>
 
       <div style={css('text-align:center;font-size:14px;color:#8A7078;')}>
-        New to Agilam? <a href="#" onClick={(e) => { e.preventDefault(); navigate(`/auth/signup/${role}`); }} style={css('font-weight:700;')}>Create an account</a>
+        New to Agilam?{' '}
+        <a
+          href="#"
+          onClick={(e) => { e.preventDefault(); navigate(role === 'seller' ? '/seller/register' : '/auth/signup/buyer'); }}
+          style={css('font-weight:700;')}
+        >
+          {role === 'seller' ? 'Open your boutique' : 'Create an account'}
+        </a>
       </div>
     </AuthModal>
   );

@@ -15,9 +15,11 @@ export function SellModal() {
     navigate('/auth/signin/seller');
   };
 
+  // Straight into the registration wizard — it creates the account as its own
+  // first step, so there is no separate signup page to pass through.
   const goCreate = () => {
     closeSellModal();
-    navigate('/auth/signup/seller');
+    navigate('/seller/register');
   };
 
   return (

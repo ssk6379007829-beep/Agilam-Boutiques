@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
@@ -7,8 +7,10 @@ import { WishButton } from '@/components/buyer/WishButton';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
-import { CATEGORIES, HOME_REVIEWS, TONES, fmt, img } from '@/data/demo';
+import { HOME_REVIEWS, TONES, fmt, img } from '@/data/demo';
 import { newArrivals, bestSellers, bestSellingBoutiques } from '@/lib/ranking';
+import { buildCollections } from '@/lib/collections';
+import { useTaxonomy } from '@/state/TaxonomyContext';
 
 const HERO_SLIDES = [
   { slotId: 'hero-banner', tag: 'Latest Collection', pre: 'New Arrivals for ', accent: 'Wedding', post: ' Season', sub: 'Handpicked bridal edits from 200+ boutiques', image: img('1602210901882-071c6b9e239d', 1600) },
@@ -29,6 +31,17 @@ export function Home() {
   const NEW_ARRIVALS = newArrivals(PRODUCTS).slice(0, 6);
   const BEST_SELLERS = bestSellers(PRODUCTS).slice(0, 6);
   const TOP_BOUTIQUES = bestSellingBoutiques(BOUTIQUES).slice(0, 8);
+
+  // The collection rail used to be six fixed circles from the design file, so a
+  // category the admin approved was invisible here until someone edited the
+  // code. It is now the busiest approved categories, drawn with the design's
+  // art where the names still line up — and a "More" circle for the rest.
+  // Memoised: the hero rotates every 4.2s, and this walks the whole catalogue.
+  const vocab = useTaxonomy();
+  const CIRCLES = useMemo(
+    () => buildCollections(PRODUCTS, vocab).categories.slice(0, 6),
+    [PRODUCTS, vocab],
+  );
   const [heroIndex, setHeroIndex] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
@@ -125,7 +138,7 @@ export function Home() {
         <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:clamp(14px,2.4vw,30px);overflow-x:auto;padding:2px 0 8px;')}>
-        {CATEGORIES.map((c) => (
+        {CIRCLES.map((c) => (
           <button
             key={c.name}
             onClick={() => openCategory(c.name)}
@@ -146,6 +159,23 @@ export function Home() {
             <span style={css('font-size:13px;font-weight:800;color:#3F2E36;letter-spacing:-.005em;white-space:nowrap;')}>{c.name}</span>
           </button>
         ))}
+
+        {/* The design's "More" circle, now with somewhere real to go: the rail
+            shows six, the page shows every collection there is. */}
+        <button
+          onClick={() => navigate('/buyer/collections')}
+          className="agx-circle"
+          style={css('flex:none;display:flex;flex-direction:column;align-items:center;gap:11px;padding:0;border:none;background:none;cursor:pointer;')}
+        >
+          <span className="agx-circle-ring" style={css('display:block;width:clamp(84px,11vw,116px);height:clamp(84px,11vw,116px);border-radius:50%;padding:3px;background:linear-gradient(140deg,#F0C7D8,#D6336C 48%,#8E1C44);box-shadow:0 16px 32px -20px rgba(107,20,54,.85);')}>
+            <span style={css('display:block;width:100%;height:100%;border-radius:50%;padding:3px;background:#FBF6F2;')}>
+              <span style={css('display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:linear-gradient(140deg,#FBEAF1,#F3D3DF);')}>
+                <span style={css("font-family:'Material Symbols Outlined';font-size:30px;color:#B02454;")}>grid_view</span>
+              </span>
+            </span>
+          </span>
+          <span style={css('font-size:13px;font-weight:800;color:#3F2E36;letter-spacing:-.005em;white-space:nowrap;')}>More</span>
+        </button>
       </div>
 
       {/* NEW ARRIVALS */}

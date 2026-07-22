@@ -251,6 +251,38 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    the dock above it, so the bag has to clear both. */
 body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(160px + env(safe-area-inset-bottom)); }
 @media (min-width: 900px) { body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(112px + env(safe-area-inset-bottom)); } }
+/* Results/collection screens float their own Filter + Sort bar at 96px on
+   phones. The bag used to land on top of the Sort button; it stacks above the
+   pair instead. Scoped to the widths where that bar is actually visible. */
+@media (max-width: 959px) {
+  body:has(.agx-mob-actionbar) .agx-fab-bag { bottom: calc(162px + env(safe-area-inset-bottom)); }
+}
+
+/* The bag capsule: frosted ivory, so it reads as a receipt sitting over the
+   catalogue rather than a second crimson CTA competing with Sort. */
+.agx-bag-pill {
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  animation: agx-bag-in .38s cubic-bezier(.2,.8,.2,1);
+  transition: box-shadow .3s ease, transform .25s cubic-bezier(.2,.7,.2,1);
+}
+.agx-bag-pill:hover { box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 30px 56px -24px rgba(107,20,54,.7), 0 4px 12px -6px rgba(107,20,54,.24) !important; }
+.agx-bag-pill:active { transform: scale(.97); }
+.agx-bag-pill .agx-bag-go { transition: transform .25s cubic-bezier(.2,.7,.2,1); }
+.agx-bag-pill:hover .agx-bag-go { transform: translateX(2px); }
+/* Entrance: the bag rises into place the first time something is added. */
+@keyframes agx-bag-in {
+  from { opacity: 0; transform: translateY(16px) scale(.92); }
+  to   { opacity: 1; transform: none; }
+}
+/* Acknowledgement when the count goes up while the bag is already on screen. */
+.agx-bag-bump { animation: agx-bag-bump .52s cubic-bezier(.2,.8,.2,1); }
+@keyframes agx-bag-bump {
+  0%   { transform: scale(1); }
+  28%  { transform: scale(1.07); }
+  62%  { transform: scale(.985); }
+  100% { transform: scale(1); }
+}
 
 /* ---------- product imagery ----------
    One card ratio for the whole catalogue. Every product thumbnail — home rails,

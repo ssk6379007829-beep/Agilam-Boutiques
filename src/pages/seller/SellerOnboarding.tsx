@@ -6,6 +6,7 @@ import { FullscreenLoader } from '@/auth/RequireRole';
 import { useToast } from '@/components/ui/Toast';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
 import { resolveDisplayName } from '@/lib/displayName';
+import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
 import {
   fetchMyBoutique,
   fetchBoutiquePrivate,
@@ -18,13 +19,20 @@ import {
 import { WORKING_DAYS, type BoutiqueRow } from '@/data/types';
 
 /**
- * Seller setup wizard — the seven steps a boutique completes before it can be
- * submitted for admin verification.
+ * Boutique registration — creating the seller's login and the seven steps a
+ * boutique completes before it can be submitted for admin verification, in one
+ * continuous flow.
  *
- * Every step saves to the boutique row as the seller advances rather than
- * buffering the whole form to the end, so an abandoned signup resumes exactly
- * where it stopped: `onboarding_step` records the furthest completed step.
- * Step 7 flips the boutique from `draft` to `pending` for the admin queue.
+ * Registration used to start on the shared /auth/signup/seller card, which asked
+ * for the boutique name, owner name and city and then handed over to this wizard
+ * — which asked for all three again. Account creation is step 0 here instead, so
+ * every detail is entered exactly once.
+ *
+ * From step 1 on, every step saves to the boutique row as the seller advances
+ * rather than buffering the whole form to the end, so an abandoned signup
+ * resumes exactly where it stopped: `onboarding_step` records the furthest
+ * completed step. Step 7 flips the boutique from `draft` to `pending` for the
+ * admin queue.
  *
  * GST, business registration and the payout fields are withheld from the public
  * API by migration 0021's column grants, so they are read back through
@@ -40,6 +48,14 @@ const STEPS = [
   { n: 6, title: 'Payment details', sub: 'Where your payouts are sent', icon: 'account_balance' },
   { n: 7, title: 'Review & submit', sub: 'Check everything, then send for verification', icon: 'task_alt' },
 ] as const;
+
+/**
+ * Step 0 — the Agilam login itself. It is numbered 0 so the DB's
+ * `onboarding_step` (1–7, the boutique steps) keeps its existing meaning; only
+ * the labels count from one.
+ */
+const ACCOUNT_STEP = { n: 0, title: 'Your account', sub: 'The login you will manage your boutique with', icon: 'person_add' } as const;
+const ALL_STEPS = [ACCOUNT_STEP, ...STEPS];
 
 const CATEGORIES = [
   'Sarees', 'Kurtis & Salwar', 'Bridal Wear', 'Lehengas & Gowns',
@@ -81,6 +97,18 @@ const EMPTY: Form = {
 };
 
 type Errors = Partial<Record<keyof Form, string>>;
+
+/** Step 0's own little form — it creates the auth user, not the boutique row. */
+type Account = { fullName: string; email: string; password: string };
+type AccountErrors = Partial<Record<keyof Account, string>>;
+
+function validateAccount(a: Account): AccountErrors {
+  const e: AccountErrors = {};
+  if (a.fullName.trim().length < 2) e.fullName = 'Enter your full name';
+  if (!EMAIL_RE.test(a.email.trim())) e.email = 'Enter a valid email address';
+  if (a.password.length < 6) e.password = 'Use at least 6 characters';
+  return e;
+}
 
 /** Per-step validation. Returns the fields that are wrong; empty means the step is good. */
 function validateStep(step: number, f: Form): Errors {
@@ -172,12 +200,20 @@ function toPatch(f: Form): BoutiquePatch {
 
 export function SellerOnboarding() {
   const navigate = useNavigate();
-  const { session, profile, loading: authLoading } = useAuth();
+  const { session, profile, loading: authLoading, signUpWithPassword, signOut, claimRole } = useAuth();
   const toast = useToast();
+
+  // A buyer who has ever opened a chat carries an anonymous Supabase session
+  // (see ensureBuyerIdentity), so a session alone does not mean a real login —
+  // without this check the wizard would happily create a boutique owned by an
+  // anonymous buyer.
+  const authed = !!session && !session.user.is_anonymous;
 
   const [boutique, setBoutique] = useState<BoutiqueRow | null>(null);
   const [form, setForm] = useState<Form>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
+  const [account, setAccount] = useState<Account>({ fullName: '', email: '', password: '' });
+  const [accountErrors, setAccountErrors] = useState<AccountErrors>({});
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -191,18 +227,41 @@ export function SellerOnboarding() {
     setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
   };
 
+  const setAcct = <K extends keyof Account>(key: K, value: Account[K]) => {
+    setAccount((a) => ({ ...a, [key]: value }));
+    setAccountErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
+  };
+
   // Load (or create) the seller's boutique, then hydrate the form from it so a
   // half-finished wizard — or a "needs changes" resubmission — resumes in place.
   useEffect(() => {
     if (authLoading) return;
-    if (!session) {
-      navigate('/auth/signin/seller', { replace: true });
+    if (!session || !authed) {
+      // No real login yet: open on the account step rather than bouncing out to
+      // a separate signup page. Creating the account re-runs this effect with a
+      // session, which then creates the draft boutique and moves to step 1.
+      setStep(0);
+      setLoading(false);
       return;
     }
 
     let cancelled = false;
+    setLoading(true);
     (async () => {
       try {
+        // An admin has no boutique to register — and the admin role is never
+        // self-changeable, so send them back to their own console.
+        if (profile?.role === 'admin') {
+          navigate('/admin/overview', { replace: true });
+          return;
+        }
+        // A shopper already signed in on the buyer app who picked "Create
+        // Boutique" is promoted here — the same sanctioned buyer→seller upgrade
+        // the Google sign-in path uses. Without it they would fill in the whole
+        // wizard and then be bounced out of the seller console by RequireRole.
+        if (profile?.role === 'buyer') await claimRole('seller');
+        if (cancelled) return;
+
         let row = await fetchMyBoutique(session.user.id);
         if (!row) {
           const fallbackName = resolveDisplayName(profile, session);
@@ -271,7 +330,7 @@ export function SellerOnboarding() {
     // One-shot load per signed-in seller: re-running when `profile` or `toast`
     // changes identity would overwrite whatever the seller is mid-way typing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, authLoading]);
+  }, [session?.user?.id, authed, authLoading]);
 
   const pickImage = async (kind: 'logo' | 'cover', file: File | undefined) => {
     if (!file || !boutique) return;
@@ -296,6 +355,49 @@ export function SellerOnboarding() {
   const goTo = (next: number) => {
     setStep(next);
     topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  /**
+   * Step 0's action. Only the auth user is created here — the boutique row is
+   * left to the loader above, so the Google route below (which never passes
+   * through this function) ends up with exactly the same draft.
+   */
+  const createAccount = async () => {
+    const bad = validateAccount(account);
+    if (Object.keys(bad).length) {
+      setAccountErrors(bad);
+      toast('Please fix the highlighted fields');
+      return;
+    }
+    setBusy(true);
+    try {
+      // Drop a lingering anonymous chat session first: signing up on top of one
+      // would reuse that user id, whose profile row is already a buyer, and the
+      // new seller would land back in the buyer app.
+      if (session?.user?.is_anonymous) await signOut();
+      const { confirmationRequired } = await signUpWithPassword(account.email.trim(), account.password, {
+        full_name: account.fullName.trim(),
+        role: 'seller',
+      });
+      if (confirmationRequired) {
+        toast('Check your email to confirm your account, then sign in to finish setting up');
+        navigate('/auth/signin/seller', { replace: true });
+      }
+      // Otherwise there is a session now and the loader takes over.
+    } catch (e) {
+      toast(e instanceof Error ? friendlyAuthError(e.message) : 'Could not create your account');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const continueWithGoogle = async () => {
+    try {
+      if (session?.user?.is_anonymous) await signOut();
+      await signInWithGoogle('seller');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Google sign-in failed');
+    }
   };
 
   const saveAndNext = async () => {
@@ -340,7 +442,7 @@ export function SellerOnboarding() {
 
   if (loading) return <FullscreenLoader />;
 
-  const active = STEPS[step - 1];
+  const active = step === 0 ? ACCOUNT_STEP : STEPS[step - 1];
   const completedCount = boutique?.onboarding_step ?? 0;
   const isResubmission = boutique?.status === 'changes_requested';
 
@@ -351,22 +453,24 @@ export function SellerOnboarding() {
         <div style={css('position:absolute;top:-90px;right:-50px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(244,217,166,.22),transparent 70%);pointer-events:none;')} />
         <div style={css('max-width:900px;margin:0 auto;padding:clamp(22px,3.5vw,38px) clamp(18px,4vw,32px);position:relative;')}>
           <div className="agx-eyebrow" style={css('font-size:9.5px;color:#F4D9A6;')}>
-            {isResubmission ? 'Update & resubmit' : 'Seller setup'}
+            {isResubmission ? 'Update & resubmit' : step === 0 ? 'Create your boutique' : 'Seller setup'}
           </div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3.2vw,34px);margin-top:6px;line-height:1.15;")}>
-            {isResubmission ? 'Fix the details and resubmit' : 'Set up your boutique'}
+            {isResubmission ? 'Fix the details and resubmit' : step === 0 ? 'Open your boutique on Agilam' : 'Set up your boutique'}
           </div>
           <div style={css('opacity:.88;font-size:13.5px;margin-top:6px;max-width:520px;')}>
-            Seven quick steps. Everything is saved as you go, so you can stop and come back any time.
+            Create your login, then eight quick steps to your boutique. Everything after the first step is saved as you go, so you can stop and come back any time.
           </div>
 
           <div style={css('display:flex;align-items:center;gap:6px;margin-top:22px;overflow-x:auto;padding-bottom:4px;')}>
-            {STEPS.map((s, i) => {
-              const done = completedCount >= s.n;
+            {ALL_STEPS.map((s, i) => {
+              // The account step is "done" the moment there is a session, and it
+              // can never be revisited — the login already exists by then.
+              const done = s.n === 0 ? authed : completedCount >= s.n;
               const on = step === s.n;
               // Only completed steps and the next one are clickable — jumping
               // ahead would skip the validation each step performs on save.
-              const reachable = s.n <= completedCount + 1 || on;
+              const reachable = s.n !== 0 && authed && (s.n <= completedCount + 1 || on);
               return (
                 <div key={s.n} style={css('display:flex;align-items:center;gap:6px;flex:none;')}>
                   <button
@@ -375,9 +479,9 @@ export function SellerOnboarding() {
                     onClick={() => reachable && goTo(s.n)}
                     style={css(`width:30px;height:30px;flex:none;border-radius:50%;border:1.5px solid ${on ? '#fff' : 'rgba(255,255,255,.4)'};background:${on ? '#fff' : done ? 'rgba(255,255,255,.28)' : 'rgba(255,255,255,.1)'};color:${on ? '#B02454' : '#fff'};font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;cursor:${reachable ? 'pointer' : 'default'};opacity:${reachable ? 1 : 0.55};font-family:inherit;`)}
                   >
-                    {done && !on ? <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>check</span> : s.n}
+                    {done && !on ? <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>check</span> : i + 1}
                   </button>
-                  {i < STEPS.length - 1 && <span style={css(`width:18px;height:2px;border-radius:2px;background:${done ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.2)'};`)} />}
+                  {i < ALL_STEPS.length - 1 && <span style={css(`width:18px;height:2px;border-radius:2px;background:${done ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.2)'};`)} />}
                 </div>
               );
             })}
@@ -401,11 +505,51 @@ export function SellerOnboarding() {
             <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:23px;")}>{active.icon}</span>
           </span>
           <div>
-            <div className="agx-eyebrow" style={css('font-size:9.5px;color:#B02454;')}>Step {active.n} of 7</div>
+            <div className="agx-eyebrow" style={css('font-size:9.5px;color:#B02454;')}>Step {active.n + 1} of {ALL_STEPS.length}</div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1.2;margin-top:2px;")}>{active.title}</div>
             <div style={css('font-size:12.5px;color:#A98D99;font-weight:600;')}>{active.sub}</div>
           </div>
         </div>
+
+        {step === 0 && (
+          <SectionCard subtitle="This is how you sign back in. Your boutique details come next — you only enter them once.">
+            <Field label="Your full name *" value={account.fullName} onChange={(v) => setAcct('fullName', v)} placeholder="Lakshmi Priya" error={accountErrors.fullName} />
+            <Field label="Email address *" value={account.email} onChange={(v) => setAcct('email', v)} placeholder="you@boutique.com" inputMode="email" error={accountErrors.email} />
+            <Field
+              label="Password *"
+              value={account.password}
+              onChange={(v) => setAcct('password', v)}
+              type="password"
+              placeholder="••••••••"
+              error={accountErrors.password}
+              hint="At least 6 characters."
+            />
+
+            <div style={css('display:flex;align-items:center;gap:10px;')}>
+              <span style={css('flex:1;height:1px;background:#F2E4EA;')} />
+              <span style={css('font-size:11px;font-weight:700;color:#C0A5B0;')}>OR</span>
+              <span style={css('flex:1;height:1px;background:#F2E4EA;')} />
+            </div>
+            <button
+              type="button"
+              onClick={continueWithGoogle}
+              style={css('height:50px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;font-weight:700;font-size:14px;cursor:pointer;color:#2A1A20;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;')}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>g_translate</span>Continue with Google
+            </button>
+
+            <div style={css('text-align:center;font-size:13px;color:#8A7078;font-weight:600;')}>
+              Already have a boutique account?{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/auth/signin/seller')}
+                style={css('border:none;background:none;color:#B02454;font-weight:800;font-size:13px;cursor:pointer;padding:0;font-family:inherit;')}
+              >
+                Sign in
+              </button>
+            </div>
+          </SectionCard>
+        )}
 
         {step === 1 && (
           <SectionCard>
@@ -545,10 +689,12 @@ export function SellerOnboarding() {
 
         {/* Footer nav ------------------------------------------------------ */}
         <div style={css('display:flex;gap:12px;margin-top:20px;')}>
-          {step > 1 && (
+          {(step === 0 || step > 1) && (
             <button
               type="button"
-              onClick={() => goTo(step - 1)}
+              // Step 1 has no Back on purpose: the account above it already
+              // exists and cannot be re-entered.
+              onClick={() => (step === 0 ? navigate('/buyer/home') : goTo(step - 1))}
               disabled={busy}
               style={css('height:54px;padding:0 22px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:15px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;')}
             >
@@ -557,11 +703,15 @@ export function SellerOnboarding() {
           )}
           <button
             type="button"
-            onClick={step === 7 ? submit : saveAndNext}
+            onClick={step === 0 ? createAccount : step === 7 ? submit : saveAndNext}
             disabled={busy || uploading != null}
             style={css(`flex:1;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:${busy ? 'default' : 'pointer'};opacity:${busy || uploading ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;`)}
           >
-            {uploading ? 'Uploading image…' : busy ? 'Saving…' : step === 7 ? 'Submit for verification' : 'Save & continue'}
+            {uploading
+              ? 'Uploading image…'
+              : busy
+                ? step === 0 ? 'Creating account…' : 'Saving…'
+                : step === 0 ? 'Create account & continue' : step === 7 ? 'Submit for verification' : 'Save & continue'}
             {!busy && !uploading && <span style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{step === 7 ? 'send' : 'arrow_forward'}</span>}
           </button>
         </div>

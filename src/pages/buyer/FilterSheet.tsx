@@ -2,9 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
-import { COLORS, OCCASIONS, SIZES, fmt, productSizes } from '@/data/demo';
-
-const FILTER_CATS = ['Sarees', 'Lehengas', 'Gowns', 'Kurtis', 'Bridal'];
+import { useTaxonomy } from '@/state/TaxonomyContext';
+import { fmt, productSizes } from '@/data/demo';
 
 /**
  * Bottom-sheet filter overlay, shown over the results screen on mobile.
@@ -12,10 +11,15 @@ const FILTER_CATS = ['Sarees', 'Lehengas', 'Gowns', 'Kurtis', 'Bridal'];
  * Sorting is deliberately not here: the results screen has its own Sort control
  * (chips on desktop, a dedicated sheet on mobile), and offering it in both
  * places meant two controls competing over one piece of state.
+ *
+ * Every facet here is the admin's approved vocabulary (migration 0024), not a
+ * hardcoded list — so a category approved this morning is filterable this
+ * afternoon, and a one-off spelling a seller typed never becomes a chip.
  */
 export function FilterSheet() {
   const navigate = useNavigate();
   const { filters, toggleFilter, setMaxPrice, resetFilters, query } = useShop();
+  const { names, rows } = useTaxonomy();
   // The count on the confirm button has to come from the live catalogue — it
   // was counting the eight hardcoded demo products, so it never matched the
   // grid the buyer was about to see.
@@ -53,7 +57,7 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:12px;')}>Category</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
-          {FILTER_CATS.map((c) => {
+          {names('category').map((c) => {
             const on = filters.cats.includes(c);
             return (
               <button key={c} onClick={() => toggleFilter('cats', c)} style={css(`border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#6B5560'};border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;cursor:pointer;`)}>{c}</button>
@@ -63,7 +67,7 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Size</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
-          {SIZES.map((s) => {
+          {names('size').map((s) => {
             const on = filters.sizes.includes(s);
             return (
               <button key={s} onClick={() => toggleFilter('sizes', s)} style={css(`min-width:46px;height:44px;padding:0 14px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#6B5560'};border-radius:12px;font-size:13px;font-weight:${on ? 800 : 700};cursor:pointer;`)}>{s}</button>
@@ -73,9 +77,9 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Colour</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;')}>
-          {COLORS.map((c) => (
+          {rows('color').map((c) => (
             <button key={c.name} onClick={() => toggleFilter('colors', c.name)} style={css('display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;cursor:pointer;')}>
-              <span style={css(`width:40px;height:40px;border-radius:50%;background:${c.hex};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px #EAD3DE'};`)} />
+              <span style={css(`width:40px;height:40px;border-radius:50%;background:${c.hex ?? '#C9A9B6'};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px #EAD3DE'};`)} />
               <span style={css('font-size:11px;font-weight:700;color:#6B5560;')}>{c.name}</span>
             </button>
           ))}
@@ -83,7 +87,7 @@ export function FilterSheet() {
 
         <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Occasion</div>
         <div style={css('display:flex;flex-wrap:wrap;gap:9px;margin-top:10px;')}>
-          {OCCASIONS.map((o) => {
+          {names('occasion').map((o) => {
             const on = filters.occasions.includes(o);
             return (
               <button key={o} onClick={() => toggleFilter('occasions', o)} style={css(`border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#6B5560'};border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;cursor:pointer;`)}>{o}</button>

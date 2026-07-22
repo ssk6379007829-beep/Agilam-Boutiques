@@ -4,9 +4,9 @@ import { ImageSlot } from '@/components/ui/ImageSlot';
 import { WishButton } from '@/components/buyer/WishButton';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
-import { COLORS, OCCASIONS, SIZES, SORTS, TONES, fmt, productSizes } from '@/data/demo';
+import { useTaxonomy } from '@/state/TaxonomyContext';
+import { SORTS, TONES, fmt, productSizes } from '@/data/demo';
 
-const FILTER_CATS = ['Sarees', 'Lehengas', 'Gowns', 'Kurtis', 'Bridal'];
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
 /** Fields a header search term is matched against. */
@@ -17,6 +17,9 @@ export function Results() {
   const navigate = useNavigate();
   const { filters, setFilters, toggleFilter, setSort, setMaxPrice, wishlist, toggleWish, query, setQuery } = useShop();
   const { products: PRODUCTS } = useCatalog();
+  // Facets are the admin's approved vocabulary (migration 0024), so a category
+  // approved today is filterable today and a seller's typo never becomes a chip.
+  const { names, rows } = useTaxonomy();
 
   const q = query.trim().toLowerCase();
 
@@ -157,7 +160,7 @@ export function Results() {
               <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
                 <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Category</div>
                 <div style={css('display:flex;flex-direction:column;gap:6px;margin-top:14px;')}>
-                  {FILTER_CATS.map((c) => {
+                  {names('category').map((c) => {
                     const on = filters.cats.includes(c);
                     return (
                       <label key={c} onClick={() => toggleFilter('cats', c)} style={css('display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:#4B3840;cursor:pointer;')}>
@@ -173,7 +176,7 @@ export function Results() {
               <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
                 <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Size</div>
                 <div style={css('display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;')}>
-                  {SIZES.map((s) => {
+                  {names('size').map((s) => {
                     const on = filters.sizes.includes(s);
                     return (
                       <button key={s} onClick={() => toggleFilter('sizes', s)} style={css(`min-width:44px;height:40px;padding:0 12px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : '#E4CDD8'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#4B3840'};font-size:13px;font-weight:${on ? 800 : 700};cursor:pointer;`)}>{s}</button>
@@ -185,9 +188,9 @@ export function Results() {
               <div style={css('padding:18px 0;border-bottom:1px solid #EFE3E9;')}>
                 <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Colour</div>
                 <div style={css('display:flex;flex-wrap:wrap;gap:14px;margin-top:15px;')}>
-                  {COLORS.map((c) => (
+                  {rows('color').map((c) => (
                     <button key={c.name} onClick={() => toggleFilter('colors', c.name)} style={css('display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:none;cursor:pointer;')}>
-                      <span style={css(`width:34px;height:34px;border-radius:50%;background:${c.hex};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px #EAD3DE'};`)} />
+                      <span style={css(`width:34px;height:34px;border-radius:50%;background:${c.hex ?? '#C9A9B6'};box-shadow:0 0 0 ${filters.colors.includes(c.name) ? '3px #D6336C' : '1px #EAD3DE'};`)} />
                       <span style={css('font-size:11px;font-weight:700;color:#6B5560;')}>{c.name}</span>
                     </button>
                   ))}
@@ -197,7 +200,7 @@ export function Results() {
               <div style={css('padding:18px 0 4px;')}>
                 <div className="agx-eyebrow" style={css('font-size:10px;color:#8A7078;')}>Occasion</div>
                 <div style={css('display:flex;flex-direction:column;gap:6px;margin-top:14px;')}>
-                  {OCCASIONS.map((o) => {
+                  {names('occasion').map((o) => {
                     const on = filters.occasions.includes(o);
                     return (
                       <label key={o} onClick={() => toggleFilter('occasions', o)} style={css('display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:#4B3840;cursor:pointer;')}>

@@ -173,6 +173,39 @@ export interface Database {
         Update: Partial<{ product_id: string; buyer_id: string }>;
         Relationships: [];
       };
+      /**
+       * The catalogue vocabulary (migration 0024) — the categories, occasions,
+       * fabrics, colours and sizes sellers pick from and buyers browse by.
+       * `name_key` is the case- and space-normalised identity, written by
+       * trigger; supplying it on insert only satisfies NOT NULL.
+       */
+      taxonomy: {
+        Row: {
+          id: string;
+          kind: 'category' | 'occasion' | 'fabric' | 'color' | 'size';
+          name: string;
+          name_key: string;
+          status: 'pending' | 'approved' | 'rejected';
+          hex: string | null;
+          icon: string | null;
+          image_url: string | null;
+          sort_order: number;
+          requested_by: string | null;
+          boutique_id: string | null;
+          note: string | null;
+          review_note: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['taxonomy']['Row']> & {
+          kind: 'category' | 'occasion' | 'fabric' | 'color' | 'size';
+          name: string;
+          name_key: string;
+        };
+        Update: Partial<Database['public']['Tables']['taxonomy']['Row']>;
+        Relationships: [];
+      };
       reviews: {
         Row: {
           id: string;

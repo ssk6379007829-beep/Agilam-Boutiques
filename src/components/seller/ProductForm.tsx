@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
+import { useTaxonomy } from '@/state/TaxonomyContext';
 import { uploadProductImage } from '@/data/products';
+import { TaxonomySelect } from '@/components/seller/TaxonomySelect';
 
 export type ProductFormValues = {
   title: string;
@@ -24,23 +26,28 @@ export const EMPTY_PRODUCT_FORM: ProductFormValues = {
   description: '', mrp: '', sizes: [], washCare: '', imageUrl: '', images: [],
 };
 
-const SIZE_OPTIONS = ['S', 'M', 'L', 'XL', 'Free Size'];
-
 const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid #E7A7B4;background:#FFF7F8;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 const textAreaStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;font-family:inherit;resize:vertical;min-height:80px;';
 const labelStyle = 'font-size:13px;font-weight:700;color:#7A5C67;';
 const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;';
 
-type Field = { key: keyof ProductFormValues; label: string; ph: string };
-
-const REQUIRED_FIELDS: Field[] = [
-  { key: 'title', label: 'Product title *', ph: 'e.g. Rose Zari Silk Saree' },
-  { key: 'category', label: 'Category *', ph: 'Sarees' },
-  { key: 'color', label: 'Colour *', ph: 'Pink' },
-  { key: 'occasion', label: 'Occasion *', ph: 'Wedding' },
-  { key: 'fabric', label: 'Fabric *', ph: 'Kanchipuram Silk' },
-];
+/**
+ * Category, colour, occasion and fabric used to be four free-text boxes. They
+ * are the four fields the buyer app filters and groups by, which made them the
+ * four fields where a typo quietly split one edit into two — so they are now
+ * dropdowns over the managed vocabulary (migration 0024, @/state/TaxonomyContext).
+ *
+ * Category, occasion and fabric carry an "add new" request; colour does not,
+ * because a colour needs a swatch hex to render on the buyer's filter and that
+ * is the admin's to choose.
+ */
+const PICKERS = [
+  { key: 'category', kind: 'category', label: 'Category *' },
+  { key: 'color', kind: 'color', label: 'Colour *', requestable: false },
+  { key: 'occasion', kind: 'occasion', label: 'Occasion *' },
+  { key: 'fabric', kind: 'fabric', label: 'Fabric *' },
+] as const;
 
 export function ProductForm({
   boutiqueId,
@@ -56,6 +63,9 @@ export function ProductForm({
   onSubmit: (values: ProductFormValues) => void;
 }) {
   const { showToast } = useShop();
+  // Sizes are a fixed, admin-managed ladder — a chip row rather than a select,
+  // because a product can carry several.
+  const sizeOptions = useTaxonomy().names('size');
   const [form, setForm] = useState<ProductFormValues>({ ...EMPTY_PRODUCT_FORM, ...initial });
   const [errors, setErrors] = useState<Partial<Record<keyof ProductFormValues, string>>>({});
   const [uploading, setUploading] = useState<'cover' | 'gallery' | null>(null);
@@ -167,17 +177,28 @@ export function ProductForm({
       </div>
       {errors.imageUrl && <span style={css(errStyle)}>{errors.imageUrl}</span>}
 
-      {REQUIRED_FIELDS.map((fl) => (
-        <label key={fl.key} style={css(labelStyle)}>
-          {fl.label}
-          <input
-            value={form[fl.key] as string}
-            onChange={(e) => set(fl.key, e.target.value as never)}
-            placeholder={fl.ph}
-            style={css(errors[fl.key] ? inputErrStyle : inputStyle)}
-          />
-          {errors[fl.key] && <span style={css(errStyle)}>{errors[fl.key]}</span>}
-        </label>
+      <label style={css(labelStyle)}>
+        Product title *
+        <input
+          value={form.title}
+          onChange={(e) => set('title', e.target.value)}
+          placeholder="e.g. Rose Zari Silk Saree"
+          style={css(errors.title ? inputErrStyle : inputStyle)}
+        />
+        {errors.title && <span style={css(errStyle)}>{errors.title}</span>}
+      </label>
+
+      {PICKERS.map((p) => (
+        <TaxonomySelect
+          key={p.key}
+          kind={p.kind}
+          label={p.label}
+          value={form[p.key]}
+          onChange={(v) => set(p.key, v)}
+          error={errors[p.key]}
+          boutiqueId={boutiqueId}
+          requestable={'requestable' in p ? p.requestable : true}
+        />
       ))}
 
       <div style={css('display:flex;gap:12px;')}>
@@ -201,7 +222,7 @@ export function ProductForm({
       <div>
         <div style={css(labelStyle)}>Sizes available — optional</div>
         <div style={css('display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;')}>
-          {SIZE_OPTIONS.map((s) => {
+          {sizeOptions.map((s) => {
             const on = form.sizes.includes(s);
             return (
               <span key={s} onClick={() => toggleSize(s)} style={css(`padding:9px 14px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : '#F0D8E2'};background:${on ? '#FCE0EC' : '#fff'};color:${on ? '#B02454' : '#4B3840'};font-weight:700;font-size:13px;cursor:pointer;`)}>{s}</span>

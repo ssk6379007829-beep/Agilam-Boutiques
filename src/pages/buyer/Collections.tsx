@@ -6,6 +6,7 @@ import { SiteFooter } from '@/components/buyer/SiteFooter';
 import { DiscoveryHeader, SectionLabel, EmptyState } from '@/components/buyer/DiscoveryPage';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
+import { useTaxonomy } from '@/state/TaxonomyContext';
 import { buildCollections } from '@/lib/collections';
 import { fmt } from '@/data/demo';
 
@@ -26,10 +27,13 @@ export function Collections() {
   const navigate = useNavigate();
   const { setFilters, setQuery } = useShop();
   const { products: PRODUCTS, loading } = useCatalog();
+  // Which terms are browsable is the admin's call (migration 0024); how many
+  // pieces sit under each is the catalogue's.
+  const vocab = useTaxonomy();
 
   const { categories, occasions, budgets, colours, fabrics } = useMemo(
-    () => buildCollections(PRODUCTS),
-    [PRODUCTS],
+    () => buildCollections(PRODUCTS, vocab),
+    [PRODUCTS, vocab],
   );
 
   /** Every tile lands on a clean, single-facet grid — never on leftovers from

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
@@ -21,18 +21,23 @@ export function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [city, setCity] = useState('');
-  const [boutiqueName, setBoutiqueName] = useState('');
   const [sending, setSending] = useState(false);
 
   const roleWord = role === 'seller' ? 'boutique owner' : 'buyer';
   const roleIcon = role === 'seller' ? 'storefront' : 'shopping_bag';
+
+  // Sellers register through the boutique wizard, which creates the account as
+  // its own first step — this card would only ask for the same details twice.
+  // The route is kept so old links and the seller sign-in page still resolve.
+  useEffect(() => {
+    if (role === 'seller') navigate('/seller/register', { replace: true });
+  }, [role, navigate]);
 
   async function handleSignUp() {
     const trimmedEmail = email.trim();
     if (!fullName.trim()) return toast('Enter your full name');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return toast('Enter a valid email address');
     if (password.length < 6) return toast('Password must be at least 6 characters');
-    if (role === 'seller' && !boutiqueName.trim()) return toast('Enter your boutique name');
 
     setSending(true);
     try {
@@ -40,16 +45,10 @@ export function SignUp() {
         full_name: fullName,
         role,
         city,
-        boutiqueName,
       });
       if (confirmationRequired) {
         toast('Check your email to confirm your account, then sign in');
         navigate(`/auth/signin/${role}`);
-      } else if (newRole === 'seller') {
-        // A brand-new boutique is a draft with two fields filled in — send the
-        // seller straight into the setup wizard rather than a console they
-        // cannot sell from yet.
-        navigate('/seller/onboarding', { replace: true });
       } else {
         navigate(homeFor(newRole), { replace: true });
       }
@@ -83,13 +82,6 @@ export function SignUp() {
         City
         <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Coimbatore" style={css(fieldStyle)} />
       </label>
-
-      {role === 'seller' && (
-        <label style={css(labelStyle)}>
-          Boutique name
-          <input value={boutiqueName} onChange={(e) => setBoutiqueName(e.target.value)} placeholder="Elegance Boutique" style={css(fieldStyle)} />
-        </label>
-      )}
 
       <button
         onClick={handleSignUp}

@@ -1,26 +1,43 @@
 /**
- * The collections a buyer can browse by, derived from the live catalogue.
+ * The collections a buyer can browse by.
  *
- * `CATEGORIES` in @/data/demo is six hand-drawn tiles from the design file. It
- * is the right thing for the Home rail — the art is deliberate and the row has
- * to be short — but it is the wrong thing for a See-all page: it hardcodes a
- * "More" tile that means nothing, and it silently hides any category a seller
- * has actually listed under (Dupattas, Blouses, Kids) simply because the design
- * did not draw a circle for it.
+ * Two inputs, and the difference between them matters:
  *
- * So the See-all page reads the catalogue instead, and borrows the design's
- * artwork wherever the names line up. Every tile carries a live count, because
- * a tile that opens onto an empty grid is worse than no tile at all — anything
- * with a count of 0 is never rendered.
+ *   · the **vocabulary** (migration 0024) decides *which* terms are browsable.
+ *     It is the admin's list, so a seller's one-off spelling never becomes a
+ *     tile and a newly approved category appears everywhere at once.
+ *   · the **catalogue** decides which of those terms are worth showing. A term
+ *     with nothing listed under it is dropped: a tile that opens onto an empty
+ *     grid is worse than no tile at all.
+ *
+ * `CATEGORIES` in @/data/demo survives only as artwork. It is six hand-drawn
+ * circles from the design file — right for the Home rail, wrong as a source of
+ * truth, since it hardcodes a "More" tile that means nothing and cannot know
+ * about a category approved last week.
  */
 
-import { CATEGORIES, COLORS, OCCASIONS, TONES } from '@/data/demo';
+import { CATEGORIES, TONES } from '@/data/demo';
 import type { Product } from '@/data/demo';
+import type { TaxonomyKind } from '@/data/taxonomy';
+
+/**
+ * The slice of `TaxonomyContext` this module needs. Taking an interface rather
+ * than importing the context keeps this file a pure function of its inputs —
+ * testable, and usable from anywhere that already has the vocabulary loaded.
+ */
+export type Vocabulary = {
+  rows: (kind: TaxonomyKind) => {
+    name: string;
+    hex: string | null;
+    icon: string | null;
+    image_url: string | null;
+  }[];
+};
 
 export type CategoryTile = {
   name: string;
   count: number;
-  /** Design artwork when the catalogue name matches a drawn tile. */
+  /** Tile art: the admin's upload, else the design's, else a real product photo. */
   image?: string;
   icon: string;
   toneHex: string;
@@ -45,15 +62,19 @@ const BUDGET_STEPS = [1500, 3000, 5000, 10000];
 
 const rupees = (n: number) => '₹' + n.toLocaleString('en-IN');
 
-/** Fallback art for a category the design never drew a circle for. */
-const GENERIC_ICON = 'checkroom';
+/** Fallback glyphs for a term the admin has not given an icon. */
+const GENERIC_CATEGORY_ICON = 'checkroom';
+const GENERIC_OCCASION_ICON = 'celebration';
 
-function count<T>(items: T[], pick: (t: T) => string | undefined | null): Map<string, number> {
+const norm = (s: string) => s.trim().toLowerCase();
+
+function countBy(products: Product[], pick: (p: Product) => string | undefined | null): Map<string, number> {
   const m = new Map<string, number>();
-  for (const it of items) {
-    const k = pick(it);
+  for (const p of products) {
+    const k = pick(p);
     if (!k) continue;
-    m.set(k, (m.get(k) ?? 0) + 1);
+    const key = norm(k);
+    m.set(key, (m.get(key) ?? 0) + 1);
   }
   return m;
 }
@@ -66,39 +87,46 @@ export type Collections = {
   fabrics: FabricTile[];
 };
 
-export function buildCollections(products: Product[]): Collections {
-  const drawn = new Map(CATEGORIES.map((c) => [c.name.toLowerCase(), c]));
+export function buildCollections(products: Product[], vocab: Vocabulary): Collections {
+  const drawn = new Map(CATEGORIES.map((c) => [norm(c.name), c]));
 
-  const catCounts = count(products, (p) => p.cat);
-  const categories: CategoryTile[] = [...catCounts.entries()]
-    .map(([name, n]) => {
-      const art = drawn.get(name.toLowerCase());
-      const cheapest = Math.min(...products.filter((p) => p.cat === name).map((p) => p.price));
-      const sample = products.find((p) => p.cat === name);
-      return {
-        name,
-        count: n,
-        image: art?.image,
-        icon: art?.icon ?? GENERIC_ICON,
-        toneHex: art?.toneHex ?? TONES[sample?.tone ?? 0],
-        from: cheapest,
-      };
+  const catCounts = countBy(products, (p) => p.cat);
+  const categories: CategoryTile[] = vocab
+    .rows('category')
+    .flatMap<CategoryTile>((term) => {
+      const key = norm(term.name);
+      const count = catCounts.get(key) ?? 0;
+      if (count === 0) return [];
+
+      const inCategory = products.filter((p) => norm(p.cat) === key);
+      const art = drawn.get(key);
+      return [{
+        name: term.name,
+        count,
+        // The admin's own art wins, then the design's, then a photo of
+        // something actually listed under it — so a category approved this
+        // morning has a picture by this afternoon without anyone uploading one.
+        image: term.image_url ?? art?.image ?? inCategory.find((p) => p.image)?.image,
+        icon: term.icon ?? art?.icon ?? GENERIC_CATEGORY_ICON,
+        toneHex: art?.toneHex ?? TONES[inCategory[0]?.tone ?? 0],
+        from: Math.min(...inCategory.map((p) => p.price)),
+      }];
     })
     // Biggest edits first — the page should lead with what there is most of.
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
-  const occCounts = count(products, (p) => p.occasion);
-  // The design's occasion order is a narrative (bridal → casual), so keep it and
-  // append anything the sellers have added that the design did not anticipate.
-  const occOrder = [...OCCASIONS, ...[...occCounts.keys()].filter((o) => !OCCASIONS.includes(o))];
-  const occasions: OccasionTile[] = occOrder
-    .filter((name) => (occCounts.get(name) ?? 0) > 0)
-    .map((name, i) => ({
-      name,
-      count: occCounts.get(name) ?? 0,
-      icon: OCCASION_ICON[name] ?? 'celebration',
+  const occCounts = countBy(products, (p) => p.occasion);
+  const occasions: OccasionTile[] = vocab
+    .rows('occasion')
+    .map((term, i) => ({
+      name: term.name,
+      count: occCounts.get(norm(term.name)) ?? 0,
+      icon: term.icon ?? GENERIC_OCCASION_ICON,
       toneHex: TONES[i % TONES.length],
-    }));
+    }))
+    // Left in the admin's order: it is a narrative (bridal → casual), not a
+    // ranking, and reshuffling it by popularity would read as arbitrary.
+    .filter((t) => t.count > 0);
 
   const budgets: BudgetTile[] = BUDGET_STEPS.map((maxPrice) => ({
     label: `Under ${rupees(maxPrice)}`,
@@ -106,26 +134,23 @@ export function buildCollections(products: Product[]): Collections {
     count: products.filter((p) => p.price <= maxPrice).length,
   })).filter((b) => b.count > 0);
 
-  const colourCounts = count(products, (p) => p.color);
-  const known = new Map(COLORS.map((c) => [c.name.toLowerCase(), c.hex]));
-  const colours: ColourTile[] = [...colourCounts.entries()]
-    .map(([name, n]) => ({ name, count: n, hex: known.get(name.toLowerCase()) ?? '#C9A9B6' }))
+  const colourCounts = countBy(products, (p) => p.color);
+  const colours: ColourTile[] = vocab
+    .rows('color')
+    .map((term) => ({
+      name: term.name,
+      count: colourCounts.get(norm(term.name)) ?? 0,
+      hex: term.hex ?? '#C9A9B6',
+    }))
+    .filter((t) => t.count > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
-  const fabricCounts = count(products, (p) => p.fabric);
-  const fabrics: FabricTile[] = [...fabricCounts.entries()]
-    .map(([name, n]) => ({ name, count: n }))
+  const fabricCounts = countBy(products, (p) => p.fabric);
+  const fabrics: FabricTile[] = vocab
+    .rows('fabric')
+    .map((term) => ({ name: term.name, count: fabricCounts.get(norm(term.name)) ?? 0 }))
+    .filter((t) => t.count > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
   return { categories, occasions, budgets, colours, fabrics };
 }
-
-/** Material Symbols glyph per occasion, so the row is scannable at a glance. */
-const OCCASION_ICON: Record<string, string> = {
-  Bridal: 'diamond',
-  Wedding: 'favorite',
-  Reception: 'nightlife',
-  Festive: 'celebration',
-  Party: 'local_bar',
-  Casual: 'wb_sunny',
-};

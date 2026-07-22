@@ -72,6 +72,7 @@ const SellerOnboarding = lazyNamed(() => import('@/pages/seller/SellerOnboarding
 const AdminLayout = lazyNamed(() => import('@/components/layout/AdminLayout'), 'AdminLayout');
 const Overview = lazyNamed(() => import('@/pages/admin/Overview'), 'Overview');
 const Approvals = lazyNamed(() => import('@/pages/admin/Approvals'), 'Approvals');
+const Catalogue = lazyNamed(() => import('@/pages/admin/Catalogue'), 'Catalogue');
 const BoutiquesTable = lazyNamed(() => import('@/pages/admin/BoutiquesTable'), 'BoutiquesTable');
 const Users = lazyNamed(() => import('@/pages/admin/Users'), 'Users');
 const ProductsAdmin = lazyNamed(() => import('@/pages/admin/ProductsAdmin'), 'ProductsAdmin');
@@ -93,15 +94,20 @@ export default function App() {
       <Route path="/auth/callback" element={<AuthCallback />} />
       {/* Outside the seller console shell on purpose: the wizard is a full-page
           flow with its own header, and it runs before there is a boutique to
-          put a nav bar around. */}
-      <Route
-        path="/seller/onboarding"
-        element={
-          <Suspense fallback={<FullscreenLoader />}>
-            <SellerOnboarding />
-          </Suspense>
-        }
-      />
+          put a nav bar around. /seller/register is the same wizard entered from
+          the top — it opens on the account step for signed-out visitors, so
+          "Create Boutique" is one flow rather than a signup page plus a wizard. */}
+      {['/seller/register', '/seller/onboarding'].map((path) => (
+        <Route
+          key={path}
+          path={path}
+          element={
+            <Suspense fallback={<FullscreenLoader />}>
+              <SellerOnboarding />
+            </Suspense>
+          }
+        />
+      ))}
       <Route path="/admin/login" element={<AdminLogin />} />
 
       {/* Clean, shareable public boutique link — e.g. /b/elegance-boutique.
@@ -195,6 +201,8 @@ export default function App() {
         <Route index element={<Navigate to="overview" replace />} />
         <Route path="overview" element={<Overview />} />
         <Route path="approvals" element={<Approvals />} />
+        {/* The catalogue vocabulary sellers pick from and buyers browse by. */}
+        <Route path="catalogue" element={<Catalogue />} />
         <Route path="boutiques" element={<BoutiquesTable />} />
         <Route path="users" element={<Users />} />
         <Route path="products" element={<ProductsAdmin />} />

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '@/auth/AuthContext';
 import { CatalogProvider } from '@/state/CatalogContext';
+import { TaxonomyProvider } from '@/state/TaxonomyContext';
 import { ShopProvider } from '@/state/ShopContext';
 import { ToastProvider } from '@/components/ui/Toast';
 import { supabaseConfigError } from '@/lib/supabase';
@@ -32,11 +33,13 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <AuthProvider>
           <CatalogProvider>
-            <ShopProvider>
-              <ToastProvider>
-                <App />
-              </ToastProvider>
-            </ShopProvider>
+            <TaxonomyProvider>
+              <ShopProvider>
+                <ToastProvider>
+                  <App />
+                </ToastProvider>
+              </ShopProvider>
+            </TaxonomyProvider>
           </CatalogProvider>
         </AuthProvider>
       </BrowserRouter>

@@ -126,7 +126,7 @@ export function SiteFooter() {
           {col('For boutiques', (
             <>
               <a href="/buyer/policy/about" onClick={(e) => { e.preventDefault(); navigate('/buyer/policy/about'); }} style={linkStyle}>Sell on Agilam</a>
-              <a href="/auth/signup/seller" onClick={(e) => { e.preventDefault(); navigate('/auth/signup/seller'); }} style={linkStyle}>Open your boutique</a>
+              <a href="/seller/register" onClick={(e) => { e.preventDefault(); navigate('/seller/register'); }} style={linkStyle}>Open your boutique</a>
               <a href="/auth/signin/seller" onClick={(e) => { e.preventDefault(); navigate('/auth/signin/seller'); }} style={linkStyle}>Boutique sign in</a>
               <a href={CONTACT_LINKS.whatsapp} target="_blank" rel="noreferrer noopener" style={linkStyle}>Partner support</a>
             </>

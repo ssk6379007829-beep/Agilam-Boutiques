@@ -16,7 +16,6 @@ export type PendingSignup = {
   full_name: string;
   role: Role;
   city?: string;
-  boutiqueName?: string;
 };
 
 type AuthContextValue = {
@@ -81,20 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       { onConflict: 'id', ignoreDuplicates: true },
     );
 
-    if (role === 'seller' && meta.boutiqueName) {
-      // Created as a draft: the seller still has the 7-step setup wizard ahead
-      // of them, and the admin approval queue should only list boutiques that
-      // have actually been submitted for review.
-      await supabase.from('boutiques').insert({
-        owner_id: user.id,
-        name: meta.boutiqueName,
-        city: meta.city ?? '',
-        owner_name: meta.full_name ?? '',
-        status: 'draft',
-        tone: Math.floor(Math.random() * 8),
-      });
-    }
-
+    // A seller's boutique row is deliberately NOT created here. The registration
+    // wizard creates it (as a draft) on the step right after the account, which
+    // keeps one creation path for password signup, Google and a seller who
+    // abandoned setup and came back.
     return role;
   }
 
