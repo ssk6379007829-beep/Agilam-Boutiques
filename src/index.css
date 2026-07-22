@@ -38,6 +38,15 @@ input:focus, textarea:focus { outline: none; }
 .agx-an-grid { grid-template-columns: 1fr; }
 @media (min-width: 900px) { .agx-an-grid { grid-template-columns: 1.4fr 1fr; } }
 @media (max-width: 839px) { .agx-cart-sticky { position: static !important; } }
+/* Seller forms: paired fields sit side by side, stacking on a phone. */
+@media (max-width: 560px) { .agx-form-row { grid-template-columns: 1fr !important; } }
+/* Seller dashboard: 4 overview tiles → 2 up on a phone. */
+.agx-sd-stats { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 860px) { .agx-sd-stats { grid-template-columns: repeat(4, 1fr); } }
+.agx-sd-quick { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 860px) { .agx-sd-quick { grid-template-columns: repeat(4, 1fr); } }
+.agx-sd-split { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 1000px) { .agx-sd-split { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); } }
 /* ---------- v2 elevation system ---------- */
 .agx-eyebrow { font-family:'IBM Plex Mono',monospace; font-weight:600; letter-spacing:.24em; text-transform:uppercase; }
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:2.5px solid #C7275E; outline-offset:2px; border-radius:10px; }

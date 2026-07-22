@@ -1,5 +1,14 @@
 export type Role = 'buyer' | 'seller' | 'admin';
-export type BoutiqueStatus = 'pending' | 'approved' | 'rejected';
+/**
+ * Where a boutique sits in the seller lifecycle (migration 0021).
+ *
+ * `draft`             — created, still working through the 7-step setup wizard.
+ * `pending`           — submitted, waiting on an admin.
+ * `changes_requested` — admin sent back a correction list (`review_note`).
+ * `approved`          — live to buyers.
+ * `rejected`          — turned down, with the reason in `review_note`.
+ */
+export type BoutiqueStatus = 'draft' | 'pending' | 'changes_requested' | 'approved' | 'rejected';
 export type OrderStatus = 'pending' | 'shipped' | 'delivered' | 'rejected';
 export type ProductStatus = 'pending' | 'active' | 'hidden' | 'rejected';
 export type AccountStatus = 'active' | 'blocked';
@@ -51,6 +60,44 @@ export interface Database {
           followers_count: number;
           positive_rating: number;
           created_at: string;
+          // ── Seller setup wizard (migration 0021) ──────────────────────────
+          owner_name: string;
+          whatsapp: string | null;
+          email: string | null;
+          address_line: string;
+          district: string;
+          state: string;
+          pincode: string;
+          map_url: string | null;
+          category: string;
+          years_in_business: number | null;
+          open_time: string;
+          close_time: string;
+          working_days: string[];
+          delivery_available: boolean;
+          delivery_areas: string;
+          delivery_charge: number;
+          cod_enabled: boolean;
+          online_payment_enabled: boolean;
+          onboarding_step: number;
+          onboarding_complete: boolean;
+          submitted_at: string | null;
+          reviewed_at: string | null;
+          notify_orders: boolean;
+          notify_messages: boolean;
+          notify_promotions: boolean;
+          /**
+           * Withheld from anon/authenticated by 0021's column-level SELECT
+           * grants: writable by the owner, but only readable through the
+           * `boutique_private` function. Never add these to BOUTIQUE_COLUMNS.
+           */
+          gst_number: string | null;
+          business_reg_number: string | null;
+          bank_account_name: string | null;
+          bank_account_number: string | null;
+          bank_ifsc: string | null;
+          upi_id: string | null;
+          review_note: string | null;
         };
         Insert: Partial<Database['public']['Tables']['boutiques']['Row']> & { owner_id: string; name: string };
         Update: Partial<Database['public']['Tables']['boutiques']['Row']>;
@@ -224,6 +271,23 @@ export interface Database {
           p_payment_method?: string;
         };
         Returns: { id: string; order_number: string; total: number; created_at: string }[];
+      };
+      /**
+       * The boutique columns 0021 withholds from the public API. SECURITY
+       * DEFINER, and answers only for the boutique's owner or an admin — so it
+       * returns an empty set rather than erroring for anyone else.
+       */
+      boutique_private: {
+        Args: { bid: string };
+        Returns: {
+          gst_number: string | null;
+          business_reg_number: string | null;
+          bank_account_name: string | null;
+          bank_account_number: string | null;
+          bank_ifsc: string | null;
+          upi_id: string | null;
+          review_note: string | null;
+        }[];
       };
     };
     Enums: Record<string, never>;

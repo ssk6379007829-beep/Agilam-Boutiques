@@ -82,10 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     if (role === 'seller' && meta.boutiqueName) {
+      // Created as a draft: the seller still has the 7-step setup wizard ahead
+      // of them, and the admin approval queue should only list boutiques that
+      // have actually been submitted for review.
       await supabase.from('boutiques').insert({
         owner_id: user.id,
         name: meta.boutiqueName,
         city: meta.city ?? '',
+        owner_name: meta.full_name ?? '',
+        status: 'draft',
         tone: Math.floor(Math.random() * 8),
       });
     }

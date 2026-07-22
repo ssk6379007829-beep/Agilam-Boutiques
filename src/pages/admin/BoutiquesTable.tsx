@@ -3,9 +3,9 @@ import { TONES, statusStyle } from '@/data/demo';
 import { useShop } from '@/state/ShopContext';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchAllBoutiquesAdmin, setBoutiqueStatus, setBoutiqueFeatured, type AdminBoutiqueRow } from '@/data/boutiques';
+import { BOUTIQUE_STATUS_LABEL } from '@/data/types';
 
 const GRID = 'display:grid;grid-template-columns:1.8fr 1fr .8fr .8fr 1fr 1.1fr;';
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function BoutiquesTable() {
   const { showToast } = useShop();
@@ -40,8 +40,8 @@ export function BoutiquesTable() {
         <div style={css('padding:20px;color:#8A7078;font-size:13.5px;')}>No boutiques yet.</div>
       )}
       {boutiques.map((b, i) => {
-        const label = b.status === 'approved' ? 'Active' : cap(b.status);
-        const st = statusStyle(cap(b.status));
+        const label = b.status === 'approved' ? 'Active' : BOUTIQUE_STATUS_LABEL[b.status];
+        const st = statusStyle(b.status === 'approved' ? 'Approved' : b.status === 'rejected' ? 'Rejected' : 'Pending');
         return (
           <div key={b.id} style={css(`${GRID}padding:14px 20px;align-items:center;border-top:1px solid #F5E4EC;`)}>
             <div style={css('display:flex;align-items:center;gap:10px;min-width:0;')}>

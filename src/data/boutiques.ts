@@ -1,17 +1,41 @@
 import { supabase } from '@/lib/supabase';
 import { uploadImage } from '@/lib/uploadImage';
-import type { BoutiqueRow } from './types';
+import type { BoutiqueRow, BoutiquePrivate, BoutiqueStatus } from './types';
+
+/**
+ * The columns anon/authenticated are allowed to SELECT.
+ *
+ * Migration 0021 revoked the blanket SELECT on `boutiques` and granted these
+ * columns back one by one, so that bank details and the admin's review note
+ * cannot be read off the public API. A bare `select('*')` now fails with a
+ * permission error — always select this list, and add any new column to the
+ * grant in 0021 first.
+ */
+export const BOUTIQUE_COLUMNS = [
+  'id', 'owner_id', 'name', 'slug', 'city', 'area', 'description', 'tone',
+  'cover_url', 'logo_url', 'phone', 'instagram', 'established_year',
+  'verified', 'status', 'featured', 'rating', 'reviews_count',
+  'followers_count', 'positive_rating', 'created_at',
+  'owner_name', 'whatsapp', 'email',
+  'address_line', 'district', 'state', 'pincode', 'map_url',
+  'category', 'years_in_business',
+  'open_time', 'close_time', 'working_days',
+  'delivery_available', 'delivery_areas', 'delivery_charge',
+  'cod_enabled', 'online_payment_enabled',
+  'onboarding_step', 'onboarding_complete', 'submitted_at', 'reviewed_at',
+  'notify_orders', 'notify_messages', 'notify_promotions',
+].join(', ');
 
 export async function fetchApprovedBoutiques(): Promise<BoutiqueRow[]> {
-  const { data, error } = await supabase.from('boutiques').select('*').eq('status', 'approved').order('rating', { ascending: false });
+  const { data, error } = await supabase.from('boutiques').select(BOUTIQUE_COLUMNS).eq('status', 'approved').order('rating', { ascending: false });
   if (error) throw error;
-  return (data ?? []) as BoutiqueRow[];
+  return (data ?? []) as unknown as BoutiqueRow[];
 }
 
 export async function fetchBoutique(id: string): Promise<BoutiqueRow | null> {
-  const { data, error } = await supabase.from('boutiques').select('*').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('boutiques').select(BOUTIQUE_COLUMNS).eq('id', id).maybeSingle();
   if (error) throw error;
-  return data as BoutiqueRow | null;
+  return data as unknown as BoutiqueRow | null;
 }
 
 /**
@@ -45,22 +69,50 @@ export function subscribeToBoutiqueFollowers(id: string, onChange: (count: numbe
 }
 
 export async function fetchMyBoutique(ownerId: string): Promise<BoutiqueRow | null> {
-  const { data, error } = await supabase.from('boutiques').select('*').eq('owner_id', ownerId).maybeSingle();
+  const { data, error } = await supabase.from('boutiques').select(BOUTIQUE_COLUMNS).eq('owner_id', ownerId).maybeSingle();
   if (error) throw error;
-  return data as BoutiqueRow | null;
+  return data as unknown as BoutiqueRow | null;
 }
 
-/** Create the signed-in seller's boutique (used in Google onboarding). */
-export async function createMyBoutique(ownerId: string, input: { name: string; city: string }): Promise<BoutiqueRow> {
+/**
+ * Read the columns withheld by 0021's grants (GST, payout details, the admin's
+ * review note). Goes through the `boutique_private` SECURITY DEFINER function,
+ * which answers only for the boutique's owner or an admin.
+ */
+export async function fetchBoutiquePrivate(boutiqueId: string): Promise<BoutiquePrivate | null> {
+  const { data, error } = await supabase.rpc('boutique_private', { bid: boutiqueId });
+  if (error) throw error;
+  const rows = (data ?? []) as BoutiquePrivate[];
+  return rows[0] ?? null;
+}
+
+/**
+ * Create the signed-in seller's boutique. Starts as a `draft` so the admin
+ * queue only ever shows boutiques that have actually been submitted for review.
+ */
+export async function createMyBoutique(ownerId: string, input: { name: string; city: string; owner_name?: string }): Promise<BoutiqueRow> {
   const { data, error } = await supabase
     .from('boutiques')
-    .insert({ owner_id: ownerId, name: input.name, city: input.city, tone: Math.floor(Math.random() * 8) })
-    .select('*')
+    .insert({
+      owner_id: ownerId,
+      name: input.name,
+      city: input.city,
+      owner_name: input.owner_name ?? '',
+      status: 'draft',
+      tone: Math.floor(Math.random() * 8),
+    })
+    .select(BOUTIQUE_COLUMNS)
     .single();
   if (error) throw error;
-  return data as BoutiqueRow;
+  return data as unknown as BoutiqueRow;
 }
 
+/**
+ * Everything the seller can write to their own boutique row. The columns the
+ * seller must never set themselves — status, verified, featured, review_note,
+ * reviewed_at — are absent on purpose; only `setBoutiqueStatus` (admin, guarded
+ * by RLS) touches those.
+ */
 export type BoutiquePatch = Partial<{
   name: string;
   city: string;
@@ -70,10 +122,62 @@ export type BoutiquePatch = Partial<{
   instagram: string | null;
   cover_url: string | null;
   logo_url: string | null;
+  owner_name: string;
+  whatsapp: string | null;
+  email: string | null;
+  address_line: string;
+  district: string;
+  state: string;
+  pincode: string;
+  map_url: string | null;
+  category: string;
+  gst_number: string | null;
+  business_reg_number: string | null;
+  years_in_business: number | null;
+  established_year: number | null;
+  open_time: string;
+  close_time: string;
+  working_days: string[];
+  delivery_available: boolean;
+  delivery_areas: string;
+  delivery_charge: number;
+  cod_enabled: boolean;
+  online_payment_enabled: boolean;
+  bank_account_name: string | null;
+  bank_account_number: string | null;
+  bank_ifsc: string | null;
+  upi_id: string | null;
+  onboarding_step: number;
+  notify_orders: boolean;
+  notify_messages: boolean;
+  notify_promotions: boolean;
 }>;
 
 export async function updateBoutique(id: string, patch: BoutiquePatch) {
   const { error } = await supabase.from('boutiques').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
+/**
+ * Finish the wizard: mark onboarding complete and hand the boutique to the
+ * admin queue. Also used to resubmit after a "needs changes" decision, which is
+ * why it clears the previous review note and timestamp — 0021's trigger allows
+ * a seller to null those two fields precisely on this transition, so the status
+ * screen stops showing feedback they have already acted on.
+ */
+export async function submitBoutiqueForReview(id: string, patch: BoutiquePatch = {}) {
+  const { error } = await supabase
+    .from('boutiques')
+    .update({
+      ...patch,
+      onboarding_step: 7,
+      onboarding_complete: true,
+      status: 'pending',
+      submitted_at: new Date().toISOString(),
+      reviewed_at: null,
+      review_note: null,
+    })
+    .eq('id', id);
   if (error) throw error;
 }
 
@@ -89,14 +193,27 @@ export interface AdminBoutiqueRow extends BoutiqueRow {
 export async function fetchAllBoutiquesAdmin(): Promise<AdminBoutiqueRow[]> {
   const { data, error } = await supabase
     .from('boutiques')
-    .select('*, owner:profiles!boutiques_owner_id_fkey(full_name)')
+    .select(`${BOUTIQUE_COLUMNS}, owner:profiles!boutiques_owner_id_fkey(full_name)`)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as unknown as AdminBoutiqueRow[];
 }
 
-export async function setBoutiqueStatus(id: string, status: 'pending' | 'approved' | 'rejected') {
-  const { error } = await supabase.from('boutiques').update({ status, verified: status === 'approved' }).eq('id', id);
+/**
+ * Record the admin's decision. `note` is the correction list a seller sees on
+ * their verification screen — required for `changes_requested` and `rejected`
+ * so nobody is sent back without being told what to fix.
+ */
+export async function setBoutiqueStatus(id: string, status: BoutiqueStatus, note?: string) {
+  const { error } = await supabase
+    .from('boutiques')
+    .update({
+      status,
+      verified: status === 'approved',
+      reviewed_at: new Date().toISOString(),
+      review_note: status === 'approved' ? null : (note?.trim() || null),
+    })
+    .eq('id', id);
   if (error) throw error;
 }
 

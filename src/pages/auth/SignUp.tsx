@@ -45,6 +45,11 @@ export function SignUp() {
       if (confirmationRequired) {
         toast('Check your email to confirm your account, then sign in');
         navigate(`/auth/signin/${role}`);
+      } else if (newRole === 'seller') {
+        // A brand-new boutique is a draft with two fields filled in — send the
+        // seller straight into the setup wizard rather than a console they
+        // cannot sell from yet.
+        navigate('/seller/onboarding', { replace: true });
       } else {
         navigate(homeFor(newRole), { replace: true });
       }

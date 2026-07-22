@@ -30,8 +30,10 @@ export function AuthCallback() {
       clearPendingOAuthRole();
       if (role === 'seller') {
         await claimRole('seller');
+        // A boutique row can exist while the 7-step setup is still unfinished,
+        // so completion — not mere existence — decides where they land.
         const boutique = await fetchMyBoutique(session.user.id).catch(() => null);
-        navigate(boutique ? '/seller/dashboard' : '/seller/onboarding', { replace: true });
+        navigate(boutique?.onboarding_complete ? '/seller/dashboard' : '/seller/onboarding', { replace: true });
       } else {
         navigate('/buyer/profile', { replace: true });
       }

@@ -9,7 +9,6 @@ import { SignIn } from '@/pages/auth/SignIn';
 import { SignUp } from '@/pages/auth/SignUp';
 import { Otp } from '@/pages/auth/Otp';
 import { AuthCallback } from '@/pages/auth/AuthCallback';
-import { SellerOnboarding } from '@/pages/seller/SellerOnboarding';
 import { AdminLogin } from '@/pages/admin/AdminLogin';
 
 import { BuyerLayout } from '@/components/layout/BuyerLayout';
@@ -61,6 +60,10 @@ const BoutiqueProfileEdit = lazyNamed(() => import('@/pages/seller/BoutiqueProfi
 const ProfileHub = lazyNamed(() => import('@/pages/seller/ProfileHub'), 'ProfileHub');
 const Settings = lazyNamed(() => import('@/pages/seller/Settings'), 'Settings');
 const Help = lazyNamed(() => import('@/pages/seller/Help'), 'Help');
+const Verification = lazyNamed(() => import('@/pages/seller/Verification'), 'Verification');
+// Split like the rest of the seller console: the 7-step setup wizard is only
+// ever opened by a seller, and buyers should not carry it in the main bundle.
+const SellerOnboarding = lazyNamed(() => import('@/pages/seller/SellerOnboarding'), 'SellerOnboarding');
 
 const AdminLayout = lazyNamed(() => import('@/components/layout/AdminLayout'), 'AdminLayout');
 const Overview = lazyNamed(() => import('@/pages/admin/Overview'), 'Overview');
@@ -84,7 +87,17 @@ export default function App() {
       <Route path="/auth/signup/:role" element={<SignUp />} />
       <Route path="/auth/otp/:role" element={<Otp />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/seller/onboarding" element={<SellerOnboarding />} />
+      {/* Outside the seller console shell on purpose: the wizard is a full-page
+          flow with its own header, and it runs before there is a boutique to
+          put a nav bar around. */}
+      <Route
+        path="/seller/onboarding"
+        element={
+          <Suspense fallback={<FullscreenLoader />}>
+            <SellerOnboarding />
+          </Suspense>
+        }
+      />
       <Route path="/admin/login" element={<AdminLogin />} />
 
       {/* Clean, shareable public boutique link — e.g. /b/elegance-boutique.
@@ -154,6 +167,9 @@ export default function App() {
         <Route path="profile" element={<ProfileHub />} />
         <Route path="settings" element={<Settings />} />
         <Route path="help" element={<Help />} />
+        {/* Where the setup wizard lands, and what the console's status banner
+            links to while a boutique is unapproved. */}
+        <Route path="verification" element={<Verification />} />
       </Route>
 
       <Route

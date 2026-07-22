@@ -3,48 +3,112 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
-import { updateBoutique } from '@/data/boutiques';
+import { updateBoutique, type BoutiquePatch } from '@/data/boutiques';
+import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
+import { WORKING_DAYS } from '@/data/types';
 
-const INITIAL_ROWS = [
-  { label: 'Push notifications', icon: 'notifications', on: true },
-  { label: 'Order alerts', icon: 'shopping_bag', on: true },
-  { label: 'WhatsApp sync', icon: 'chat_bubble', on: true },
-  { label: 'Show boutique publicly', icon: 'visibility', on: true },
-  { label: 'Dark mode', icon: 'dark_mode', on: false },
-];
+/**
+ * Seller settings — the store configuration the setup wizard collects, editable
+ * afterwards.
+ *
+ * Every control here writes to the boutique row. The previous version kept its
+ * toggles in component state with no persistence (and offered a "Dark mode"
+ * switch the app has no support for), so a seller who turned delivery off found
+ * it back on after a reload.
+ */
+
+type Form = {
+  instagram: string; phone: string; whatsapp: string; email: string;
+  openTime: string; closeTime: string; workingDays: string[];
+  deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string;
+  codEnabled: boolean; onlinePaymentEnabled: boolean;
+  notifyOrders: boolean; notifyMessages: boolean; notifyPromotions: boolean;
+};
+
+const EMPTY: Form = {
+  instagram: '', phone: '', whatsapp: '', email: '',
+  openTime: '', closeTime: '', workingDays: [],
+  deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0',
+  codEnabled: true, onlinePaymentEnabled: true,
+  notifyOrders: true, notifyMessages: true, notifyPromotions: false,
+};
+
+const PHONE_RE = /^[6-9][0-9]{9}$/;
 
 export function Settings() {
   const navigate = useNavigate();
   const { showToast } = useShop();
   const { boutique, reload } = useMyBoutique();
-  const [rows, setRows] = useState(INITIAL_ROWS);
-  const [insta, setInsta] = useState('');
-  const [addr, setAddr] = useState('');
+  const [form, setForm] = useState<Form>(EMPTY);
+  const [errors, setErrors] = useState<Partial<Record<keyof Form, string>>>({});
   const [saving, setSaving] = useState(false);
+
+  const set = <K extends keyof Form>(key: K, value: Form[K]) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
+  };
 
   // Seed from the signed-in seller's own boutique row rather than sample copy.
   useEffect(() => {
     if (!boutique) return;
-    setInsta(boutique.instagram ?? '');
-    setAddr([boutique.area, boutique.city].filter(Boolean).join(', '));
+    setForm({
+      instagram: boutique.instagram ?? '',
+      phone: boutique.phone ?? '',
+      whatsapp: boutique.whatsapp ?? '',
+      email: boutique.email ?? '',
+      openTime: boutique.open_time || '10:00',
+      closeTime: boutique.close_time || '20:00',
+      workingDays: boutique.working_days?.length ? boutique.working_days : [...WORKING_DAYS].slice(0, 6),
+      deliveryAvailable: boutique.delivery_available ?? true,
+      deliveryAreas: boutique.delivery_areas ?? '',
+      deliveryCharge: boutique.delivery_charge != null ? String(boutique.delivery_charge) : '0',
+      codEnabled: boutique.cod_enabled ?? true,
+      onlinePaymentEnabled: boutique.online_payment_enabled ?? true,
+      notifyOrders: boutique.notify_orders ?? true,
+      notifyMessages: boutique.notify_messages ?? true,
+      notifyPromotions: boutique.notify_promotions ?? false,
+    });
   }, [boutique]);
 
-  const toggle = (label: string) =>
-    setRows((rs) => rs.map((r) => (r.label === label ? { ...r, on: !r.on } : r)));
-
-  // "RS Puram, Coimbatore" -> area + city; a single value is treated as the city.
   const save = async () => {
     if (!boutique) return showToast('No boutique linked to this account yet');
-    const parts = addr.split(',').map((p) => p.trim()).filter(Boolean);
-    const city = parts.length > 1 ? parts[parts.length - 1] : parts[0] ?? '';
-    const area = parts.length > 1 ? parts.slice(0, -1).join(', ') : '';
+
+    const next: Partial<Record<keyof Form, string>> = {};
+    if (form.phone.trim() && !PHONE_RE.test(form.phone.trim())) next.phone = 'Enter a 10-digit mobile number';
+    if (form.whatsapp.trim() && !PHONE_RE.test(form.whatsapp.trim())) next.whatsapp = 'Enter a 10-digit WhatsApp number';
+    if (form.workingDays.length === 0) next.workingDays = 'Pick at least one working day';
+    if (form.deliveryAvailable && !form.deliveryAreas.trim()) next.deliveryAreas = 'List the areas you deliver to';
+    if (!form.codEnabled && !form.onlinePaymentEnabled) next.codEnabled = 'Enable at least one payment method';
+    if (Object.keys(next).length) {
+      setErrors(next);
+      return showToast('Please fix the highlighted fields');
+    }
+
+    const patch: BoutiquePatch = {
+      instagram: form.instagram.trim().replace(/^@/, '') || null,
+      phone: form.phone.trim() || null,
+      whatsapp: form.whatsapp.trim() || form.phone.trim() || null,
+      email: form.email.trim() || null,
+      open_time: form.openTime,
+      close_time: form.closeTime,
+      working_days: form.workingDays,
+      delivery_available: form.deliveryAvailable,
+      delivery_areas: form.deliveryAreas.trim(),
+      delivery_charge: Number(form.deliveryCharge || 0),
+      cod_enabled: form.codEnabled,
+      online_payment_enabled: form.onlinePaymentEnabled,
+      notify_orders: form.notifyOrders,
+      notify_messages: form.notifyMessages,
+      notify_promotions: form.notifyPromotions,
+    };
+
     setSaving(true);
     try {
-      await updateBoutique(boutique.id, { instagram: insta.trim().replace(/^@/, '') || null, area, city });
+      await updateBoutique(boutique.id, patch);
       reload();
-      showToast('Profile saved');
+      showToast('Settings saved');
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save your profile');
+      showToast(e instanceof Error ? e.message : 'Could not save your settings');
     } finally {
       setSaving(false);
     }
@@ -52,62 +116,78 @@ export function Settings() {
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
-      <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
-        <button onClick={() => navigate('/seller/profile')} style={css('width:42px;height:42px;border-radius:12px;border:none;background:#fff;box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+      <div style={css('padding:6px 0 14px;display:flex;align-items:center;gap:10px;')}>
+        <button
+          onClick={() => navigate('/seller/profile')}
+          style={css('width:42px;height:42px;border-radius:12px;border:none;background:#fff;box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+        >
           <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
         </button>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Settings</div>
       </div>
 
-      <div style={css('margin:4px 20px 0;background:#fff;border-radius:18px;padding:18px 16px 20px;box-shadow:0 12px 30px -20px rgba(107,20,54,.6);')}>
-        <div style={css('display:flex;align-items:center;gap:9px;margin-bottom:4px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:20px;")}>storefront</span>
-          <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;")}>Boutique Profile</span>
-        </div>
-        <div style={css('font-size:12.5px;color:#8A7078;margin-bottom:14px;')}>Shown to buyers on your boutique page.</div>
+      <div style={css('max-width:760px;display:flex;flex-direction:column;gap:16px;')}>
+        <SectionCard title="Contact & social" subtitle="How buyers reach you from your boutique page.">
+          <Row>
+            <Field label="Mobile number" value={form.phone} onChange={(v) => set('phone', v.replace(/\D/g, '').slice(0, 10))} placeholder="9876543210" inputMode="tel" error={errors.phone} />
+            <Field label="WhatsApp number" value={form.whatsapp} onChange={(v) => set('whatsapp', v.replace(/\D/g, '').slice(0, 10))} placeholder="9876543210" inputMode="tel" error={errors.whatsapp} hint="Blank reuses your mobile." />
+          </Row>
+          <Field label="Email address" value={form.email} onChange={(v) => set('email', v)} placeholder="you@boutique.com" inputMode="email" />
+          <Field label="Instagram username" value={form.instagram} onChange={(v) => set('instagram', v)} placeholder="yourboutique" hint="Without the @." />
+        </SectionCard>
 
-        <label style={css('display:block;font-size:12px;font-weight:800;color:#6B5560;letter-spacing:.02em;margin-bottom:6px;')}>INSTAGRAM HANDLE</label>
-        <div style={css('display:flex;align-items:center;gap:8px;border:1.5px solid #F0D8E2;border-radius:13px;padding:0 12px;background:#FDFAFB;margin-bottom:15px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#DD2A7B;font-size:20px;")}>photo_camera</span>
-          <span style={css('color:#B79AA6;font-weight:700;')}>@</span>
-          <input value={insta} onChange={(e) => setInsta(e.target.value)} placeholder="yourboutique" style={css('flex:1;border:none;outline:none;background:none;padding:13px 0;font-size:14px;font-weight:600;color:#241019;min-width:0;')} />
-        </div>
+        <SectionCard title="Store timing" subtitle="Shown to buyers, so they know when you are open.">
+          <Row>
+            <Field label="Opening time" value={form.openTime} onChange={(v) => set('openTime', v)} type="time" />
+            <Field label="Closing time" value={form.closeTime} onChange={(v) => set('closeTime', v)} type="time" />
+          </Row>
+          <ChipPicker label="Working days" options={WORKING_DAYS} value={form.workingDays} onChange={(next) => set('workingDays', next)} multiple error={errors.workingDays} />
+        </SectionCard>
 
-        <label style={css('display:block;font-size:12px;font-weight:800;color:#6B5560;letter-spacing:.02em;margin-bottom:6px;')}>SHOP ADDRESS</label>
-        <div style={css('display:flex;align-items:center;gap:8px;border:1.5px solid #F0D8E2;border-radius:13px;padding:0 12px;background:#FDFAFB;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:20px;")}>location_on</span>
-          <input value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Area, City" style={css('flex:1;border:none;outline:none;background:none;padding:13px 0;font-size:14px;font-weight:600;color:#241019;min-width:0;')} />
-        </div>
+        <SectionCard title="Delivery">
+          <Toggle label="Delivery available" description="Turn off if buyers must collect from your shop" icon="local_shipping" on={form.deliveryAvailable} onChange={(v) => set('deliveryAvailable', v)} />
+          {form.deliveryAvailable && (
+            <>
+              <TextArea label="Delivery areas" value={form.deliveryAreas} onChange={(v) => set('deliveryAreas', v)} placeholder="Coimbatore city, Tirupur, Erode" error={errors.deliveryAreas} />
+              <Field label="Delivery charge (₹)" value={form.deliveryCharge} onChange={(v) => set('deliveryCharge', v.replace(/[^\d.]/g, ''))} placeholder="0" inputMode="numeric" hint="Enter 0 for free delivery." />
+            </>
+          )}
+        </SectionCard>
 
-        <button onClick={save} disabled={saving || !boutique} style={css(`margin-top:16px;width:100%;height:48px;border:none;border-radius:13px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;box-shadow:0 12px 26px -14px rgba(214,51,108,.8);opacity:${saving || !boutique ? 0.6 : 1};`)}>
-          {saving ? 'Saving…' : 'Save profile'}
+        <SectionCard title="Payments accepted">
+          <Toggle label="Cash on delivery" description="Buyers pay when the order arrives" icon="payments" on={form.codEnabled} onChange={(v) => set('codEnabled', v)} />
+          <Toggle label="Online payment" description="Card, UPI and netbanking through Razorpay" icon="credit_card" on={form.onlinePaymentEnabled} onChange={(v) => set('onlinePaymentEnabled', v)} />
+          {errors.codEnabled && <span style={css('font-size:11.5px;font-weight:700;color:#D6455A;')}>{errors.codEnabled}</span>}
+        </SectionCard>
+
+        <SectionCard title="Notifications" subtitle="What lands in your notifications inbox.">
+          <Toggle label="New orders" description="Every time a buyer places an order" icon="shopping_bag" on={form.notifyOrders} onChange={(v) => set('notifyOrders', v)} />
+          <Toggle label="Customer messages" description="When a buyer starts or replies to a chat" icon="chat_bubble" on={form.notifyMessages} onChange={(v) => set('notifyMessages', v)} />
+          <Toggle label="Offers & platform updates" description="Agilam news, promotions and feature announcements" icon="campaign" on={form.notifyPromotions} onChange={(v) => set('notifyPromotions', v)} />
+        </SectionCard>
+
+        <button
+          onClick={save}
+          disabled={saving || !boutique}
+          style={css(`width:100%;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);opacity:${saving || !boutique ? 0.6 : 1};font-family:inherit;`)}
+        >
+          {saving ? 'Saving…' : 'Save settings'}
+        </button>
+
+        <button
+          onClick={() => navigate('/buyer/home')}
+          style={css('width:100%;display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid #F2E4EA;border-radius:16px;background:#fff;color:#B02454;cursor:pointer;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);text-align:left;font-family:inherit;')}
+        >
+          <span style={css('width:40px;height:40px;border-radius:12px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;flex:none;')}>
+            <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>swap_horiz</span>
+          </span>
+          <span style={css('flex:1;')}>
+            <span style={css('display:block;font-weight:800;font-size:15px;')}>Switch to Buyer</span>
+            <span style={css('display:block;font-size:12.5px;color:#8A7078;margin-top:2px;')}>Shop on Agilam as a customer</span>
+          </span>
+          <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
         </button>
       </div>
-
-      <div style={css('margin:16px 20px 0;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -20px rgba(107,20,54,.6);')}>
-        {rows.map((r, i) => (
-          <div key={r.label} onClick={() => toggle(r.label)} style={css(`display:flex;align-items:center;gap:13px;padding:15px 14px;border-bottom:${i === rows.length - 1 ? 'none' : '1px solid #F5E4EC'};cursor:pointer;`)}>
-            <span style={css('width:36px;height:36px;border-radius:11px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:19px;")}>{r.icon}</span>
-            </span>
-            <span style={css('flex:1;font-weight:700;font-size:14px;')}>{r.label}</span>
-            <div style={css(`width:44px;height:26px;border-radius:14px;background:${r.on ? '#2FA36B' : '#E0CDD6'};position:relative;transition:background .2s ease;`)}>
-              <span style={css(`position:absolute;top:3px;${r.on ? 'right' : 'left'}:3px;width:20px;height:20px;border-radius:50%;background:#fff;`)} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <button onClick={() => navigate('/buyer/home')} style={css('margin:16px 20px 0;width:calc(100% - 40px);display:flex;align-items:center;gap:13px;padding:14px 15px;border:none;border-radius:16px;background:#fff;color:#B02454;cursor:pointer;box-shadow:0 12px 30px -20px rgba(107,20,54,.6);text-align:left;')}>
-        <span style={css('width:40px;height:40px;border-radius:12px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;flex:none;')}>
-          <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>swap_horiz</span>
-        </span>
-        <span style={css('flex:1;')}>
-          <span style={css('display:block;font-weight:800;font-size:15px;')}>Switch to Buyer</span>
-          <span style={css('display:block;font-size:12.5px;color:#8A7078;margin-top:2px;')}>Shop on Agilam as a customer</span>
-        </span>
-        <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
-      </button>
     </div>
   );
 }

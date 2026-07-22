@@ -22,6 +22,32 @@ export interface ProductWithBoutique {
   boutique: { name: string; city: string; tone: number } | null;
 }
 
+// The lifecycle status is declared alongside the generated table types so the
+// Supabase client and the app agree on it; re-exported here because every
+// consumer already imports its boutique types from this module.
+export type { BoutiqueStatus } from '@/types/database';
+import type { BoutiqueStatus } from '@/types/database';
+
+/**
+ * Human labels for the lifecycle status. Capitalising the raw value is not
+ * enough — it would surface `changes_requested` as "Changes_requested".
+ */
+export const BOUTIQUE_STATUS_LABEL: Record<BoutiqueStatus, string> = {
+  draft: 'Setting up',
+  pending: 'Awaiting review',
+  changes_requested: 'Needs changes',
+  approved: 'Approved',
+  rejected: 'Rejected',
+};
+
+export const WORKING_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+
+/**
+ * A boutique as the app reads it. Every field here is covered by the
+ * column-level SELECT grant in migration 0021 — the sensitive ones (GST, bank,
+ * review note) live on `BoutiquePrivate` and only arrive via the
+ * `boutique_private` RPC, so they can never leak into a buyer-facing payload.
+ */
 export interface BoutiqueRow {
   id: string;
   owner_id: string;
@@ -37,13 +63,57 @@ export interface BoutiqueRow {
   instagram: string | null;
   established_year: number | null;
   verified: boolean;
-  status: 'pending' | 'approved' | 'rejected';
+  status: BoutiqueStatus;
   featured: boolean;
   rating: number;
   reviews_count: number;
   followers_count: number;
   positive_rating: number;
   created_at: string;
+
+  // Step 1 — boutique information
+  owner_name: string;
+  // Step 2 — contact
+  whatsapp: string | null;
+  email: string | null;
+  // Step 3 — shop address
+  address_line: string;
+  district: string;
+  state: string;
+  pincode: string;
+  map_url: string | null;
+  // Step 4 — business
+  category: string;
+  years_in_business: number | null;
+  // Step 5 — store settings
+  open_time: string;
+  close_time: string;
+  working_days: string[];
+  delivery_available: boolean;
+  delivery_areas: string;
+  delivery_charge: number;
+  cod_enabled: boolean;
+  online_payment_enabled: boolean;
+  // Step 7 — submission
+  onboarding_step: number;
+  onboarding_complete: boolean;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  // Notification preferences
+  notify_orders: boolean;
+  notify_messages: boolean;
+  notify_promotions: boolean;
+}
+
+/** The withheld columns, readable by the owner or an admin only. */
+export interface BoutiquePrivate {
+  gst_number: string | null;
+  business_reg_number: string | null;
+  bank_account_name: string | null;
+  bank_account_number: string | null;
+  bank_ifsc: string | null;
+  upi_id: string | null;
+  review_note: string | null;
 }
 
 export interface OrderWithDetails {

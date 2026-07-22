@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
@@ -65,11 +66,14 @@ export function AppShell({
   homeTo,
   /** Buyer-only: the header catalogue search. */
   searchable,
+  /** Console-wide notice pinned above every page (seller verification status). */
+  banner,
 }: {
   tabs: TabDef[];
   profileTo: string;
   homeTo: string;
   searchable?: boolean;
+  banner?: ReactNode;
 }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -117,6 +121,7 @@ export function AppShell({
         </header>
 
         <main className="agx-app agx-app-main" style={css('flex:1;width:100%;padding:16px 18px 128px;')}>
+          {banner}
           <Outlet />
         </main>
 
