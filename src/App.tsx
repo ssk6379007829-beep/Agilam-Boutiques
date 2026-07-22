@@ -32,6 +32,10 @@ import { Chat as BuyerChat } from '@/pages/buyer/Chat';
 import { Profile as BuyerProfile } from '@/pages/buyer/Profile';
 import { Policy } from '@/pages/buyer/Policy';
 import { Inspire } from '@/pages/buyer/Inspire';
+import { Collections } from '@/pages/buyer/Collections';
+import { NewArrivals } from '@/pages/buyer/NewArrivals';
+import { BestSellers } from '@/pages/buyer/BestSellers';
+import { TopBoutiques } from '@/pages/buyer/TopBoutiques';
 
 /**
  * The seller and admin consoles are only ever reached by signed-in
@@ -116,6 +120,12 @@ export default function App() {
         {/* Sort shares the results grid behind a lighter sort-only sheet. */}
         <Route path="sort" element={<><Results /><SortSheet /></>} />
         <Route path="boutiques" element={<Boutiques />} />
+        {/* The "See all" destinations behind the Home rails. Each one owns its
+            own ranking rule (@/lib/ranking) and publishes it on the page. */}
+        <Route path="collections" element={<Collections />} />
+        <Route path="new-arrivals" element={<NewArrivals />} />
+        <Route path="best-sellers" element={<BestSellers />} />
+        <Route path="top-boutiques" element={<TopBoutiques />} />
         {/* Inspire — the feed of posts from boutiques the buyer follows. */}
         <Route path="inspire" element={<Inspire />} />
         <Route path="boutique/:id" element={<BoutiqueProfile />} />

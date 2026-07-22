@@ -35,6 +35,12 @@ export type Product = {
   sizes?: string[];
   washCare?: string;
   images?: string[];
+  /** When the piece was listed. Drives New arrivals and the freshness term in
+   *  the best-seller score — see @/lib/ranking. Absent on the demo records. */
+  createdAt?: string;
+  /** Units sold on orders the seller accepted (migration 0023). Absent until
+   *  that migration is applied, which the ranking degrades around. */
+  soldCount?: number;
 };
 
 export const PRODUCTS: Product[] = [
@@ -77,6 +83,11 @@ export type Boutique = {
    * Undefined on the demo records, which are treated as accepting.
    */
   codEnabled?: boolean;
+  /** When the boutique row was created — the denominator of its sales rate. */
+  createdAt?: string;
+  /** Units and fulfilled orders across the shop (migration 0023). */
+  unitsSold?: number;
+  ordersCount?: number;
 };
 
 export const BOUTIQUES: Boutique[] = [

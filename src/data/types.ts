@@ -14,6 +14,9 @@ export interface ProductWithBoutique {
   rating: number;
   reviews_count: number;
   created_at: string;
+  /** Units sold on accepted/shipped/delivered orders — maintained by the
+   *  triggers in migration 0023, never written by the app. */
+  sold_count?: number;
   description?: string | null;
   mrp?: number | null;
   sizes?: string[] | null;
@@ -70,6 +73,9 @@ export interface BoutiqueRow {
   followers_count: number;
   positive_rating: number;
   created_at: string;
+  /** Shop-wide sales counters (migration 0023), maintained by trigger. */
+  units_sold?: number;
+  orders_count?: number;
 
   // Step 1 — boutique information
   owner_name: string;

@@ -11,7 +11,7 @@ import type { BoutiqueRow, BoutiquePrivate, BoutiqueStatus } from './types';
  * permission error — always select this list, and add any new column to the
  * grant in 0021 first.
  */
-export const BOUTIQUE_COLUMNS = [
+const BASE_COLUMNS = [
   'id', 'owner_id', 'name', 'slug', 'city', 'area', 'description', 'tone',
   'cover_url', 'logo_url', 'phone', 'instagram', 'established_year',
   'verified', 'status', 'featured', 'rating', 'reviews_count',
@@ -26,15 +26,51 @@ export const BOUTIQUE_COLUMNS = [
   'notify_orders', 'notify_messages', 'notify_promotions',
 ].join(', ');
 
-export async function fetchApprovedBoutiques(): Promise<BoutiqueRow[]> {
-  const { data, error } = await supabase.from('boutiques').select(BOUTIQUE_COLUMNS).eq('status', 'approved').order('rating', { ascending: false });
+/**
+ * The sales counters added by migration 0023. Split out from the base list
+ * because naming a column that does not exist yet fails the *whole* query —
+ * which would take the buyer catalogue down on any deployment where 0023 has
+ * not been applied. `selectBoutiques` retries without them instead.
+ */
+const COUNTER_COLUMNS = 'units_sold, orders_count';
+
+export const BOUTIQUE_COLUMNS = `${BASE_COLUMNS}, ${COUNTER_COLUMNS}`;
+
+/**
+ * Runs a boutique query with the counter columns, falling back to the base
+ * column list once per session if the database does not have them yet. The
+ * counters only feed ranking, so their absence should cost a slightly duller
+ * "Best-selling boutiques" order — never an empty shop.
+ */
+let countersAvailable = true;
+
+async function selectBoutiques<T>(
+  run: (columns: string) => PromiseLike<{ data: T; error: { message?: string; code?: string } | null }>,
+): Promise<T> {
+  if (countersAvailable) {
+    const { data, error } = await run(BOUTIQUE_COLUMNS);
+    if (!error) return data;
+    // 42703 = undefined_column, 42501 = insufficient_privilege (column not granted).
+    if (error.code !== '42703' && error.code !== '42501') throw error;
+    countersAvailable = false;
+    console.warn('[boutiques] sales counters unavailable — apply migration 0023. Ranking will use ratings only.');
+  }
+  const { data, error } = await run(BASE_COLUMNS);
   if (error) throw error;
+  return data;
+}
+
+export async function fetchApprovedBoutiques(): Promise<BoutiqueRow[]> {
+  const data = await selectBoutiques((cols) =>
+    supabase.from('boutiques').select(cols).eq('status', 'approved').order('rating', { ascending: false }),
+  );
   return (data ?? []) as unknown as BoutiqueRow[];
 }
 
 export async function fetchBoutique(id: string): Promise<BoutiqueRow | null> {
-  const { data, error } = await supabase.from('boutiques').select(BOUTIQUE_COLUMNS).eq('id', id).maybeSingle();
-  if (error) throw error;
+  const data = await selectBoutiques((cols) =>
+    supabase.from('boutiques').select(cols).eq('id', id).maybeSingle(),
+  );
   return data as unknown as BoutiqueRow | null;
 }
 

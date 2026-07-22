@@ -1,0 +1,256 @@
+import { useState, type ReactNode, type MouseEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { css } from '@/lib/css';
+import { ImageSlot } from '@/components/ui/ImageSlot';
+import { WishButton } from '@/components/buyer/WishButton';
+import { TONES, fmt, type Product } from '@/data/demo';
+import { compactCount } from '@/lib/ranking';
+
+/**
+ * Shared chrome for the four "See all" discovery pages — Collections, New
+ * arrivals, Best sellers and Best-selling boutiques.
+ *
+ * They are siblings of each other rather than of the Results grid: Results
+ * answers "show me what matches these filters", these answer "show me what
+ * Agilam thinks is worth seeing". Keeping their header, their ranking note and
+ * their card in one place is what stops the four drifting into four slightly
+ * different-looking pages.
+ */
+
+// ── Header ──────────────────────────────────────────────────────────────────
+
+export function DiscoveryHeader({
+  eyebrow,
+  title,
+  accent,
+  subtitle,
+  count,
+  countLabel,
+}: {
+  eyebrow: string;
+  title: string;
+  /** Trailing word set in italic display type, as on the Home rails. */
+  accent?: string;
+  subtitle: string;
+  count?: number;
+  countLabel?: string;
+}) {
+  return (
+    <div style={css('padding:2px 0 0;')}>
+      {/* Breadcrumb — these pages are usually entered from a Home rail, and the
+          buyer needs a way back that is not the browser button. */}
+      <div style={css('display:flex;align-items:center;gap:6px;font-size:12.5px;color:#B79AA6;font-weight:600;')}>
+        <Link to="/buyer/home" style={css('color:#B02454;text-decoration:none;')}>Home</Link>
+        <span style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
+        <span style={css('color:#8A7078;')}>{title}</span>
+      </div>
+
+      <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;margin-top:14px;')}>{eyebrow}</div>
+      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.4vw,44px);line-height:1.08;margin-top:6px;letter-spacing:-.015em;text-wrap:balance;")}>
+        {title}{accent && <> <span style={css('font-style:italic;color:#B02454;')}>{accent}</span></>}
+      </div>
+      <div style={css('display:flex;align-items:baseline;flex-wrap:wrap;gap:10px;margin-top:10px;')}>
+        <div style={css('color:#8A7078;font-size:14px;line-height:1.6;max-width:620px;')}>{subtitle}</div>
+        {count != null && (
+          <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;letter-spacing:.04em;white-space:nowrap;")}>
+            {count} {countLabel ?? (count === 1 ? 'piece' : 'pieces')}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── "How this is ordered" ───────────────────────────────────────────────────
+
+/**
+ * Every ranked rail carries its own explanation, collapsed by default.
+ *
+ * A buyer who cannot tell why one saree is above another assumes the top slot
+ * was bought — and on a marketplace where sellers pay commission, that
+ * suspicion is corrosive. Saying it plainly ("sales, ratings, recency; nobody
+ * can pay to be here") costs one line and buys the ranking its credibility.
+ */
+export function RankingNote({ lines }: { lines: { term: string; weight?: string; why: string }[] }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:18px;margin-top:18px;overflow:hidden;')}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={css('width:100%;display:flex;align-items:center;gap:10px;background:none;border:none;cursor:pointer;padding:14px 16px;text-align:left;font-family:inherit;')}
+      >
+        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#B02454;")}>insights</span>
+        <span style={css('flex:1;font-size:13.5px;font-weight:700;color:#2A1A20;')}>How this list is ordered</span>
+        <span style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:#B79AA6;transition:transform .25s ease;transform:rotate(${open ? 180 : 0}deg);`)}>expand_more</span>
+      </button>
+      {open && (
+        <div style={css('padding:0 16px 16px;')}>
+          <div style={css('display:grid;gap:10px;')}>
+            {lines.map((l) => (
+              <div key={l.term} style={css('display:flex;gap:10px;align-items:flex-start;')}>
+                {l.weight && (
+                  <span style={css("flex:none;min-width:42px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#B02454;background:#FBF0F4;border-radius:8px;padding:4px 7px;text-align:center;")}>
+                    {l.weight}
+                  </span>
+                )}
+                <span style={css('font-size:13px;color:#5C4650;line-height:1.55;')}>
+                  <b style={css('color:#2A1A20;')}>{l.term}</b> — {l.why}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div style={css('margin-top:12px;padding-top:12px;border-top:1px solid #F5E7ED;display:flex;gap:8px;align-items:flex-start;color:#2FA36B;font-size:12.5px;font-weight:600;line-height:1.5;')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:16px;flex:none;")}>verified_user</span>
+            <span>No boutique can pay for a place in this list. Ads are sold separately and always labelled.</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Section label ───────────────────────────────────────────────────────────
+
+export function SectionLabel({ icon, title, note }: { icon: string; title: string; note?: string }) {
+  return (
+    <div style={css('display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:34px 2px 14px;')}>
+      <div style={css('display:flex;align-items:center;gap:9px;')}>
+        <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#B02454;")}>{icon}</span>
+        <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(19px,2vw,24px);color:#2A1A20;")}>{title}</span>
+      </div>
+      {note && (
+        <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;letter-spacing:.04em;white-space:nowrap;")}>{note}</span>
+      )}
+    </div>
+  );
+}
+
+// ── Product card ────────────────────────────────────────────────────────────
+
+export type CardBadge = { icon: string; label: string };
+
+/**
+ * The catalogue card as the Home rails draw it, plus the two things a ranked
+ * page needs and a rail does not: the position in the list, and the reason the
+ * piece is there ("128 sold"). Sold-out pieces stay visible but read as sold
+ * out, so a popular boutique does not look empty and nobody taps into a dead
+ * end by accident.
+ */
+export function CatalogCard({
+  product: p,
+  onOpen,
+  wished,
+  onToggleWish,
+  badge,
+  proof,
+  rank,
+}: {
+  product: Product;
+  onOpen: () => void;
+  wished: boolean;
+  onToggleWish: (e: MouseEvent) => void;
+  badge?: CardBadge | null;
+  proof?: string | null;
+  rank?: number;
+}) {
+  const soldOut = p.stock === 0;
+
+  return (
+    <div onClick={onOpen} className="agx-lift" style={css('cursor:pointer;')}>
+      <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
+        <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
+
+        {/* Rank chip — only the top few carry one; past that a number is noise. */}
+        {rank != null && rank <= 10 && (
+          <div style={css("position:absolute;left:10px;top:10px;min-width:26px;height:26px;padding:0 7px;border-radius:9px;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(176,36,84,.9);")}>
+            {rank}
+          </div>
+        )}
+
+        {badge && rank == null && (
+          <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);color:#B02454;padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.14);')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>{badge.icon}</span>
+            <span className="agx-eyebrow" style={css('font-size:8.5px;letter-spacing:.14em;')}>{badge.label}</span>
+          </div>
+        )}
+
+        <WishButton wished={wished} title={p.title} onToggle={onToggleWish} className="agx-card-wish" />
+
+        {soldOut && (
+          <div style={css('position:absolute;inset:0;background:rgba(36,16,25,.42);display:flex;align-items:center;justify-content:center;')}>
+            <span style={css('background:rgba(255,255,255,.95);color:#8E1C44;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:800;letter-spacing:.02em;')}>Sold out</span>
+          </div>
+        )}
+
+        {proof && !soldOut && (
+          <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
+            <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#2FA36B;")}>local_fire_department</span>
+            {proof}
+          </div>
+        )}
+      </div>
+
+      <div style={css('padding:12px 2px 0;')}>
+        <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
+        <div style={css('font-size:12.5px;color:#8A7078;margin-top:2px;')}>{p.boutique}</div>
+        <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;')}>
+          <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:19px;")}>{fmt(p.price)}</span>
+          {p.reviews > 0 && (
+            <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#5C4650;')}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#E0B84B;")}>star</span>
+              {p.rating}
+              <span style={css('color:#B79AA6;font-weight:600;')}>({compactCount(p.reviews)})</span>
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── States ──────────────────────────────────────────────────────────────────
+
+export function EmptyState({ icon, title, body, action }: { icon: string; title: string; body: string; action?: ReactNode }) {
+  return (
+    <div style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;padding:48px 24px;text-align:center;margin-top:20px;')}>
+      <span style={css(`font-family:'Material Symbols Outlined';font-size:44px;color:rgba(176,36,84,.28);`)}>{icon}</span>
+      <div style={css('color:#2A1A20;font-size:16px;font-weight:700;margin-top:12px;')}>{title}</div>
+      <div style={css('color:#8A7078;font-size:13.5px;margin-top:6px;line-height:1.6;max-width:380px;margin-left:auto;margin-right:auto;')}>{body}</div>
+      {action && <div style={css('margin-top:18px;')}>{action}</div>}
+    </div>
+  );
+}
+
+/** Skeleton tiles while the catalogue is still loading. */
+export function CardSkeletons({ count = 10 }: { count?: number }) {
+  return (
+    <div className="agx-rgrid">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i}>
+          <div className="agx-prod-media" style={css('background:linear-gradient(90deg,#F3E6EC 25%,#FBF3F6 37%,#F3E6EC 63%);background-size:400px 100%;animation:agx-shimmer 1.4s linear infinite;')} />
+          <div style={css('height:12px;border-radius:6px;background:#F3E6EC;margin-top:12px;width:80%;')} />
+          <div style={css('height:12px;border-radius:6px;background:#F6EDF1;margin-top:8px;width:45%;')} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** "Show more" — these lists can run to hundreds; a page that dumps them all
+ *  costs a phone its scroll performance and the buyer their place in the list. */
+export function ShowMore({ shown, total, onMore }: { shown: number; total: number; onMore: () => void }) {
+  if (shown >= total) return null;
+  return (
+    <div style={css('display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:28px;')}>
+      <button
+        onClick={onMore}
+        style={css('border:1px solid #EFDCE4;background:#fff;cursor:pointer;padding:12px 26px;border-radius:999px;font-size:13.5px;font-weight:700;color:#B02454;font-family:inherit;box-shadow:0 12px 28px -20px rgba(107,20,54,.6);')}
+      >
+        Show more
+      </button>
+      <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:#B79AA6;")}>{shown} of {total}</span>
+    </div>
+  );
+}

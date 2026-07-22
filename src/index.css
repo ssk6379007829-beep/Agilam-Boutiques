@@ -48,6 +48,24 @@ input:focus, textarea:focus { outline: none; }
 @media (min-width: 900px) { .agx-rgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (min-width: 1200px) { .agx-rgrid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 .agx-pgrid > *, .agx-rgrid > * { min-width: 0; }
+
+/* ---------- discovery ("See all") pages ----------
+   Collection tiles are 4:5 portraits and carry a two-line caption, so they hold
+   their shape at two across on a phone; occasion/budget rows are list-shaped and
+   want to be wider; boutique cards carry a 16:10 cover plus a stat row, so they
+   cap at three across rather than following the product grid to five. */
+.agx-coll-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 620px)  { .agx-coll-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px)  { .agx-coll-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .agx-coll-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.agx-occ-grid { display: grid; gap: 12px; grid-template-columns: repeat(1, minmax(0, 1fr)); }
+@media (min-width: 560px)  { .agx-occ-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 900px)  { .agx-occ-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .agx-occ-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.agx-bgrid { display: grid; gap: 18px; grid-template-columns: repeat(1, minmax(0, 1fr)); }
+@media (min-width: 620px)  { .agx-bgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1060px) { .agx-bgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.agx-coll-grid > *, .agx-occ-grid > *, .agx-bgrid > * { min-width: 0; }
 @media (max-width: 780px) { .agx-filters { width: 100% !important; position: static !important; } }
 .agx-cart-grid { grid-template-columns: 1fr; }
 @media (min-width: 840px) { .agx-cart-grid { grid-template-columns: minmax(0,1fr) 350px; } }

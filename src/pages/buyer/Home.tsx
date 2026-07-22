@@ -8,6 +8,7 @@ import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { CATEGORIES, HOME_REVIEWS, TONES, fmt, img } from '@/data/demo';
+import { newArrivals, bestSellers, bestSellingBoutiques } from '@/lib/ranking';
 
 const HERO_SLIDES = [
   { slotId: 'hero-banner', tag: 'Latest Collection', pre: 'New Arrivals for ', accent: 'Wedding', post: ' Season', sub: 'Handpicked bridal edits from 200+ boutiques', image: img('1602210901882-071c6b9e239d', 1600) },
@@ -22,9 +23,12 @@ export function Home() {
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
 
-  // Home shows a curated slice of the catalogue in each rail.
-  const NEW_ARRIVALS = PRODUCTS.slice(0, 5);
-  const BEST_SELLERS = [...PRODUCTS].sort((a, b) => b.reviews - a.reviews).slice(0, 6);
+  // Each rail is the top of its own See-all page, computed by the same rules —
+  // so the first six here are exactly the first six there. Ranking lives in
+  // @/lib/ranking; nothing on this screen decides an order of its own.
+  const NEW_ARRIVALS = newArrivals(PRODUCTS).slice(0, 6);
+  const BEST_SELLERS = bestSellers(PRODUCTS).slice(0, 6);
+  const TOP_BOUTIQUES = bestSellingBoutiques(BOUTIQUES).slice(0, 8);
   const [heroIndex, setHeroIndex] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
@@ -61,7 +65,6 @@ export function Home() {
     else setFilters(DEFAULT_FILTERS);
     navigate('/buyer/results');
   };
-  const goBoutiques = () => navigate('/buyer/boutiques');
   const openProduct = (id: string) => navigate(`/buyer/product/${id}`);
   const openBoutique = (id: string) => navigate(`/buyer/boutique/${id}`);
 
@@ -119,7 +122,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Browse every edit</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Shop by collection</div>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); goResults(); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>View all →</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/collections'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:clamp(14px,2.4vw,30px);overflow-x:auto;padding:2px 0 8px;')}>
         {CATEGORIES.map((c) => (
@@ -151,7 +154,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Fresh off the loom</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>New arrivals</div>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); goResults(); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>See all →</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/new-arrivals'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>See all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {NEW_ARRIVALS.map((p) => (
@@ -189,7 +192,7 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Most-loved right now</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Best sellers</div>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); goResults('Popularity'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>See all →</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/best-sellers'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>See all →</a>
       </div>
       <div className="agx-rgrid">
         {BEST_SELLERS.map((p) => (
@@ -222,10 +225,10 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Shops buyers love</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Best-selling boutiques</div>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); goBoutiques(); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>View all →</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/top-boutiques'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>View all →</a>
       </div>
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
-        {BOUTIQUES.map((b) => (
+        {TOP_BOUTIQUES.map((b) => (
           <div key={b.id} onClick={() => openBoutique(b.id)} className="agx-lift" style={css('flex:none;width:300px;background:#fff;border:1px solid #F2E4EA;border-radius:22px;overflow:hidden;cursor:pointer;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             {/* Cover — image only, no name overlay */}
             <div className="agx-zoom" style={css(`position:relative;aspect-ratio:16/10;background:${TONES[b.tone]};overflow:hidden;`)}>

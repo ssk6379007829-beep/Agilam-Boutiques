@@ -53,6 +53,8 @@ function toProduct(p: ProductWithBoutique): Product {
     sizes: p.sizes ?? [],
     washCare: p.wash_care ?? '',
     images: p.images ?? [],
+    createdAt: p.created_at,
+    soldCount: p.sold_count ?? 0,
   };
 }
 
@@ -78,6 +80,9 @@ function toBoutique(b: BoutiqueRow, productCount: number): Boutique {
     image: b.cover_url ?? '',
     logo: b.logo_url ?? '',
     codEnabled: b.cod_enabled ?? true,
+    createdAt: b.created_at,
+    unitsSold: b.units_sold ?? 0,
+    ordersCount: b.orders_count ?? 0,
   };
 }
 
