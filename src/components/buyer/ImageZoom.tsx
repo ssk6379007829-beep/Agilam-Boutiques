@@ -8,8 +8,8 @@ import { css } from '@/lib/css';
  * needs a real close-up rather than a card-sized crop. This opens over the page
  * and supports every gesture people try:
  *
+ *  - tap the photo to zoom in, tap again to zoom back out
  *  - the +/− buttons, and the keyboard's `+` / `-`
- *  - double-click / double-tap to jump between fit and 2.5×
  *  - the scroll wheel (and trackpad pinch, which browsers report as ctrl+wheel)
  *  - drag to pan once zoomed in; arrows / swipe to change photo when zoomed out
  *  - Escape, the close button, or clicking the backdrop to leave
@@ -85,20 +85,39 @@ export function ImageZoom({
     zoomTo(scale + (e.deltaY < 0 ? STEP : -STEP));
   };
 
+  // Where the press started, so a pan can be told apart from a tap on release.
+  const pressRef = useRef<{ x: number; y: number } | null>(null);
+  const movedRef = useRef(false);
+
   const onPointerDown = (e: React.PointerEvent) => {
+    pressRef.current = { x: e.clientX, y: e.clientY };
+    movedRef.current = false;
     if (!zoomed) return;
     (e.target as Element).setPointerCapture?.(e.pointerId);
     dragRef.current = { x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y };
     setDragging(true);
   };
+
   const onPointerMove = (e: React.PointerEvent) => {
+    const p = pressRef.current;
+    // A few pixels of travel is a shaky finger, not a drag — anything more and
+    // the release is a pan, so it must not also toggle the zoom.
+    if (p && (Math.abs(e.clientX - p.x) > 6 || Math.abs(e.clientY - p.y) > 6)) movedRef.current = true;
     const d = dragRef.current;
     if (!d) return;
     setOffset({ x: d.ox + (e.clientX - d.x), y: d.oy + (e.clientY - d.y) });
   };
+
   const onPointerUp = () => {
     dragRef.current = null;
+    pressRef.current = null;
     setDragging(false);
+  };
+
+  /** Tap the photo: in when it's fit, back out when it's already zoomed. */
+  const onStageClick = () => {
+    if (movedRef.current) return;
+    zoomTo(zoomed ? MIN : 2.5);
   };
 
   const src = images[index] ?? images[0];
@@ -137,9 +156,8 @@ export function ImageZoom({
 
       {/* Stage */}
       <div
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); onStageClick(); }}
         onWheel={onWheel}
-        onDoubleClick={() => (zoomed ? reset() : zoomTo(2.5))}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

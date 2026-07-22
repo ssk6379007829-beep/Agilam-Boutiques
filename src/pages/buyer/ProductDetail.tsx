@@ -294,15 +294,9 @@ export function ProductDetail() {
             <button onClick={() => navigate('/buyer/home')} style={css('position:absolute;left:16px;top:16px;width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}>
               <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
             </button>
+            {/* No zoom button: the photo itself opens the viewer on tap, and
+                `cursor:zoom-in` on the slide says so without extra chrome. */}
             <div style={css('position:absolute;right:16px;top:16px;display:flex;gap:10px;')}>
-              <button
-                onClick={() => setZoomOpen(true)}
-                aria-label="Zoom into the photo"
-                title="Zoom"
-                style={css('width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}
-              >
-                <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>zoom_in</span>
-              </button>
               <button
                 onClick={onShare}
                 aria-label={`Share ${ap.title}`}
@@ -318,15 +312,6 @@ export function ProductDetail() {
                 onToggle={() => toggleWish(ap.id)}
               />
             </div>
-
-            {/* A visible affordance: buyers judge zari and weave from the photo,
-                so say the close-up is there rather than hoping they tap. */}
-            <button
-              onClick={() => setZoomOpen(true)}
-              style={css('position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:none;border-radius:999px;background:rgba(36,16,25,.5);backdrop-filter:blur(6px);color:#fff;font-size:11.5px;font-weight:800;cursor:pointer;')}
-            >
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>zoom_in</span>Tap to zoom
-            </button>
 
             {gallery.length > 1 && (
               <>
