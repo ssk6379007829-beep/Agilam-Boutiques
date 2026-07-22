@@ -100,6 +100,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .agx-dock button{ min-width:0 !important; padding:7px 11px !important; gap:2px !important; border-radius:16px !important; }
   .agx-dock button span[style*="font-size:23px"]{ font-size:20px !important; }
   .agx-dock button span[style*="font-size:11px"]{ font-size:9.5px !important; }
+  /* The raised centre orb keeps its own geometry — the compact tab rules above
+     would flatten it back into the dock. */
+  .agx-dock button.agx-dock-fab{ min-width:58px !important; padding:0 6px !important; gap:2px !important; border-radius:0 !important; margin-top:-22px !important; }
+  .agx-dock button.agx-dock-fab .agx-dock-fab-orb{ width:48px !important; height:48px !important; border-width:3px !important; }
+  .agx-dock button.agx-dock-fab span[style*="font-size:26px"]{ font-size:23px !important; }
 }
 .agx-blend-root{ margin-top:-16px; }
 .agx-pdp { display:grid; grid-template-columns:1fr; }
@@ -132,9 +137,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 /* Chat: a focused full-screen conversation surface. The composer is the last
    flex child and the root reserves bottom space for the floating nav dock, so
-   the input panel floats just ABOVE the dock instead of being hidden by it. */
-.agx-chat-root { padding-bottom: calc(116px + env(safe-area-inset-bottom)); }
-@media (max-width:640px){ .agx-chat-root { padding-bottom: calc(78px + env(safe-area-inset-bottom)); } }
+   the input panel floats just ABOVE the dock instead of being hidden by it.
+   The reserve is the dock's own height plus a clear gap, so the composer never
+   sits flush against the dock. */
+.agx-chat-root { padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
+@media (max-width:640px){ .agx-chat-root { padding-bottom: calc(100px + env(safe-area-inset-bottom)); } }
 /* Composer gutter. On phones the bar goes edge-to-edge so the field gets the
    full width; the attach button is dropped below 380px, where three controls
    plus a usable text field no longer fit on one line. */

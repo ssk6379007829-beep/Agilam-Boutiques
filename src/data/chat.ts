@@ -87,8 +87,20 @@ function shapeConversations(rows: any[], viewerId: string, mode: 'buyer' | 'sell
   return rows
     .map((r) => {
       const msgs = (r.messages ?? []) as { body: string; created_at: string; sender_id: string }[];
-      const last = [...msgs].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-      const unread = msgs.filter((m) => m.sender_id !== viewerId).length > 0 && last && last.sender_id !== viewerId ? 1 : 0;
+      const ordered = [...msgs].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      const last = ordered[ordered.length - 1];
+
+      // Which messages are the viewer's own. A buyer sends as themselves, so the
+      // id matches directly — but a seller replies as their staff profile, never
+      // as the boutique, so `viewerId` (the boutique id) matches nothing on that
+      // side. Comparing against it counted the shop's own replies as incoming and
+      // the badge never cleared. Anything not from the buyer is the shop's.
+      const mine = (senderId: string) => (mode === 'seller' ? senderId !== r.buyer_id : senderId === viewerId);
+
+      // Messages waiting on the viewer: everything since they last spoke.
+      let unread = 0;
+      for (let i = ordered.length - 1; i >= 0 && !mine(ordered[i].sender_id); i--) unread++;
+
       return {
         id: r.id,
         buyer_id: r.buyer_id,

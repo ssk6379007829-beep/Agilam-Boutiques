@@ -221,7 +221,18 @@ export default async function handler(req, res) {
       .from('products')
       .select('id, title, price, color, boutique_id')
       .in('id', ids);
-    if (prodErr) throw prodErr;
+    // The first query of the request, and therefore the one that fails when the
+    // service-role credentials are wrong or the project is unreachable. Answered
+    // on its own terms rather than falling into the generic catch: "please try
+    // again" is a lie when no amount of retrying can work, and it leaves the
+    // buyer tapping the button instead of telling anyone something is broken.
+    if (prodErr) {
+      console.error('place-order: catalogue lookup failed:', prodErr?.message ?? prodErr, prodErr?.code ?? '');
+      return res.status(503).json({
+        error: 'We can’t reach our catalogue right now, so your order wasn’t placed. Please try again in a few minutes.',
+        code: 'CATALOGUE_UNAVAILABLE',
+      });
+    }
 
     const byId = new Map((products ?? []).map((p) => [p.id, p]));
 
@@ -270,7 +281,13 @@ export default async function handler(req, res) {
         .from('boutiques')
         .select('id, name, cod_enabled, status')
         .in('id', [...groups.keys()]);
-      if (shopErr) throw shopErr;
+      if (shopErr) {
+        console.error('place-order: boutique lookup failed:', shopErr?.message ?? shopErr, shopErr?.code ?? '');
+        return res.status(503).json({
+          error: 'We can’t reach our boutiques right now, so your order wasn’t placed. Please try again in a few minutes.',
+          code: 'BOUTIQUE_LOOKUP_UNAVAILABLE',
+        });
+      }
 
       const refusing = (shops ?? []).find((b) => !b.cod_enabled);
       if (refusing) {
@@ -468,10 +485,22 @@ export default async function handler(req, res) {
         });
       }
     } catch (writeErr) {
-      console.error('place-order: order write failed after reservation:', writeErr?.message ?? writeErr);
-      await supabase.rpc('release_stock', { p_items: reserveItems }).catch(() => {});
+      console.error('place-order: order write failed after reservation:', {
+        message: writeErr?.message ?? String(writeErr),
+        code: writeErr?.code,
+        details: writeErr?.details,
+        hint: writeErr?.hint,
+      });
+      // `rpc()` is a thenable, not a Promise, so it has no `.catch` to chain —
+      // calling one would throw inside the failure handler and lose both the
+      // stock release and the refund below it.
+      try {
+        await supabase.rpc('release_stock', { p_items: reserveItems });
+      } catch (releaseErr) {
+        console.error('place-order: stock release failed:', releaseErr?.message ?? releaseErr);
+      }
       if (!isCod) await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
-      return res.status(500).json({ error: 'Could not place the order. Please try again.' });
+      return res.status(500).json({ error: 'Could not place the order. Please try again.', code: 'ORDER_WRITE_FAILED' });
     }
 
     // The order exists — everything from here is best-effort and must never
@@ -492,7 +521,17 @@ export default async function handler(req, res) {
       payment_method: guestFields.payment_method,
     });
   } catch (err) {
-    console.error('place-order failed:', err?.message ?? err);
-    return res.status(500).json({ error: 'Could not place the order. Please try again.' });
+    // Everything reachable from here has already been given its own branch, so
+    // landing in this catch means something genuinely unforeseen. Log the whole
+    // error (code, details and hint carry the useful part of a Postgres
+    // failure — `message` alone routinely does not) so the next report of this
+    // is diagnosable from the function logs rather than by guesswork.
+    console.error('place-order failed:', {
+      message: err?.message ?? String(err),
+      code: err?.code,
+      details: err?.details,
+      hint: err?.hint,
+    });
+    return res.status(500).json({ error: 'Could not place the order. Please try again.', code: 'UNEXPECTED' });
   }
 }

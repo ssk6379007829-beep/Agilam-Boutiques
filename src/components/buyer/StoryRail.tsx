@@ -10,7 +10,10 @@ import { useCatalog } from '@/state/CatalogContext';
  *
  * Stories are assembled from the catalogue rather than a separate uploads
  * pipeline — each ring is a boutique, and its slides are that shop's most recent
- * pieces. Shops the buyer follows come first.
+ * pieces. The rail is the buyer's own follows and nothing else, so it stays a
+ * feed of shops they chose. Until they follow anyone there is nothing to show,
+ * so it falls back to the most-followed shops — an empty rail on a first visit
+ * teaches the buyer nothing.
  *
  * The badges are all real signals, not decoration:
  *   NEW      — this shop is among the most recent to list something
@@ -42,13 +45,14 @@ export function StoryRail() {
       [...boutiques].sort((a, b) => b.followers - a.followers).slice(0, 3).map((b) => b.id),
     );
 
-    const ordered = [...boutiques].sort((a, b) => {
-      // Followed shops lead the rail; then the ones people follow most.
-      const fa = follows[a.id] ? 1 : 0;
-      const fb = follows[b.id] ? 1 : 0;
-      if (fa !== fb) return fb - fa;
-      return b.followers - a.followers || b.rating - a.rating;
-    });
+    // Followed shops only — falling back to the most-followed shops for a buyer
+    // who hasn't followed anyone yet.
+    const followed = boutiques.filter((b) => follows[b.id]);
+    const pool = followed.length > 0 ? followed : boutiques;
+
+    const ordered = [...pool].sort(
+      (a, b) => b.followers - a.followers || b.rating - a.rating,
+    );
 
     return ordered
       .map<Story | null>((b) => {

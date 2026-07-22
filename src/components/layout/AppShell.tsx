@@ -35,6 +35,8 @@ export type TabDef = {
   /** Route prefixes that keep this tab highlighted. */
   match: string[];
   badge?: number;
+  /** Promotes this tab to the floating centre orb (see `RaisedTab`). */
+  raised?: boolean;
 };
 
 function Tab({ tab, active, onClick }: { tab: TabDef; active: boolean; onClick: () => void }) {
@@ -55,6 +57,35 @@ function Tab({ tab, active, onClick }: { tab: TabDef; active: boolean; onClick: 
         )}
       </span>
       <span style={css('font-size:11px;font-weight:700;')}>{tab.label}</span>
+    </button>
+  );
+}
+
+/**
+ * The centre tab breaks out of the dock's top edge as a floating orb, so the
+ * app's signature destination reads as a hero action rather than one of five
+ * equals. It keeps the jewelled gradient whether or not it is the current
+ * route — only the glow and lift respond to `active`.
+ */
+function RaisedTab({ tab, active, onClick }: { tab: TabDef; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="agx-dock-fab"
+      aria-label={tab.label}
+      style={css('align-self:flex-start;margin-top:-26px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:68px;padding:0 8px;border:none;background:none;cursor:pointer;font-family:inherit;white-space:nowrap;')}
+    >
+      <span
+        className="agx-dock-fab-orb"
+        style={css(
+          `display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:50%;background:linear-gradient(140deg,#F06A96,#B02454 62%,#7E1A3E);border:4px solid rgba(255,255,255,.92);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.45) inset,0 14px 30px -10px rgba(176,36,84,${active ? '.95' : '.7'}),0 0 0 ${active ? '7px' : '0px'} rgba(224,74,126,.15);transform:translateY(${active ? '-3px' : '0'}) scale(${active ? '1.05' : '1'});transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s ease;`,
+        )}
+      >
+        <span style={css("font-family:'Material Symbols Outlined';font-size:26px;")}>{tab.icon}</span>
+      </span>
+      <span style={css(`font-size:11px;font-weight:800;color:${active ? '#B02454' : '#9A8189'};transition:color .28s ease;`)}>
+        {tab.label}
+      </span>
     </button>
   );
 }
@@ -129,14 +160,17 @@ export function AppShell({
           className="agx-dock"
           style={css('position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:50;display:flex;gap:5px;background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(251,246,242,.9));backdrop-filter:blur(22px) saturate(1.3);border:1px solid rgba(255,255,255,.7);border-radius:28px;padding:8px;box-shadow:0 2px 0 rgba(255,255,255,.6) inset,0 1px 3px rgba(107,20,54,.1),0 26px 60px -20px rgba(107,20,54,.55);animation:agx-sheet .35s ease;')}
         >
-          {tabs.map((t) => (
-            <Tab
-              key={t.label}
-              tab={t}
-              active={t.match.some((m) => pathname.startsWith(m))}
-              onClick={() => navigate(t.to)}
-            />
-          ))}
+          {tabs.map((t) => {
+            const Item = t.raised ? RaisedTab : Tab;
+            return (
+              <Item
+                key={t.label}
+                tab={t}
+                active={t.match.some((m) => pathname.startsWith(m))}
+                onClick={() => navigate(t.to)}
+              />
+            );
+          })}
         </div>
       </div>
 

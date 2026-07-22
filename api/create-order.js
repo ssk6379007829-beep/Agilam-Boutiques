@@ -17,9 +17,9 @@ import { enforceRateLimit } from './_rateLimit.js';
  * settlement. So the Razorpay order is created for a server-trusted amount and a
  * tampered client can't even open checkout at the wrong price.
  *
- * A legacy `amount` (paise) body is still accepted as a fallback so nothing
- * breaks if an older client is deployed against a newer function; when `items`
- * are present they always win.
+ * A legacy `amount` (paise) body is still accepted for callers that send no
+ * `items` at all; when `items` are present the server price always wins and the
+ * browser's figure is ignored entirely (see the fail-closed note in the handler).
  */
 
 const keyId = process.env.RAZORPAY_KEY_ID;
@@ -27,20 +27,36 @@ const keySecret = process.env.RAZORPAY_KEY_SECRET;
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Sum the server-priced goods value for the given cart items. Returns null when
-// no items resolve to a real product, so the caller can reject.
+/**
+ * Sum the server-priced goods value for the given cart items.
+ *
+ * Returns `{ ok: true, subtotal }` when the catalogue answered, or
+ * `{ ok: false, reason }` when it could not. The two are kept apart on purpose:
+ * "the catalogue is unreachable" and "none of these products exist" need
+ * opposite answers from the caller, and collapsing them into a single `null`
+ * is what previously let an unreachable database turn into a real charge.
+ */
 async function subtotalFromItems(items) {
   const ids = [...new Set(items.map((it) => it?.product_id).filter(Boolean))];
-  if (ids.length === 0) return null;
+  if (ids.length === 0) return { ok: false, reason: 'EMPTY_CART' };
 
   const supabase = serviceClient(supabaseUrl, serviceRoleKey);
-  if (!supabase) return null;
+  if (!supabase) {
+    console.error('create-order: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing or blank');
+    return { ok: false, reason: 'CATALOGUE_UNAVAILABLE' };
+  }
 
-  const { data: products, error } = await supabase
-    .from('products')
-    .select('id, price')
-    .in('id', ids);
-  if (error) throw error;
+  let products;
+  try {
+    const { data, error } = await supabase.from('products').select('id, price').in('id', ids);
+    if (error) throw error;
+    products = data;
+  } catch (err) {
+    // Bad/expired service-role key, a paused project, a network blip — all land
+    // here, and all mean the same thing: we cannot price this cart right now.
+    console.error('create-order: catalogue lookup failed:', err?.message ?? err);
+    return { ok: false, reason: 'CATALOGUE_UNAVAILABLE' };
+  }
 
   const priceById = new Map((products ?? []).map((p) => [p.id, Number(p.price)]));
   let subtotal = 0;
@@ -52,7 +68,7 @@ async function subtotalFromItems(items) {
     subtotal += price * qty;
     matched += 1;
   }
-  return matched === 0 ? null : subtotal;
+  return matched === 0 ? { ok: false, reason: 'EMPTY_CART' } : { ok: true, subtotal };
 }
 
 export default async function handler(req, res) {
@@ -69,28 +85,40 @@ export default async function handler(req, res) {
 
   const { amount, items, couponCode, currency = 'INR', receipt } = req.body ?? {};
 
-  // Fallback amount the browser shows in the modal. This is NOT the security
-  // boundary — api/place-order.js authoritatively re-prices the cart and refuses
-  // to settle unless the paid Razorpay amount matches. So create-order prefers a
-  // server-derived amount for defense-in-depth, but must stay resilient: if that
-  // lookup can't run, fall back to the client amount rather than blocking a
-  // legitimate checkout (the real gate is still enforced at settlement).
+  // Amount the browser thinks it is charging. Only ever used by callers that
+  // send no `items` at all; never as a fallback for a cart we failed to price.
   const clientPaise = Math.round(Number(amount));
 
   let paise;
   if (Array.isArray(items) && items.length > 0) {
-    try {
-      const subtotal = await subtotalFromItems(items);
-      if (subtotal != null) {
-        paise = computeTotals(subtotal, couponCode).totalPaise;
+    const priced = await subtotalFromItems(items);
+
+    // ── Fail closed ────────────────────────────────────────────────────────
+    // This used to fall back to the browser's amount whenever server pricing
+    // was unavailable, reasoning that place-order re-binds the real amount at
+    // settlement. That reasoning is wrong, because both functions depend on the
+    // SAME service-role database client: if the catalogue can't be read here,
+    // place-order's very first query fails too. Opening checkout anyway takes
+    // the buyer's money and then guarantees "Could not place the order" —
+    // charged, with nothing to show for it. Refusing to start is the only
+    // honest outcome; the bag is untouched and the buyer can retry for free.
+    if (!priced.ok) {
+      if (priced.reason === 'EMPTY_CART') {
+        return res.status(400).json({
+          error: 'The items in your bag are no longer available. Please refresh your bag and try again.',
+          code: 'EMPTY_CART',
+        });
       }
-    } catch (err) {
-      // Log and fall through to the client amount — place-order still binds the
-      // real amount at settlement, so this can't be used to underpay.
-      console.error('create-order: server pricing unavailable, using client amount', err?.message ?? err);
+      return res.status(503).json({
+        error: 'We can’t take payments right now. Nothing has been charged — please try again in a few minutes.',
+        code: 'CATALOGUE_UNAVAILABLE',
+      });
     }
+
+    paise = computeTotals(priced.subtotal, couponCode).totalPaise;
+  } else {
+    paise = clientPaise;
   }
-  if (!Number.isFinite(paise)) paise = clientPaise;
 
   // Razorpay rejects anything below 100 paise (₹1).
   if (!Number.isFinite(paise) || paise < 100) {

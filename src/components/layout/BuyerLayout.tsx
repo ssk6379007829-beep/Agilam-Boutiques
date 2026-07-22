@@ -11,7 +11,7 @@ import { FloatingBag } from '@/components/buyer/FloatingBag';
 const tabs: TabDef[] = [
   { label: 'Home', icon: 'home', to: '/buyer/home', match: ['/buyer/home', '/buyer/results', '/buyer/filter', '/buyer/sort'] },
   { label: 'Boutiques', icon: 'storefront', to: '/buyer/boutiques', match: ['/buyer/boutiques', '/buyer/boutique'] },
-  { label: 'Inspire', icon: 'auto_awesome', to: '/buyer/inspire', match: ['/buyer/inspire'] },
+  { label: 'Inspire', icon: 'auto_awesome', to: '/buyer/inspire', match: ['/buyer/inspire'], raised: true },
   { label: 'Orders', icon: 'receipt_long', to: '/buyer/orders', match: ['/buyer/orders'] },
   { label: 'Messages', icon: 'chat', to: '/buyer/messages', match: ['/buyer/messages', '/buyer/chat'] },
 ];
