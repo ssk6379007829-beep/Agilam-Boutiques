@@ -6,7 +6,6 @@ export type AccountStatus = 'active' | 'blocked';
 export type SubPlan = 'boutique' | 'featured';
 export type SubStatus = 'active' | 'due' | 'expired';
 export type AdStatus = 'live' | 'paused' | 'draft';
-export type PostStatus = 'published' | 'hidden';
 
 export interface Database {
   public: {
@@ -80,6 +79,8 @@ export interface Database {
           sizes: string[];
           wash_care: string;
           images: string[];
+          /** Public hearts on the Inspire feed card (migration 0020). */
+          likes_count: number;
           created_at: string;
         };
         Insert: Partial<Database['public']['Tables']['products']['Row']> & { boutique_id: string; title: string };
@@ -105,34 +106,12 @@ export interface Database {
         Relationships: [];
       };
       // ── Inspire feed (migration 0020) ──────────────────────────────────
-      posts: {
-        Row: {
-          id: string;
-          boutique_id: string;
-          title: string;
-          caption: string;
-          images: string[];
-          product_id: string | null;
-          category: string | null;
-          cta_label: string;
-          status: PostStatus;
-          likes_count: number;
-          created_at: string;
-        };
-        Insert: Partial<Database['public']['Tables']['posts']['Row']> & { boutique_id: string };
-        Update: Partial<Database['public']['Tables']['posts']['Row']>;
-        Relationships: [];
-      };
-      post_likes: {
-        Row: { post_id: string; buyer_id: string; created_at: string };
-        Insert: { post_id: string; buyer_id: string };
-        Update: Partial<{ post_id: string; buyer_id: string }>;
-        Relationships: [];
-      };
-      post_saves: {
-        Row: { post_id: string; buyer_id: string; created_at: string };
-        Insert: { post_id: string; buyer_id: string };
-        Update: Partial<{ post_id: string; buyer_id: string }>;
+      // The feed is the catalogue, so the only new table is the public like.
+      // Saving a piece is the wishlist above.
+      product_likes: {
+        Row: { product_id: string; buyer_id: string; created_at: string };
+        Insert: { product_id: string; buyer_id: string };
+        Update: Partial<{ product_id: string; buyer_id: string }>;
         Relationships: [];
       };
       reviews: {
@@ -231,7 +210,7 @@ export interface Database {
         Args: { bid: string; do_follow: boolean };
         Returns: number;
       };
-      toggle_post_like: {
+      toggle_product_like: {
         Args: { pid: string; do_like: boolean };
         Returns: number;
       };

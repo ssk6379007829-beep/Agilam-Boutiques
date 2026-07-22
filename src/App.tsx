@@ -48,8 +48,6 @@ const SellerLayout = lazyNamed(() => import('@/components/layout/SellerLayout'),
 const Dashboard = lazyNamed(() => import('@/pages/seller/Dashboard'), 'Dashboard');
 const AddProduct = lazyNamed(() => import('@/pages/seller/AddProduct'), 'AddProduct');
 const MyProducts = lazyNamed(() => import('@/pages/seller/MyProducts'), 'MyProducts');
-const SellerPosts = lazyNamed(() => import('@/pages/seller/Posts'), 'Posts');
-const PostEditor = lazyNamed(() => import('@/pages/seller/PostEditor'), 'PostEditor');
 const Orders = lazyNamed(() => import('@/pages/seller/Orders'), 'Orders');
 const OrderDetail = lazyNamed(() => import('@/pages/seller/OrderDetail'), 'OrderDetail');
 const Customers = lazyNamed(() => import('@/pages/seller/Customers'), 'Customers');
@@ -140,11 +138,9 @@ export default function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="add-product" element={<AddProduct />} />
+        {/* Products are also the Inspire feed — listing a piece publishes it to
+            followers, so there is no separate composer route. */}
         <Route path="products" element={<MyProducts />} />
-        {/* Inspire posts. `new` is matched before `:id` so it isn't read as one. */}
-        <Route path="posts" element={<SellerPosts />} />
-        <Route path="posts/new" element={<PostEditor />} />
-        <Route path="posts/:id" element={<PostEditor />} />
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
         <Route path="customers" element={<Customers />} />

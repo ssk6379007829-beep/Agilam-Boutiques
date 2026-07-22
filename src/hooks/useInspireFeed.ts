@@ -4,202 +4,213 @@ import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import {
   fetchFeed,
-  togglePostLike,
-  dbAddPostSave,
-  dbRemovePostSave,
-  loadAndMergeInteractions,
-  subscribeToPostCounts,
-  type PostWithBoutique,
-} from '@/data/posts';
-import {
-  readLocalPostLikes,
-  writeLocalPostLikes,
-  readLocalPostSaves,
-  writeLocalPostSaves,
-} from '@/lib/feedLocal';
+  fetchLikedProducts,
+  subscribeToProductLikes,
+  toggleProductLike,
+  type FeedProduct,
+} from '@/data/feed';
+import { readLocalLikes, writeLocalLikes } from '@/lib/feedLocal';
 
 const PAGE = 6;
-/** How many top-rated boutiques seed the feed for someone following nobody. */
-const SUGGESTED_SHOPS = 12;
-
-export type FeedSource = 'following' | 'suggested';
 
 /**
- * The Inspire feed: which posts to show, and the buyer's like/save state.
+ * Which half of the feed a card belongs to. `following` is everything from the
+ * shops the buyer follows; `discover` is everyone else, appended once the first
+ * half runs out.
+ */
+export type FeedPhase = 'following' | 'discover';
+
+export type FeedItem = FeedProduct & { phase: FeedPhase };
+
+/**
+ * The Inspire feed: the shops you follow first, then the rest of the market.
  *
- * Source of posts depends on the buyer. Follow at least one boutique and the
- * feed is exactly those shops, in the order they posted. Follow nobody and it
- * falls back to the highest-rated boutiques so a first-time buyer opens the tab
- * onto real content rather than an empty screen — flagged as `suggested` so the
- * page can say so and nudge them to follow.
+ * The feed reads straight from the catalogue — a boutique lists a piece and it
+ * appears here, with no separate posting step. It pages through the followed
+ * shops until they're exhausted, then keeps going with every other approved
+ * boutique, so the buyer never hits a dead end at the bottom. The page marks the
+ * hand-over with a divider.
  *
- * Likes and saves are local-first (guests browse anonymously), written through
- * to the account when there is one. See `@/lib/feedLocal`.
+ * Likes are local-first (buyers browse anonymously) and reconciled with the
+ * account when there is one.
  */
 export function useInspireFeed() {
   const { follows, showToast } = useShop();
   const { boutiques, loading: catalogLoading } = useCatalog();
 
-  const [posts, setPosts] = useState<PostWithBoutique[]>([]);
+  const [items, setItems] = useState<FeedItem[]>([]);
+  const [phase, setPhase] = useState<FeedPhase>('following');
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [likes, setLikes] = useState<Record<string, boolean>>(() => readLocalLikes());
 
-  const [likes, setLikes] = useState<Record<string, boolean>>(() => readLocalPostLikes());
-  const [saves, setSaves] = useState<Record<string, boolean>>(() => readLocalPostSaves());
-
-  const buyerIdRef = useRef<string | null>(null);
-
-  // Which shops feed this buyer. Followed ids are intersected with the live
-  // catalogue so a stale local follow (a boutique since removed or unapproved)
-  // can't empty the feed.
-  const { source, boutiqueIds } = useMemo(() => {
-    const followed = boutiques.filter((b) => follows[b.id]).map((b) => b.id);
-    if (followed.length > 0) return { source: 'following' as FeedSource, boutiqueIds: followed };
-    const popular = [...boutiques]
-      .sort((a, b) => b.rating - a.rating || b.followers - a.followers)
-      .slice(0, SUGGESTED_SHOPS)
-      .map((b) => b.id);
-    return { source: 'suggested' as FeedSource, boutiqueIds: popular };
-  }, [boutiques, follows]);
+  // Followed ids are intersected with the live catalogue so a stale local follow
+  // (a boutique since removed or unapproved) can't strand the first phase.
+  const followedIds = useMemo(
+    () => boutiques.filter((b) => follows[b.id]).map((b) => b.id),
+    [boutiques, follows],
+  );
+  const followsAnyone = followedIds.length > 0;
 
   // A stable identity for the id set, so the loader re-runs when the buyer
   // follows or unfollows a shop but not on every unrelated catalogue render.
-  const idsKey = boutiqueIds.join(',');
+  const idsKey = followedIds.join(',');
+  const idsRef = useRef(followedIds);
+  idsRef.current = followedIds;
 
-  // First page (and a reload whenever the source set changes).
+  const describeError = (e: unknown) =>
+    e instanceof Error && /likes_count|product_likes|schema cache/i.test(e.message)
+      ? 'The feed isn’t set up yet — apply migration 0020 in Supabase.'
+      : 'Couldn’t load the feed. Check your connection and try again.';
+
+  // First page (and a reload whenever the followed set changes).
   useEffect(() => {
     // Nothing to ask for until the catalogue has resolved which shops exist.
     if (catalogLoading && boutiques.length === 0) return;
     let active = true;
     setLoading(true);
     setError(null);
-    fetchFeed({ boutiqueIds, limit: PAGE })
-      .then((rows) => {
+    setExhausted(false);
+
+    // Someone following nobody starts straight in discover — there is no first
+    // phase to run out of.
+    const startPhase: FeedPhase = followsAnyone ? 'following' : 'discover';
+
+    (async () => {
+      const first = await fetchFeed({
+        boutiqueIds: followedIds,
+        exclude: startPhase === 'discover',
+        limit: PAGE,
+      });
+      if (!active) return;
+      setItems(first.map((p) => ({ ...p, phase: startPhase })));
+
+      // A followed set that returns a short first page has already run dry, so
+      // roll straight into discover rather than making the buyer scroll to find
+      // out there's nothing more.
+      if (startPhase === 'following' && first.length < PAGE) {
+        const rest = await fetchFeed({ boutiqueIds: followedIds, exclude: true, limit: PAGE });
         if (!active) return;
-        setPosts(rows);
-        setExhausted(rows.length < PAGE);
-      })
+        const seen = new Set(first.map((p) => p.id));
+        setItems([
+          ...first.map((p) => ({ ...p, phase: 'following' as FeedPhase })),
+          ...rest.filter((r) => !seen.has(r.id)).map((p) => ({ ...p, phase: 'discover' as FeedPhase })),
+        ]);
+        setPhase('discover');
+        setExhausted(rest.length < PAGE);
+      } else {
+        setPhase(startPhase);
+        setExhausted(startPhase === 'discover' && first.length < PAGE);
+      }
+    })()
       .catch((e: unknown) => {
         if (!active) return;
-        setPosts([]);
-        setError(
-          e instanceof Error && /relation .*posts.* does not exist|schema cache/i.test(e.message)
-            ? 'The feed isn’t set up yet — apply migration 0020 in Supabase.'
-            : 'Couldn’t load the feed. Pull to refresh or try again shortly.',
-        );
+        setItems([]);
+        setError(describeError(e));
       })
       .finally(() => { if (active) setLoading(false); });
+
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey, catalogLoading]);
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || exhausted || loading || posts.length === 0) return;
+    if (loadingMore || exhausted || loading || items.length === 0) return;
     setLoadingMore(true);
     try {
-      const before = posts[posts.length - 1].created_at;
-      const rows = await fetchFeed({ boutiqueIds, limit: PAGE, before });
-      // De-dupe defensively: a post edited mid-scroll can reorder under us.
-      setPosts((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        return [...prev, ...rows.filter((r) => !seen.has(r.id))];
+      const followed = idsRef.current;
+      // Page within the current phase from the last card *of that phase* — the
+      // two halves have independent cursors.
+      const lastOfPhase = [...items].reverse().find((p) => p.phase === phase);
+      const rows = await fetchFeed({
+        boutiqueIds: followed,
+        exclude: phase === 'discover',
+        limit: PAGE,
+        before: lastOfPhase?.created_at,
       });
-      if (rows.length < PAGE) setExhausted(true);
+
+      const seen = new Set(items.map((p) => p.id));
+      const fresh = rows.filter((r) => !seen.has(r.id)).map((p) => ({ ...p, phase }));
+
+      if (rows.length < PAGE && phase === 'following') {
+        // The followed shops are done. Hand over to discover in the same tick so
+        // the scroll never stalls.
+        const rest = await fetchFeed({ boutiqueIds: followed, exclude: true, limit: PAGE });
+        const seenNow = new Set([...seen, ...fresh.map((p) => p.id)]);
+        setItems((prev) => [
+          ...prev,
+          ...fresh,
+          ...rest.filter((r) => !seenNow.has(r.id)).map((p) => ({ ...p, phase: 'discover' as FeedPhase })),
+        ]);
+        setPhase('discover');
+        setExhausted(rest.length < PAGE);
+      } else {
+        setItems((prev) => [...prev, ...fresh]);
+        if (rows.length < PAGE) setExhausted(true);
+      }
     } catch {
       setExhausted(true);
     } finally {
       setLoadingMore(false);
     }
-  }, [posts, boutiqueIds, loadingMore, exhausted, loading]);
+  }, [items, phase, loadingMore, exhausted, loading]);
 
-  // Pull the account's likes/saves once signed in, merging local saves up.
+  // Pull the account's likes once signed in.
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(({ data }) => {
-      const uid = data.session?.user?.id ?? null;
-      buyerIdRef.current = uid;
+      const uid = data.session?.user?.id;
       if (!uid) return;
-      loadAndMergeInteractions(uid, { likes: readLocalPostLikes(), saves: readLocalPostSaves() })
-        .then((merged) => {
+      fetchLikedProducts(uid)
+        .then((accountLikes) => {
           if (!active) return;
-          // Union with local likes: a guest tap already moved the counter, so the
-          // heart must stay filled even though there's no row for it.
-          setLikes((local) => ({ ...local, ...merged.likes }));
-          setSaves(merged.saves);
+          // Union with local: a guest tap already moved the counter, so the heart
+          // must stay filled even though no row was written for it.
+          setLikes((local) => ({ ...local, ...accountLikes }));
         })
         .catch(() => { /* offline — local state still renders */ });
     });
     return () => { active = false; };
   }, []);
 
-  useEffect(() => writeLocalPostLikes(likes), [likes]);
-  useEffect(() => writeLocalPostSaves(saves), [saves]);
+  useEffect(() => writeLocalLikes(likes), [likes]);
 
   // Keep counts honest while the feed is open.
-  useEffect(() => subscribeToPostCounts((postId, likesCount) => {
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likes_count: likesCount } : p)));
+  useEffect(() => subscribeToProductLikes((productId, likesCount) => {
+    setItems((prev) => prev.map((p) => (p.id === productId ? { ...p, likes_count: likesCount } : p)));
   }), []);
 
-  const toggleLike = useCallback((postId: string) => {
-    const next = !likes[postId];
+  const toggleLike = useCallback((productId: string) => {
+    const next = !likes[productId];
     setLikes((m) => {
       const copy = { ...m };
-      if (next) copy[postId] = true;
-      else delete copy[postId];
+      if (next) copy[productId] = true;
+      else delete copy[productId];
       return copy;
     });
-    // Optimistic: realtime reconciles to the authoritative number, and the RPC's
-    // return value corrects it directly if realtime isn't connected.
-    setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, likes_count: Math.max(0, p.likes_count + (next ? 1 : -1)) } : p)),
+    // Optimistic: the RPC's return value corrects the number, and realtime keeps
+    // it in step with other people tapping the same piece.
+    setItems((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, likes_count: Math.max(0, (p.likes_count ?? 0) + (next ? 1 : -1)) } : p)),
     );
-    togglePostLike(postId, next)
-      .then((count) => setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, likes_count: count } : p))))
+    toggleProductLike(productId, next)
+      .then((count) => setItems((prev) => prev.map((p) => (p.id === productId ? { ...p, likes_count: count } : p))))
       .catch(() => {
         // Roll the tap back rather than leaving a heart that didn't register.
         setLikes((m) => {
           const copy = { ...m };
-          if (next) delete copy[postId];
-          else copy[postId] = true;
+          if (next) delete copy[productId];
+          else copy[productId] = true;
           return copy;
         });
-        setPosts((prev) =>
-          prev.map((p) => (p.id === postId ? { ...p, likes_count: Math.max(0, p.likes_count + (next ? -1 : 1)) } : p)),
+        setItems((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, likes_count: Math.max(0, (p.likes_count ?? 0) + (next ? -1 : 1)) } : p)),
         );
         showToast("Couldn't register that — check your connection");
       });
   }, [likes, showToast]);
 
-  const toggleSave = useCallback((postId: string) => {
-    const next = !saves[postId];
-    setSaves((m) => {
-      const copy = { ...m };
-      if (next) copy[postId] = true;
-      else delete copy[postId];
-      return copy;
-    });
-    const uid = buyerIdRef.current;
-    if (uid) {
-      (next ? dbAddPostSave(uid, postId) : dbRemovePostSave(uid, postId)).catch(() => {
-        showToast("Couldn't sync — saved on this device");
-      });
-    }
-    showToast(next ? 'Saved to your collection' : 'Removed from saved');
-  }, [saves, showToast]);
-
-  return {
-    posts,
-    source,
-    loading,
-    loadingMore,
-    exhausted,
-    error,
-    loadMore,
-    likes,
-    saves,
-    toggleLike,
-    toggleSave,
-  };
+  return { items, followsAnyone, loading, loadingMore, exhausted, error, loadMore, likes, toggleLike };
 }

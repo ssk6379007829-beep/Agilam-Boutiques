@@ -9,7 +9,7 @@ const tabs: TabDef[] = [
     label: 'Profile',
     icon: 'person',
     to: '/seller/profile',
-    match: ['/seller/profile', '/seller/earnings', '/seller/analytics', '/seller/boutique', '/seller/settings', '/seller/help', '/seller/customers', '/seller/notifications', '/seller/posts'],
+    match: ['/seller/profile', '/seller/earnings', '/seller/analytics', '/seller/boutique', '/seller/settings', '/seller/help', '/seller/customers', '/seller/notifications'],
   },
 ];
 
