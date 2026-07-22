@@ -2,6 +2,7 @@ import { lazy, Suspense, type ComponentType } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { RequireRole, FullscreenLoader } from '@/auth/RequireRole';
+import { ScrollManager } from '@/components/layout/ScrollManager';
 
 import { Loading } from '@/pages/Loading';
 import { SignIn } from '@/pages/auth/SignIn';
@@ -74,6 +75,8 @@ const Ads = lazyNamed(() => import('@/pages/admin/Ads'), 'Ads');
 export default function App() {
   return (
     <>
+      {/* Every forward navigation starts at the top; back restores where you were. */}
+      <ScrollManager />
       <Routes>
       <Route path="/" element={<Loading />} />
       <Route path="/auth/signin/:role" element={<SignIn />} />

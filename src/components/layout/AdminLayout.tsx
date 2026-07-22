@@ -78,7 +78,9 @@ export function AdminLayout() {
             </div>
           </div>
 
-          <div className="agx-scroll" style={css('flex:1;overflow-y:auto;padding:26px 30px;background:#FBF6F2;')}>
+          {/* `agx-scroll-main` marks this as the page's scroller, so ScrollManager
+              resets it on navigation — the window never scrolls in the console. */}
+          <div className="agx-scroll agx-scroll-main" style={css('flex:1;overflow-y:auto;padding:26px 30px;background:#FBF6F2;')}>
             <Outlet />
           </div>
         </div>

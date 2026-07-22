@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { SiteFooter } from '@/components/buyer/SiteFooter';
@@ -13,12 +12,6 @@ export function Policy() {
   const navigate = useNavigate();
   const { slug } = useParams();
   const page = findPolicy(slug);
-
-  // Deep-linking from the footer of a long page would otherwise land the buyer
-  // half-way down the new one.
-  useEffect(() => {
-    window.scrollTo({ top: 0 });
-  }, [slug]);
 
   if (!page) {
     return (
