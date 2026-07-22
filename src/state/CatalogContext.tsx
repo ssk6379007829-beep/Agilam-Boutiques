@@ -100,8 +100,19 @@ type CatalogValue = {
 const CatalogContext = createContext<CatalogValue | null>(null);
 
 export function CatalogProvider({ children }: { children: ReactNode }) {
-  const { data: rawProducts, loading: lp, error: ep, reload: reloadP } = useAsync(() => fetchProducts(), []);
-  const { data: rawBoutiques, loading: lb, error: eb, reload: reloadB } = useAsync(() => fetchApprovedBoutiques(), []);
+  // The catalogue is the one query every buyer holds open, so it revalidates on
+  // a longer leash than a seller's own order list: new stock and price changes
+  // are worth catching, but not at the cost of a request per buyer per minute.
+  const { data: rawProducts, loading: lp, error: ep, reload: reloadP } = useAsync(
+    () => fetchProducts(),
+    [],
+    { staleMs: 120_000 },
+  );
+  const { data: rawBoutiques, loading: lb, error: eb, reload: reloadB } = useAsync(
+    () => fetchApprovedBoutiques(),
+    [],
+    { staleMs: 180_000 },
+  );
 
   const products = useMemo(() => (rawProducts ?? []).map(toProduct), [rawProducts]);
 

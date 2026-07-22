@@ -6,9 +6,16 @@ import { CatalogProvider } from '@/state/CatalogContext';
 import { TaxonomyProvider } from '@/state/TaxonomyContext';
 import { ShopProvider } from '@/state/ShopContext';
 import { ToastProvider } from '@/components/ui/Toast';
+import { UpdateNotice } from '@/components/layout/UpdateNotice';
 import { supabaseConfigError } from '@/lib/supabase';
+import { installStaleChunkRecovery } from '@/lib/appUpdate';
 import App from './App';
 import './index.css';
+
+// A deploy deletes the code-split chunks this tab hasn't downloaded yet, so the
+// next lazy route it opens would fail with a blank screen. Recover before the
+// user ever sees one.
+installStaleChunkRecovery();
 
 function ConfigErrorScreen({ message }: { message: string }) {
   return (
@@ -37,6 +44,8 @@ createRoot(document.getElementById('root')!).render(
               <ShopProvider>
                 <ToastProvider>
                   <App />
+                  {/* Offers the new build; never takes the page away mid-task. */}
+                  <UpdateNotice />
                 </ToastProvider>
               </ShopProvider>
             </TaxonomyProvider>

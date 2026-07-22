@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { RequireRole, FullscreenLoader } from '@/auth/RequireRole';
 import { ScrollManager } from '@/components/layout/ScrollManager';
+import { LiveRefreshGate } from '@/components/layout/LiveRefreshGate';
 
 import { Loading } from '@/pages/Loading';
 import { SignIn } from '@/pages/auth/SignIn';
@@ -86,6 +87,8 @@ export default function App() {
     <>
       {/* Every forward navigation starts at the top; back restores where you were. */}
       <ScrollManager />
+      {/* Holds background refresh while the user is checking out or filling a form. */}
+      <LiveRefreshGate />
       <Routes>
       <Route path="/" element={<Loading />} />
       <Route path="/auth/signin/:role" element={<SignIn />} />

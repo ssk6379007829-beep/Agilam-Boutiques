@@ -50,7 +50,10 @@ const TaxonomyContext = createContext<TaxonomyValue | null>(null);
 const key = (kind: TaxonomyKind, name: string) => `${kind}:${name.trim().toLowerCase().replace(/\s+/g, ' ')}`;
 
 export function TaxonomyProvider({ children }: { children: ReactNode }) {
-  const { data, loading, error, reload } = useAsync(() => fetchTaxonomy(), []);
+  // Categories, occasions and fabrics only move when an admin approves a
+  // seller's request, so a long leash keeps the vocabulary current without
+  // polling for a list that changes a few times a week.
+  const { data, loading, error, reload } = useAsync(() => fetchTaxonomy(), [], { staleMs: 600_000 });
 
   const value = useMemo<TaxonomyValue>(() => {
     const all = data ?? [];
