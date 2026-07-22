@@ -26,12 +26,24 @@ export function findCoupon(code, subtotal) {
   return COUPONS.find((c) => c.code === code && (c.type !== 'flat' || subtotal >= c.min));
 }
 
+// Mirror of POLICY_TERMS.codFee / codMaxOrder in src/data/company.ts (which
+// src/lib/pricing.ts and the buyer policy pages both read). The COD fee is per
+// delivery — one boutique order is one cash collection — while the cap applies
+// to the whole cart, so it cannot be dodged by splitting a large bag across
+// several boutiques. Change all three together.
+export const COD_FEE = 49;
+export const COD_MAX_ORDER = 10000;
+
 /**
  * Given the DB-derived subtotal (in rupees) and an optional coupon code,
- * return { discount, shipFee, total, totalPaise } using the exact same
+ * return { discount, shipFee, codFee, total, totalPaise } using the exact same
  * arithmetic as the browser so the paise value matches to the rupee.
+ *
+ * `codDeliveries` is the number of boutique orders being paid in cash — 0 for a
+ * prepaid checkout, which is the case place-order.js binds the Razorpay amount
+ * against.
  */
-export function computeTotals(subtotal, couponCode) {
+export function computeTotals(subtotal, couponCode, codDeliveries = 0) {
   const coupon = findCoupon(couponCode, subtotal);
 
   let discount = 0;
@@ -46,7 +58,8 @@ export function computeTotals(subtotal, couponCode) {
   const freeShip = coupon?.type === 'ship';
   const baseShip = subtotal === 0 || subtotal >= 2000 ? 0 : 99;
   const shipFee = freeShip ? 0 : baseShip;
+  const codFee = Math.max(0, codDeliveries) * COD_FEE;
 
-  const total = Math.max(0, subtotal - discount) + shipFee;
-  return { discount, shipFee, total, totalPaise: Math.round(total * 100) };
+  const total = Math.max(0, subtotal - discount) + shipFee + codFee;
+  return { discount, shipFee, codFee, total, totalPaise: Math.round(total * 100) };
 }

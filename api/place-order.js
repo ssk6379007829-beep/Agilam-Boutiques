@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import Razorpay from 'razorpay';
 import { serviceClient } from './_supabase.js';
-import { computeTotals } from './_pricing.js';
+import { computeTotals, COD_FEE, COD_MAX_ORDER } from './_pricing.js';
 import { enforceRateLimit } from './_rateLimit.js';
 
 /**
@@ -17,6 +17,13 @@ import { enforceRateLimit } from './_rateLimit.js';
  *
  * For online payments we re-verify the Razorpay signature here (the same HMAC
  * as verify-payment.js) so an order can't be forged without a genuine payment.
+ *
+ * Cash on Delivery is the one path that writes an order with no payment behind
+ * it, so it is guarded on its own terms instead: every boutique in the cart
+ * must have COD switched on, the cart must be under COD_MAX_ORDER, and a real
+ * name/phone/address must be present — without those, an unpaid order is just a
+ * way to burn a seller's stock. Everything else (server pricing, stock
+ * reservation, the per-boutique split) is shared with the prepaid path.
  */
 
 const keyId = process.env.RAZORPAY_KEY_ID;
@@ -38,6 +45,15 @@ function verifySignature({ razorpay_order_id, razorpay_payment_id, razorpay_sign
 function orderNumber() {
   return 'AGL-' + Date.now().toString().slice(-7) + Math.floor(Math.random() * 10);
 }
+
+/**
+ * How many un-collected COD orders one phone number may have in flight.
+ *
+ * A cash order costs the buyer nothing up front but locks up a seller's stock,
+ * so this is the brake on someone placing a dozen and never answering the door.
+ * Generous enough that a real household ordering for a wedding is unaffected.
+ */
+const MAX_OPEN_COD_ORDERS = 3;
 
 // Auto-refund a captured payment we've decided not to fulfil (wrong amount, or
 // stock sold out between pay and placement). A failed refund must never crash
@@ -79,11 +95,17 @@ async function notifySellers(supabase, created, guestFields) {
       const first = order.lines[0];
       const rest = order.lines.length > 1 ? ` +${order.lines.length - 1} more` : '';
       const buyer = guestFields.guest_name || 'A customer';
+      const isCodOrder = guestFields.payment_method === 'COD';
+      // The seller's next action differs completely between the two: a prepaid
+      // order just ships, a COD order means counting cash at the door. Say which.
+      const money = isCodOrder
+        ? `Collect ₹${Math.round(order.total + (order.shipping_fee ?? 0) + (order.cod_fee ?? 0))} in cash on delivery.`
+        : 'Paid online.';
       rows.push({
         profile_id: ownerId,
         type: 'Orders',
-        title: `New order ${order.order_number} · ₹${Math.round(order.total)}`,
-        body: `${buyer} ordered ${units} item${units === 1 ? '' : 's'} — ${first?.title ?? 'Item'}${rest}. Payment: ${guestFields.payment_method}.`,
+        title: `${isCodOrder ? 'New COD order' : 'New order'} ${order.order_number} · ₹${Math.round(order.total)}`,
+        body: `${buyer} ordered ${units} item${units === 1 ? '' : 's'} — ${first?.title ?? 'Item'}${rest}. ${money}`,
         order_id: order.id,
       });
     }
@@ -113,20 +135,35 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Order service is not configured (missing Supabase service role)' });
   }
 
-  const { items, guest, payment, couponCode } = req.body ?? {};
+  const { items, guest, payment, couponCode, paymentMethod } = req.body ?? {};
 
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Cart is empty' });
   }
 
-  // Every order is prepaid — there is no Cash on Delivery. An order without a
-  // gateway-signed payment is rejected outright, so this endpoint can never be
-  // used to mint an unpaid order.
-  if (!payment) {
-    return res.status(400).json({ error: 'Payment is required to place an order' });
-  }
-  if (!verifySignature(payment)) {
-    return res.status(400).json({ error: 'Payment could not be verified' });
+  // COD is opt-in per request and never inferred from a missing payment: a
+  // prepaid checkout that loses its payment object must still fail closed
+  // rather than quietly becoming an unpaid order.
+  const isCod = paymentMethod === 'COD';
+
+  if (!isCod) {
+    if (!payment) {
+      return res.status(400).json({ error: 'Payment is required to place an order' });
+    }
+    if (!verifySignature(payment)) {
+      return res.status(400).json({ error: 'Payment could not be verified' });
+    }
+  } else {
+    // Nobody delivers cash to a blank address. These are the seller's only
+    // means of completing the order, so they are required rather than optional.
+    const name = String(guest?.name ?? '').trim();
+    const phone = String(guest?.phone ?? '').replace(/\D/g, '');
+    const address = String(guest?.address ?? '').trim();
+    if (name.length < 2 || !/^[6-9]\d{9}$/.test(phone) || address.length < 10) {
+      return res.status(400).json({
+        error: 'Cash on delivery needs your name, a valid 10-digit mobile number and a full delivery address.',
+      });
+    }
   }
 
   // One Razorpay client, reused for order lookup (amount binding) and any
@@ -138,18 +175,24 @@ export default async function handler(req, res) {
   // endpoint would mint unlimited orders from a single payment. The multi-boutique
   // split still shares one payment_id across the rows created in THIS request —
   // we only reject a payment_id that already exists from a PRIOR request.
-  const { data: dup, error: dupErr } = await supabase
-    .from('orders')
-    .select('id')
-    .eq('payment_id', payment.razorpay_payment_id)
-    .limit(1)
-    .maybeSingle();
-  if (dupErr) {
-    console.error('place-order replay check failed:', dupErr?.message ?? dupErr);
-    return res.status(500).json({ error: 'Could not place the order. Please try again.' });
-  }
-  if (dup) {
-    return res.status(409).json({ error: 'This payment has already been used for an order.' });
+  //
+  // COD has no payment id to replay. Its equivalent abuse — spamming unpaid
+  // orders — is bounded by the rate limiter above and by the open-COD-order
+  // check further down, not here.
+  if (!isCod) {
+    const { data: dup, error: dupErr } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('payment_id', payment.razorpay_payment_id)
+      .limit(1)
+      .maybeSingle();
+    if (dupErr) {
+      console.error('place-order replay check failed:', dupErr?.message ?? dupErr);
+      return res.status(500).json({ error: 'Could not place the order. Please try again.' });
+    }
+    if (dup) {
+      return res.status(409).json({ error: 'This payment has already been used for an order.' });
+    }
   }
 
   // A signed-in buyer (Google / email) sends their access token; tie the order
@@ -206,6 +249,58 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'None of the cart items are still available' });
     }
 
+    const subtotal = [...groups.values()].reduce((sum, g) => sum + g.total, 0);
+
+    // ── Cash on Delivery ───────────────────────────────────────────────────
+    // No payment to bind an amount against, so the checks are about whether
+    // this unpaid order should be allowed to consume a seller's stock at all.
+    if (isCod) {
+      const codTotals = computeTotals(subtotal, couponCode, groups.size);
+
+      if (codTotals.total > COD_MAX_ORDER) {
+        return res.status(400).json({
+          error: `Cash on delivery is available on orders up to ₹${COD_MAX_ORDER.toLocaleString('en-IN')}. Please pay online for this order.`,
+        });
+      }
+
+      // A seller who switched COD off in their store settings must never have a
+      // cash order forced on them. Re-read the flag here rather than trusting
+      // whatever the browser thought it saw.
+      const { data: shops, error: shopErr } = await supabase
+        .from('boutiques')
+        .select('id, name, cod_enabled, status')
+        .in('id', [...groups.keys()]);
+      if (shopErr) throw shopErr;
+
+      const refusing = (shops ?? []).find((b) => !b.cod_enabled);
+      if (refusing) {
+        return res.status(400).json({ error: `${refusing.name} does not accept cash on delivery. Please pay online.` });
+      }
+      const unapproved = (shops ?? []).find((b) => b.status !== 'approved');
+      if (unapproved || (shops ?? []).length !== groups.size) {
+        return res.status(400).json({ error: 'One of the boutiques in your bag is not currently accepting orders.' });
+      }
+
+      // Cheap abuse brake: a phone number with several unpaid COD orders still
+      // open has not proved it pays for the last one, and each new order locks
+      // up more stock. Signed-in buyers are held to the same limit.
+      const phone = String(guest?.phone ?? '').replace(/\D/g, '');
+      const { count: openCod, error: openErr } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('payment_method', 'COD')
+        .eq('payment_status', 'pending')
+        .in('status', ['pending', 'accepted', 'shipped'])
+        .eq('guest_phone', phone);
+      if (openErr) {
+        console.error('place-order: COD open-order check failed:', openErr?.message ?? openErr);
+      } else if ((openCod ?? 0) >= MAX_OPEN_COD_ORDERS) {
+        return res.status(429).json({
+          error: 'You already have several cash-on-delivery orders in progress. Please take delivery of those first, or pay online.',
+        });
+      }
+    }
+
     // ── Payment amount binding (critical) ──────────────────────────────────
     // Prove the buyer actually PAID the amount they owe. The subtotal is the
     // server-priced goods value; the coupon + shipping are re-derived here from
@@ -221,73 +316,75 @@ export default async function handler(req, res) {
     // no order. So: bind the payment to our order id, assert the amount, and
     // capture it ourselves if it is still merely authorised.
     let refundAmountPaise = 0;
-    if (!razorpay) {
-      return res.status(500).json({ error: 'Payment verification is not configured' });
-    }
-    const subtotal = [...groups.values()].reduce((sum, g) => sum + g.total, 0);
-    const expectedPaise = computeTotals(subtotal, couponCode).totalPaise;
+    if (!isCod) {
+      if (!razorpay) {
+        return res.status(500).json({ error: 'Payment verification is not configured' });
+      }
+      const expectedPaise = computeTotals(subtotal, couponCode).totalPaise;
 
-    let rzPayment;
-    try {
-      rzPayment = await razorpay.payments.fetch(payment.razorpay_payment_id);
-    } catch (e) {
-      console.error('place-order: could not fetch Razorpay payment:', e?.error ?? e);
-      return res.status(502).json({ error: 'Could not confirm the payment. Please contact support before retrying.' });
-    }
-
-    // The signature proves this payment/order pair was signed by Razorpay;
-    // this proves the payment really belongs to the order id we were handed.
-    if (rzPayment?.order_id !== payment.razorpay_order_id) {
-      console.error('place-order: payment/order mismatch', {
-        paymentOrder: rzPayment?.order_id,
-        claimed: payment.razorpay_order_id,
-      });
-      return res.status(400).json({ error: 'Payment could not be verified' });
-    }
-
-    const paidPaise = Number(rzPayment.amount) || 0;
-    // What we'd hand back if we can't honour the order — always the real
-    // amount on the payment, never the amount we merely expected.
-    refundAmountPaise = paidPaise;
-
-    if (rzPayment.status === 'failed' || rzPayment.status === 'refunded') {
-      return res.status(400).json({ error: 'That payment did not go through. Please try again.' });
-    }
-    if (rzPayment.status !== 'captured' && rzPayment.status !== 'authorized') {
-      return res.status(400).json({ error: 'Payment is not confirmed yet. Please wait a moment and try again.' });
-    }
-    if (paidPaise !== expectedPaise || rzPayment.currency !== 'INR') {
-      console.error('place-order: amount mismatch', { paidPaise, expectedPaise, currency: rzPayment.currency });
-      await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
-      return res.status(400).json({ error: 'Paid amount did not match the order total; your payment has been refunded.' });
-    }
-
-    // Authorised but not captured — take the money now that we know the cart
-    // and amount are good. A concurrent capture (auto-capture winning the
-    // race) makes this a no-op error, which we treat as success by re-reading.
-    if (rzPayment.status === 'authorized') {
+      let rzPayment;
       try {
-        await razorpay.payments.capture(payment.razorpay_payment_id, expectedPaise, 'INR');
+        rzPayment = await razorpay.payments.fetch(payment.razorpay_payment_id);
       } catch (e) {
-        let captured = false;
+        console.error('place-order: could not fetch Razorpay payment:', e?.error ?? e);
+        return res.status(502).json({ error: 'Could not confirm the payment. Please contact support before retrying.' });
+      }
+
+      // The signature proves this payment/order pair was signed by Razorpay;
+      // this proves the payment really belongs to the order id we were handed.
+      if (rzPayment?.order_id !== payment.razorpay_order_id) {
+        console.error('place-order: payment/order mismatch', {
+          paymentOrder: rzPayment?.order_id,
+          claimed: payment.razorpay_order_id,
+        });
+        return res.status(400).json({ error: 'Payment could not be verified' });
+      }
+
+      const paidPaise = Number(rzPayment.amount) || 0;
+      // What we'd hand back if we can't honour the order — always the real
+      // amount on the payment, never the amount we merely expected.
+      refundAmountPaise = paidPaise;
+
+      if (rzPayment.status === 'failed' || rzPayment.status === 'refunded') {
+        return res.status(400).json({ error: 'That payment did not go through. Please try again.' });
+      }
+      if (rzPayment.status !== 'captured' && rzPayment.status !== 'authorized') {
+        return res.status(400).json({ error: 'Payment is not confirmed yet. Please wait a moment and try again.' });
+      }
+      if (paidPaise !== expectedPaise || rzPayment.currency !== 'INR') {
+        console.error('place-order: amount mismatch', { paidPaise, expectedPaise, currency: rzPayment.currency });
+        await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
+        return res.status(400).json({ error: 'Paid amount did not match the order total; your payment has been refunded.' });
+      }
+
+      // Authorised but not captured — take the money now that we know the cart
+      // and amount are good. A concurrent capture (auto-capture winning the
+      // race) makes this a no-op error, which we treat as success by re-reading.
+      if (rzPayment.status === 'authorized') {
         try {
-          const after = await razorpay.payments.fetch(payment.razorpay_payment_id);
-          captured = after?.status === 'captured';
-        } catch {
-          /* fall through to the failure below */
-        }
-        if (!captured) {
-          console.error('place-order: capture failed:', e?.error ?? e);
-          return res.status(502).json({ error: 'Could not confirm the payment. Please contact support before retrying.' });
+          await razorpay.payments.capture(payment.razorpay_payment_id, expectedPaise, 'INR');
+        } catch (e) {
+          let captured = false;
+          try {
+            const after = await razorpay.payments.fetch(payment.razorpay_payment_id);
+            captured = after?.status === 'captured';
+          } catch {
+            /* fall through to the failure below */
+          }
+          if (!captured) {
+            console.error('place-order: capture failed:', e?.error ?? e);
+            return res.status(502).json({ error: 'Could not confirm the payment. Please contact support before retrying.' });
+          }
         }
       }
     }
 
     // ── Inventory reservation (H-03) ───────────────────────────────────────
     // Atomically decrement stock for every line before writing the order.
-    // All-or-nothing: if any item is short, nothing is decremented. The buyer
-    // has already paid by this point, so if stock sold out in the meantime we
-    // refund rather than oversell.
+    // All-or-nothing: if any item is short, nothing is decremented. On the
+    // prepaid path the buyer has already paid by this point, so if stock sold
+    // out in the meantime we refund rather than oversell; on COD there is
+    // nothing to refund and the buyer simply gets told.
     const reserveItems = [];
     for (const g of groups.values()) {
       for (const l of g.lines) reserveItems.push({ product_id: l.product_id, qty: l.qty });
@@ -297,10 +394,12 @@ export default async function handler(req, res) {
     if (reserveErr) {
       const soldOut = String(reserveErr.message || '').includes('INSUFFICIENT_STOCK');
       if (!soldOut) console.error('place-order: stock reservation failed:', reserveErr?.message ?? reserveErr);
-      await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
+      if (!isCod) await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
       return res.status(soldOut ? 409 : 500).json({
         error: soldOut
-          ? 'Sorry, some items just sold out. Your payment has been refunded.'
+          ? isCod
+            ? 'Sorry, some items just sold out. Your order was not placed.'
+            : 'Sorry, some items just sold out. Your payment has been refunded.'
           : 'Could not place the order. Please try again.',
       });
     }
@@ -310,18 +409,30 @@ export default async function handler(req, res) {
       guest_phone: guest?.phone ?? null,
       guest_city: guest?.city ?? null,
       guest_address: guest?.address ?? null,
-      payment_id: payment.razorpay_payment_id,
-      // Orders are prepaid, so the money is always settled by the time the
-      // seller sees this — nothing is collected at the door.
-      payment_method: 'Razorpay',
+      payment_id: isCod ? null : payment.razorpay_payment_id,
+      payment_method: isCod ? 'COD' : 'Razorpay',
+      // Prepaid orders are settled the moment they are written; a COD order is
+      // money the seller has yet to collect, and stays 'pending' until they
+      // confirm the cash arrived.
+      payment_status: isCod ? 'pending' : 'paid',
+      paid_at: isCod ? null : new Date().toISOString(),
       channel: 'online',
     };
+
+    // Delivery is a single cart-level charge, so it is recorded against the
+    // first order of the checkout. Summed across the orders this request
+    // creates, total + shipping_fee + cod_fee equals exactly what the buyer was
+    // quoted — which is what lets a seller collect the right cash at the door.
+    const cartTotals = computeTotals(subtotal, couponCode, isCod ? groups.size : 0);
+    let shippingToAssign = cartTotals.shipFee;
 
     // Stock is now reserved — if the order rows fail to write, put it back
     // (and refund) so a failed write can't silently eat inventory or money.
     const created = [];
     try {
       for (const g of groups.values()) {
+        const shippingForThisOrder = shippingToAssign;
+        shippingToAssign = 0;
         const { data: order, error: orderErr } = await supabase
           .from('orders')
           .insert({
@@ -330,9 +441,13 @@ export default async function handler(req, res) {
             boutique_id: g.boutique_id,
             total: g.total,
             status: 'pending',
+            // One handling fee per delivery, stored on the order it belongs to
+            // so the seller knows the exact cash to collect at that door.
+            cod_fee: isCod ? COD_FEE : 0,
+            shipping_fee: shippingForThisOrder,
             ...guestFields,
           })
-          .select('id, order_number, boutique_id, total, created_at')
+          .select('id, order_number, boutique_id, total, cod_fee, shipping_fee, created_at')
           .single();
         if (orderErr) throw orderErr;
 
@@ -346,6 +461,8 @@ export default async function handler(req, res) {
           order_number: order.order_number,
           boutique_id: order.boutique_id,
           total: Number(order.total),
+          cod_fee: Number(order.cod_fee ?? 0),
+          shipping_fee: Number(order.shipping_fee ?? 0),
           created_at: order.created_at,
           lines: g.lines,
         });
@@ -353,23 +470,25 @@ export default async function handler(req, res) {
     } catch (writeErr) {
       console.error('place-order: order write failed after reservation:', writeErr?.message ?? writeErr);
       await supabase.rpc('release_stock', { p_items: reserveItems }).catch(() => {});
-      await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
+      if (!isCod) await refundPayment(razorpay, payment.razorpay_payment_id, refundAmountPaise);
       return res.status(500).json({ error: 'Could not place the order. Please try again.' });
     }
 
-    // The order exists and is paid for — everything from here is best-effort and
-    // must never turn a successful checkout into an error for the buyer.
+    // The order exists — everything from here is best-effort and must never
+    // turn a successful checkout into an error for the buyer.
     await notifySellers(supabase, created, guestFields);
 
     return res.status(200).json({
-      orders: created.map(({ id, order_number, boutique_id, total, created_at }) => ({
+      orders: created.map(({ id, order_number, boutique_id, total, cod_fee, shipping_fee, created_at }) => ({
         id,
         order_number,
         boutique_id,
         total,
+        cod_fee,
+        shipping_fee,
         created_at,
       })),
-      paid: true,
+      paid: !isCod,
       payment_method: guestFields.payment_method,
     });
   } catch (err) {

@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase';
-import type { OrderWithDetails } from './types';
+import type { OrderWithDetails, OrderStatus } from './types';
 import type { Paged } from './adminUsers';
 
-const SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, guest_name, guest_phone, guest_city, guest_address, payment_id, refunded, channel, payment_method, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, title, price, qty, size, color)`;
+const SELECT = `id, order_number, buyer_id, boutique_id, status, total, created_at, guest_name, guest_phone, guest_city, guest_address, payment_id, refunded, channel, payment_method, payment_status, paid_at, cod_fee, shipping_fee, cancelled_at, cancel_reason, buyer:profiles!orders_buyer_id_fkey(full_name, phone, city), boutique:boutiques(name, tone), items:order_items(id, title, price, qty, size, color)`;
 
 export async function fetchOrdersForBuyer(buyerId: string): Promise<OrderWithDetails[]> {
   const { data, error } = await supabase.from('orders').select(SELECT).eq('buyer_id', buyerId).order('created_at', { ascending: false });
@@ -50,9 +50,54 @@ export async function fetchOrder(id: string): Promise<OrderWithDetails | null> {
   return data as unknown as OrderWithDetails | null;
 }
 
-export async function updateOrderStatus(id: string, status: 'pending' | 'shipped' | 'delivered' | 'rejected') {
+export async function updateOrderStatus(id: string, status: OrderStatus) {
   const { error } = await supabase.from('orders').update({ status }).eq('id', id);
   if (error) throw error;
+}
+
+/**
+ * Record that the seller took the cash for a COD order.
+ *
+ * This is the moment a COD order stops being a promise and becomes revenue, so
+ * it is a deliberate seller action rather than something inferred from the
+ * delivery status — an order can be handed over and the payment still disputed.
+ * Migration 0022's trigger refuses this on a prepaid order, where settlement is
+ * the gateway's business.
+ */
+export async function markCashCollected(id: string) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ payment_status: 'paid', paid_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+/** Messages the cancel RPC raises, mapped to something a buyer can act on. */
+const CANCEL_ERRORS: Record<string, string> = {
+  ORDER_NOT_FOUND: 'We could not find that order against this phone number.',
+  NOT_CANCELLABLE_PREPAID: 'Prepaid orders cannot be cancelled here — please message the boutique.',
+  NOT_CANCELLABLE_DISPATCHED: 'This order has already been dispatched. Please refuse it at the door or message the boutique.',
+  NOT_CANCELLABLE_PAID: 'This order has already been paid for.',
+};
+
+/**
+ * Buyer-side cancellation of an un-dispatched COD order.
+ *
+ * Goes through the `cancel_cod_order` SECURITY DEFINER function because a guest
+ * has no account for RLS to authorise against — the order number plus the phone
+ * captured at checkout is the proof of ownership. The function also releases the
+ * reserved stock, so cancelling never silently eats inventory.
+ */
+export async function cancelCodOrder(orderNumber: string, phone: string, reason?: string) {
+  const { error } = await supabase.rpc('cancel_cod_order', {
+    p_order_number: orderNumber.replace(/^#/, ''),
+    p_phone: phone.replace(/\D/g, ''),
+    p_reason: reason ?? null,
+  });
+  if (error) {
+    const code = Object.keys(CANCEL_ERRORS).find((k) => error.message.includes(k));
+    throw new Error(code ? CANCEL_ERRORS[code] : 'Could not cancel this order. Please try again.');
+  }
 }
 
 /** Flag/unflag an order as refunded (independent of the fulfilment status). */

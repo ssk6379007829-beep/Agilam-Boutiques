@@ -53,12 +53,22 @@ export function Dashboard() {
   const products = productRows ?? [];
   const orders = rows.map((o, i) => toOrderView(o, i));
 
-  // Revenue counts only orders that were not rejected — a rejected order is not
-  // money the boutique earned, and including it would flatter the number.
-  const totalRevenue = rows.filter((o) => o.status !== 'rejected').reduce((s, o) => s + Number(o.total), 0);
+  // Revenue counts only money that actually landed: a rejected or cancelled
+  // order earned nothing, and a COD order whose cash the seller has not yet
+  // collected is a promise, not revenue. Counting either would flatter the tile.
+  const earned = (o: (typeof rows)[number]) =>
+    o.status !== 'rejected' &&
+    o.status !== 'cancelled' &&
+    (o.payment_method !== 'COD' || (o.payment_status ?? 'paid') === 'paid');
+
+  const totalRevenue = rows.filter(earned).reduce((s, o) => s + Number(o.total), 0);
   const todaysOrders = rows.filter((o) => isToday(o.created_at));
-  const todaysRevenue = todaysOrders.filter((o) => o.status !== 'rejected').reduce((s, o) => s + Number(o.total), 0);
+  const todaysRevenue = todaysOrders.filter(earned).reduce((s, o) => s + Number(o.total), 0);
   const pendingCount = rows.filter((o) => o.status === 'pending').length;
+  // Cash the seller still has to collect at the door, across all open COD orders.
+  const toCollect = rows
+    .filter((o) => o.payment_method === 'COD' && (o.payment_status ?? 'paid') === 'pending' && o.status !== 'rejected' && o.status !== 'cancelled')
+    .reduce((s, o) => s + Number(o.total) + Number(o.cod_fee ?? 0), 0);
   // Guest orders have no buyer_id, so fall back to the phone number before
   // giving up and counting the order itself as its own customer.
   const customerCount = new Set(rows.map((o) => o.buyer_id ?? o.guest_phone ?? o.id)).size;
@@ -88,6 +98,7 @@ export function Dashboard() {
     { label: "Today's orders", value: String(todaysOrders.length), ic: '#3A6EA5' },
     { label: "Today's revenue", value: fmt(todaysRevenue), ic: '#2FA36B' },
     { label: 'Pending orders', value: String(pendingCount), ic: '#C99A3F' },
+    { label: 'Cash to collect', value: fmt(toCollect), ic: '#B9862F' },
     { label: 'Low stock', value: String(lowStock.length), ic: '#D6455A' },
   ];
 

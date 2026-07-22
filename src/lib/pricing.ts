@@ -9,9 +9,24 @@
  * from here too, so a card can never promise a saving the totals won't give.
  */
 import { COUPONS, type Coupon } from '@/data/demo';
+import { POLICY_TERMS } from '@/data/company';
 
 export const FREE_SHIP_MIN = 2000;
 export const SHIP_FEE = 99;
+
+/**
+ * Cash on Delivery.
+ *
+ * The fee is charged per delivery, not per cart: a bag spanning two boutiques
+ * becomes two orders, shipped separately and collected in cash separately, so
+ * one fee would leave the second boutique handling cash for nothing. The cart
+ * itemises it as "× N deliveries" so the buyer is never surprised at the door.
+ *
+ * The cap applies to the WHOLE cart rather than each order, otherwise splitting
+ * a ₹50,000 bag across five boutiques would dodge it.
+ */
+export const COD_FEE = POLICY_TERMS.codFee;
+export const COD_MAX_ORDER = POLICY_TERMS.codMaxOrder;
 
 /**
  * The applied coupon, or undefined if it doesn't qualify. A flat coupon only
@@ -45,10 +60,43 @@ export function couponSavings(coupon: Coupon, subtotal: number): number {
   return baseShipFee(subtotal);
 }
 
-/** The bag's totals under an optional coupon code. */
-export function computeTotals(subtotal: number, code: string | null) {
+/**
+ * The bag's totals under an optional coupon code.
+ *
+ * `codDeliveries` is how many separate boutique orders the bag will split into
+ * when paying cash — 0 for a prepaid order, which is what keeps the COD fee out
+ * of every existing caller.
+ */
+export function computeTotals(subtotal: number, code: string | null, codDeliveries = 0) {
   const coupon = findCoupon(code, subtotal);
   const discount = coupon && coupon.type !== 'ship' ? couponSavings(coupon, subtotal) : 0;
   const shipFee = coupon?.type === 'ship' ? 0 : baseShipFee(subtotal);
-  return { coupon, discount, shipFee, total: Math.max(0, subtotal - discount) + shipFee };
+  const codFee = Math.max(0, codDeliveries) * COD_FEE;
+  return {
+    coupon,
+    discount,
+    shipFee,
+    codFee,
+    total: Math.max(0, subtotal - discount) + shipFee + codFee,
+  };
+}
+
+/**
+ * Why this bag cannot be paid in cash, or null if it can.
+ *
+ * `codEnabledEverywhere` comes from the boutiques in the bag: a seller who
+ * turned COD off in their store settings must not have cash orders forced on
+ * them, so one opted-out boutique disqualifies the whole bag.
+ */
+export function codBlockedReason(
+  subtotal: number,
+  code: string | null,
+  codEnabledEverywhere: boolean,
+): string | null {
+  if (!codEnabledEverywhere) return 'One of the boutiques in your bag does not accept cash on delivery.';
+  const payable = computeTotals(subtotal, code).total;
+  if (payable > COD_MAX_ORDER) {
+    return `Cash on delivery is available on orders up to ₹${COD_MAX_ORDER.toLocaleString('en-IN')}.`;
+  }
+  return null;
 }

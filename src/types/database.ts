@@ -9,7 +9,19 @@ export type Role = 'buyer' | 'seller' | 'admin';
  * `rejected`          — turned down, with the reason in `review_note`.
  */
 export type BoutiqueStatus = 'draft' | 'pending' | 'changes_requested' | 'approved' | 'rejected';
-export type OrderStatus = 'pending' | 'shipped' | 'delivered' | 'rejected';
+/**
+ * Fulfilment state. `rejected` is the seller turning the order down; `cancelled`
+ * is the buyer walking away from a COD order before dispatch (migration 0022) —
+ * they read differently to both sides and report differently.
+ */
+export type OrderStatus = 'pending' | 'accepted' | 'shipped' | 'delivered' | 'rejected' | 'cancelled';
+
+/**
+ * Settlement state, tracked separately from fulfilment because the two move
+ * independently: a prepaid order is `paid` the moment it is written, while a
+ * COD order stays `pending` until the seller confirms the cash arrived.
+ */
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 export type ProductStatus = 'pending' | 'active' | 'hidden' | 'rejected';
 export type AccountStatus = 'active' | 'blocked';
 export type SubPlan = 'boutique' | 'featured';
@@ -194,6 +206,27 @@ export interface Database {
           refunded: boolean;
           refunded_at: string | null;
           created_at: string;
+          // ── Cash on Delivery (migration 0022) ────────────────────────────
+          payment_status: PaymentStatus;
+          paid_at: string | null;
+          /** Handling fee charged on this delivery; 0 on prepaid orders. */
+          cod_fee: number;
+          /**
+           * Delivery fee on this order. A cart-level charge, so on a
+           * multi-boutique checkout it sits on the first order only —
+           * total + shipping_fee + cod_fee summed across the batch is what the
+           * buyer was quoted.
+           */
+          shipping_fee: number;
+          cancelled_at: string | null;
+          cancel_reason: string | null;
+          payment_method: string | null;
+          payment_id: string | null;
+          channel: 'online' | 'offline';
+          guest_name: string | null;
+          guest_phone: string | null;
+          guest_city: string | null;
+          guest_address: string | null;
         };
         Insert: Partial<Database['public']['Tables']['orders']['Row']> & { order_number: string; buyer_id: string; boutique_id: string };
         Update: Partial<Database['public']['Tables']['orders']['Row']>;
@@ -271,6 +304,16 @@ export interface Database {
           p_payment_method?: string;
         };
         Returns: { id: string; order_number: string; total: number; created_at: string }[];
+      };
+      /**
+       * Buyer-initiated cancellation of an un-dispatched, uncollected COD
+       * order (migration 0022). Authorises on order number + the phone captured
+       * at checkout, so a guest with no account can still cancel; releases the
+       * reserved stock in the same transaction.
+       */
+      cancel_cod_order: {
+        Args: { p_order_number: string; p_phone: string; p_reason?: string | null };
+        Returns: { id: string; status: string }[];
       };
       /**
        * The boutique columns 0021 withholds from the public API. SECURITY

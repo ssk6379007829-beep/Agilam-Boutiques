@@ -25,8 +25,8 @@ export interface ProductWithBoutique {
 // The lifecycle status is declared alongside the generated table types so the
 // Supabase client and the app agree on it; re-exported here because every
 // consumer already imports its boutique types from this module.
-export type { BoutiqueStatus } from '@/types/database';
-import type { BoutiqueStatus } from '@/types/database';
+export type { BoutiqueStatus, OrderStatus, PaymentStatus } from '@/types/database';
+import type { BoutiqueStatus, OrderStatus, PaymentStatus } from '@/types/database';
 
 /**
  * Human labels for the lifecycle status. Capitalising the raw value is not
@@ -121,7 +121,7 @@ export interface OrderWithDetails {
   order_number: string;
   buyer_id: string | null;
   boutique_id: string;
-  status: 'pending' | 'shipped' | 'delivered' | 'rejected';
+  status: OrderStatus;
   total: number;
   created_at: string;
   guest_name: string | null;
@@ -132,6 +132,15 @@ export interface OrderWithDetails {
   refunded?: boolean;
   channel?: 'online' | 'offline';
   payment_method?: string | null;
+  /** Settlement state — 'pending' on a COD order until the cash is collected. */
+  payment_status?: PaymentStatus;
+  paid_at?: string | null;
+  /** COD handling fee on this delivery; 0 on prepaid orders. */
+  cod_fee?: number;
+  /** Delivery fee on this order (cart-level, so it lands on the first order). */
+  shipping_fee?: number;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
   buyer: { full_name: string; phone: string | null; city: string | null } | null;
   boutique: { name: string; tone: number } | null;
   items: { id: string; title: string; price: number; qty: number; size: string | null; color: string | null }[];

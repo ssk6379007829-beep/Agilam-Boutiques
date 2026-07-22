@@ -94,6 +94,9 @@ export const POLICY_TERMS = {
   metroDeliveryEstimate: '2–4 working days',
   cancellationWindowHours: 24,
   commissionPct: 8,
+  /** Cash on delivery — mirrors COD_FEE / COD_MAX_ORDER in src/lib/pricing.ts. */
+  codFee: 49,
+  codMaxOrder: 10000,
 } as const;
 
 /** Build stamp shown on the profile screen. Injected by Vite from package.json. */

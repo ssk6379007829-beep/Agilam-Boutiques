@@ -395,9 +395,18 @@ export const POLICIES: PolicyPage[] = [
       {
         heading: 'Orders and payment',
         blocks: [
-          'All orders on Agilam are prepaid. Placing an order is an offer to buy; the contract forms when the boutique confirms it.',
+          'Placing an order is an offer to buy; the contract forms when the boutique confirms it.',
           'The amount payable is computed on our servers from current listed prices, applicable delivery charges and any valid coupon. We reserve the right to cancel and refund an order affected by an obvious pricing or listing error.',
           'A cart spanning several boutiques becomes one order per boutique, each separately confirmed, dispatched and tracked.',
+        ],
+      },
+      {
+        heading: 'Cash on delivery',
+        blocks: [
+          `Where the boutique offers it, you may pay in cash when your order is delivered. A handling fee of ${inr(T.codFee)} is added per delivery, and cash on delivery is available on orders up to ${inr(T.codMaxOrder)}. Both are shown before you confirm.`,
+          'Because a cart spanning several boutiques is delivered separately by each, the handling fee applies once per delivery, and each delivery is paid for on arrival.',
+          'Please keep the exact amount ready — our delivery partners may not carry change. If payment is refused at the door the order is returned to the boutique and may count against future cash-on-delivery eligibility.',
+          'A cash-on-delivery order can be cancelled free of charge from "My orders" at any time before it is dispatched. Nothing has been charged, so there is no refund to process.',
         ],
       },
       {

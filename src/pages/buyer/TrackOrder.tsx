@@ -59,14 +59,18 @@ export function TrackOrder() {
   }
 
   const stage = STATUS_STAGE[order.status];
-  const rejected = order.status === 'rejected';
+  const rejected = order.status === 'rejected' || order.status === 'cancelled';
   const delivered = order.status === 'delivered';
   const item = order.items[0];
   const totalQty = order.items.reduce((s, it) => s + it.qty, 0);
   const itemsTotal = order.items.reduce((s, it) => s + it.price * it.qty, 0);
-  // The order total is what was charged; anything above the line items is the
-  // delivery share the server allocated to this boutique.
-  const delivery = Math.max(0, order.total - itemsTotal);
+  const codFee = order.codFee ?? 0;
+  // Recorded on the order since migration 0022. Older orders never stored it,
+  // so fall back to inferring it from whatever the total exceeds the lines by.
+  const delivery = order.shippingFee ?? Math.max(0, order.total - itemsTotal - codFee);
+  // Cash still due at the door. Cleared once the boutique records collection,
+  // so a delivered order never keeps asking for money already handed over.
+  const owes = order.paymentMethod === 'COD' && (order.paymentStatus ?? 'pending') === 'pending' && !rejected;
 
   const chatWithBoutique = () => {
     navigate(`/buyer/chat/${order.boutiqueId}`, {
@@ -144,13 +148,39 @@ export function TrackOrder() {
           )}
         </div>
 
+        {/* ---------- Cash on delivery ---------- */}
+        {owes && (
+          <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:#FFF8E8;border:1px solid #F0DCB4;border-radius:18px;')}>
+            <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:22px;flex:none;")}>payments</span>
+            <div style={css('flex:1;min-width:0;')}>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:#7A5C2A;")}>
+                Keep {fmt(order.total)} ready
+              </div>
+              <div style={css('font-size:13px;color:#7A5C2A;line-height:1.55;margin-top:4px;')}>
+                Pay in cash when this order arrives. Our delivery partner may not carry change, so the exact amount helps.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ---------- Cancelled notice ---------- */}
         {rejected && (
           <div style={css('display:flex;gap:12px;margin-top:16px;padding:16px;background:#FBE9EC;border:1px solid #F2C9D2;border-radius:18px;')}>
             <span style={css("font-family:'Material Symbols Outlined';color:#C0455E;font-size:22px;flex:none;")}>info</span>
             <div style={css('font-size:13px;color:#7A4652;line-height:1.55;')}>
-              This order was cancelled. The full amount is refunded to your original payment method and reaches you in 5–7 working days.{' '}
-              <a href={CONTACT_LINKS.support} style={css('color:#B02454;font-weight:800;')}>Contact support</a> if it hasn’t arrived.
+              {/* Promising a refund on an order that was never paid for would be
+                  a lie the buyer would chase support about. */}
+              {order.paymentMethod === 'COD' ? (
+                <>
+                  This order was cancelled and nothing will be delivered. You were never charged, so there is no refund to wait for.{' '}
+                  <a href={CONTACT_LINKS.support} style={css('color:#B02454;font-weight:800;')}>Contact support</a> if you have a question.
+                </>
+              ) : (
+                <>
+                  This order was cancelled. The full amount is refunded to your original payment method and reaches you in 5–7 working days.{' '}
+                  <a href={CONTACT_LINKS.support} style={css('color:#B02454;font-weight:800;')}>Contact support</a> if it hasn’t arrived.
+                </>
+              )}
             </div>
           </div>
         )}
@@ -214,12 +244,20 @@ export function TrackOrder() {
               <span>Delivery</span>
               <span style={css(`font-weight:800;color:${delivery === 0 ? '#2FA36B' : '#241019'};`)}>{delivery === 0 ? 'FREE' : fmt(delivery)}</span>
             </div>
+            {codFee > 0 && (
+              <div style={css('display:flex;justify-content:space-between;color:#5C4650;')}>
+                <span>Cash handling</span><span style={css('font-weight:700;')}>{fmt(codFee)}</span>
+              </div>
+            )}
             <div style={css('display:flex;justify-content:space-between;align-items:baseline;margin-top:5px;padding-top:11px;border-top:1px solid #F4E6EC;')}>
-              <span style={css('font-weight:800;')}>Paid</span>
+              <span style={css('font-weight:800;')}>{owes ? 'Due on delivery' : 'Paid'}</span>
               <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:22px;")}>{fmt(order.total)}</span>
             </div>
-            <div style={css('display:flex;align-items:center;gap:7px;color:#2FA36B;font-size:12px;font-weight:700;margin-top:2px;')}>
-              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>verified</span>Paid online · payment verified
+            <div style={css(`display:flex;align-items:center;gap:7px;color:${owes ? '#B0862B' : '#2FA36B'};font-size:12px;font-weight:700;margin-top:2px;`)}>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{owes ? 'payments' : 'verified'}</span>
+              {order.paymentMethod === 'COD'
+                ? owes ? 'Cash on delivery · pay when it arrives' : 'Cash on delivery · payment received'
+                : 'Paid online · payment verified'}
             </div>
           </div>
         </div>

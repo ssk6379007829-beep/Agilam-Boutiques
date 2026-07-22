@@ -25,6 +25,16 @@ export type OrderView = {
   items: OrderWithDetails['items'];
   channel: 'online' | 'offline';
   paymentMethod: string | null;
+  /** True when the money is still to be collected at the door. */
+  isCod: boolean;
+  /** Cash still owed on this order — 0 once collected, or on a prepaid order. */
+  collectAmount: number;
+  codFee: number;
+  shippingFee: number;
+  /** Goods + delivery + cash handling: what the buyer was charged in full. */
+  grandTotal: number;
+  paymentStatus: NonNullable<OrderWithDetails['payment_status']>;
+  cancelReason: string | null;
 };
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -36,6 +46,13 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
   const first = items[0];
   const qty = items.reduce((s, it) => s + it.qty, 0) || 1;
   const extra = items.length > 1 ? ` +${items.length - 1} more` : '';
+  // Orders written before migration 0022 have no payment_status and were all
+  // prepaid, so absence means settled rather than outstanding.
+  const paymentStatus = o.payment_status ?? 'paid';
+  const codFee = Number(o.cod_fee ?? 0);
+  const shippingFee = Number(o.shipping_fee ?? 0);
+  const isCod = o.payment_method === 'COD';
+  const grandTotal = Number(o.total) + shippingFee + codFee;
   return {
     id: o.id,
     number: '#' + o.order_number,
@@ -56,5 +73,14 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
     items,
     channel: o.channel ?? 'online',
     paymentMethod: o.payment_method ?? null,
+    isCod,
+    // Goods, delivery and the handling fee — the single figure the seller
+    // counts out at the door. Zero once collected, so the UI never asks twice.
+    collectAmount: isCod && paymentStatus === 'pending' ? grandTotal : 0,
+    codFee,
+    shippingFee,
+    grandTotal,
+    paymentStatus,
+    cancelReason: o.cancel_reason ?? null,
   };
 }

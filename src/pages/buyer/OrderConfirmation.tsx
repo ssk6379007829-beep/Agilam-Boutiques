@@ -44,6 +44,7 @@ export function OrderConfirmation() {
 
   const primary = orders[0];
   const multi = orders.length > 1;
+  const isCod = primary.paymentMethod === 'COD';
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
@@ -81,8 +82,26 @@ export function OrderConfirmation() {
 
         {multi && (
           <div style={css('display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding:0 4px;font-size:14px;')}>
-            <span style={css('font-weight:800;')}>Total paid</span>
+            <span style={css('font-weight:800;')}>{isCod ? 'Total to pay on delivery' : 'Total paid'}</span>
             <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:22px;")}>{fmt(grandTotal)}</span>
+          </div>
+        )}
+
+        {/* The one thing a COD buyer must not miss. */}
+        {isCod && (
+          <div style={css('display:flex;gap:12px;margin-top:14px;padding:16px;background:#FFF8E8;border:1px solid #F0DCB4;border-radius:20px;text-align:left;')}>
+            <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:22px;flex:none;")}>payments</span>
+            <div style={css('flex:1;min-width:0;')}>
+              <div style={css('font-weight:800;font-size:14px;color:#7A5C2A;')}>
+                Keep {fmt(grandTotal)} in cash ready
+              </div>
+              <div style={css('font-size:12.5px;color:#7A5C2A;line-height:1.55;margin-top:3px;')}>
+                {multi
+                  ? `Your order arrives as ${orders.length} separate deliveries — pay each one on arrival.`
+                  : 'Pay the delivery partner when your order arrives. They may not carry change.'}{' '}
+                You can cancel free of charge until it is dispatched.
+              </div>
+            </div>
           </div>
         )}
 

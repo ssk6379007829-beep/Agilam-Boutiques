@@ -13,15 +13,20 @@ export type BillReceiptProps = {
   buyerPhone?: string;
   items: BillReceiptItem[];
   discount?: number;
+  shippingFee?: number;
+  codFee?: number;
+  /** The grand total — goods, delivery and any cash handling fee. */
   total: number;
   paymentMethod?: string | null;
+  /** Set on an unpaid COD order so the bill reads as a demand, not a receipt. */
+  amountDue?: number;
 };
 
 /** Premium, brand-styled bill card — rendered off-DOM or inline and captured
  *  to a PNG/PDF via html2canvas (see src/lib/billImage.ts) so what gets
  *  shared to a buyer's WhatsApp looks like an actual invoice, not plain text. */
 export const BillReceipt = forwardRef<HTMLDivElement, BillReceiptProps>(function BillReceipt(
-  { boutiqueName, boutiquePhone, billNumber, date, buyerName, buyerPhone, items, discount = 0, total, paymentMethod },
+  { boutiqueName, boutiquePhone, billNumber, date, buyerName, buyerPhone, items, discount = 0, shippingFee = 0, codFee = 0, total, paymentMethod, amountDue },
   ref,
 ) {
   const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
@@ -79,6 +84,16 @@ export const BillReceipt = forwardRef<HTMLDivElement, BillReceiptProps>(function
             <span>Discount</span><span style={css('font-weight:700;')}>-{fmt(discount)}</span>
           </div>
         )}
+        {shippingFee > 0 && (
+          <div style={css('display:flex;justify-content:space-between;font-size:13px;color:#8A7078;padding:4px 0;')}>
+            <span>Delivery</span><span style={css('font-weight:700;color:#241019;')}>{fmt(shippingFee)}</span>
+          </div>
+        )}
+        {codFee > 0 && (
+          <div style={css('display:flex;justify-content:space-between;font-size:13px;color:#8A7078;padding:4px 0;')}>
+            <span>Cash handling</span><span style={css('font-weight:700;color:#241019;')}>{fmt(codFee)}</span>
+          </div>
+        )}
         {paymentMethod && (
           <div style={css('display:flex;justify-content:space-between;font-size:13px;color:#8A7078;padding:4px 0;')}>
             <span>Payment</span><span style={css('font-weight:700;color:#241019;')}>{paymentMethod}</span>
@@ -90,6 +105,16 @@ export const BillReceipt = forwardRef<HTMLDivElement, BillReceiptProps>(function
         <span style={css('font-size:13px;font-weight:800;color:#8E1C44;letter-spacing:.04em;text-transform:uppercase;')}>Total</span>
         <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;color:#B02454;")}>{fmt(total)}</span>
       </div>
+
+      {/* On an unpaid COD order this is the point of the whole document — the
+          buyer needs the figure to have ready, not a receipt for a payment
+          that hasn't happened. */}
+      {amountDue != null && amountDue > 0 && (
+        <div style={css('margin:10px 30px 0;padding:12px 16px;border-radius:14px;background:#FFF8E8;border:1px solid #F0DCB4;display:flex;justify-content:space-between;align-items:center;')}>
+          <span style={css('font-size:12px;font-weight:800;color:#B0862B;letter-spacing:.04em;text-transform:uppercase;')}>Pay on delivery</span>
+          <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:#B0862B;")}>{fmt(amountDue)}</span>
+        </div>
+      )}
 
       <div style={css('padding:20px 30px 26px;text-align:center;')}>
         <div style={css("font-family:'Playfair Display',serif;font-style:italic;font-size:13px;color:#5C4650;")}>Thank you for shopping with {boutiqueName}!</div>

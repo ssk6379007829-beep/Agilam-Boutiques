@@ -10,7 +10,8 @@
  * just paid for, so it's their real purchase — not demo data.
  */
 
-export type OrderStatus = 'pending' | 'shipped' | 'delivered' | 'rejected';
+export type { OrderStatus } from '@/types/database';
+import type { OrderStatus, PaymentStatus } from '@/types/database';
 
 export type PlacedOrderItem = {
   pid: string;
@@ -32,17 +33,41 @@ export type PlacedOrder = {
   status: OrderStatus;
   total: number;
   items: PlacedOrderItem[];
+  /** 'COD' or 'Razorpay'. Absent on orders placed before COD existed. */
+  paymentMethod?: string | null;
+  paymentStatus?: PaymentStatus;
+  /** COD handling fee on this delivery, already included in `total`. */
+  codFee?: number;
+  /** Delivery fee on this order, already included in `total`. */
+  shippingFee?: number;
 };
 
 const KEY = 'agx-orders';
 
-/** Timeline stage (index into demo `TRACK_STAGES`) each status maps to. */
+/**
+ * Timeline stage (index into demo `TRACK_STAGES`) each status maps to.
+ *
+ * `pending` sits on "Order Placed" rather than "Confirmed": now that a seller
+ * explicitly accepts an order, claiming it is confirmed before they have looked
+ * at it would be telling the buyer something that has not happened.
+ */
 export const STATUS_STAGE: Record<OrderStatus, number> = {
-  pending: 1,
+  pending: 0,
+  accepted: 1,
   shipped: 3,
   delivered: 5,
-  rejected: 1,
+  rejected: 0,
+  cancelled: 0,
 };
+
+/** True while a COD order can still be called off from the buyer's side. */
+export function isCancellable(o: PlacedOrder): boolean {
+  return (
+    o.paymentMethod === 'COD' &&
+    (o.paymentStatus ?? 'pending') === 'pending' &&
+    (o.status === 'pending' || o.status === 'accepted')
+  );
+}
 
 export function readOrders(): PlacedOrder[] {
   try {
@@ -66,6 +91,23 @@ export function addOrders(orders: PlacedOrder[]): PlacedOrder[] {
   return next;
 }
 
+/**
+ * Patch one locally-mirrored order in place.
+ *
+ * A guest's orders are never readable back from Supabase, so after an action
+ * that changes one server-side — cancelling a COD order — this is the only way
+ * the change reaches their screen.
+ */
+export function patchLocalOrder(orderNumber: string, patch: Partial<PlacedOrder>): PlacedOrder[] {
+  const next = readOrders().map((o) => (o.orderNumber === orderNumber ? { ...o, ...patch } : o));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    /* storage unavailable — the returned list still covers this session */
+  }
+  return next;
+}
+
 export function findOrder(id: string | undefined): PlacedOrder | undefined {
   if (!id) return undefined;
   return readOrders().find((o) => o.id === id || o.orderNumber === id);
@@ -78,6 +120,10 @@ export type BuyerDbOrder = {
   status: OrderStatus;
   total: number;
   created_at: string;
+  payment_method?: string | null;
+  payment_status?: PaymentStatus;
+  cod_fee?: number;
+  shipping_fee?: number;
   boutique: { name: string; tone: number } | null;
   items: { title: string; price: number; qty: number; size: string | null }[];
 };
@@ -85,6 +131,8 @@ export type BuyerDbOrder = {
 /** Map a signed-in buyer's DB order onto the local PlacedOrder shape. */
 export function fromBuyerOrder(o: BuyerDbOrder): PlacedOrder {
   const tone = o.boutique?.tone ?? 0;
+  const codFee = Number(o.cod_fee ?? 0);
+  const shippingFee = Number(o.shipping_fee ?? 0);
   return {
     id: '#' + o.order_number,
     orderNumber: o.order_number,
@@ -92,7 +140,13 @@ export function fromBuyerOrder(o: BuyerDbOrder): PlacedOrder {
     boutique: o.boutique?.name ?? 'Boutique',
     boutiqueId: o.boutique_id,
     status: o.status,
-    total: Number(o.total),
+    // `orders.total` is the goods value; delivery and the COD fee are stored
+    // beside it, so add them back to show the figure the buyer actually pays.
+    total: Number(o.total) + shippingFee + codFee,
+    paymentMethod: o.payment_method ?? null,
+    paymentStatus: o.payment_status ?? 'paid',
+    codFee,
+    shippingFee,
     items: (o.items ?? []).map((it) => ({ pid: '', title: it.title, tone, qty: it.qty, size: it.size ?? '', price: Number(it.price) })),
   };
 }

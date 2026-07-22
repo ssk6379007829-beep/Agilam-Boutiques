@@ -77,6 +77,7 @@ function toBoutique(b: BoutiqueRow, productCount: number): Boutique {
     desc: b.description,
     image: b.cover_url ?? '',
     logo: b.logo_url ?? '',
+    codEnabled: b.cod_enabled ?? true,
   };
 }
 

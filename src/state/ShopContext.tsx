@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PAY_METHODS, type Coupon } from '@/data/demo';
-import { computeTotals } from '@/lib/pricing';
+import { computeTotals, codBlockedReason } from '@/lib/pricing';
 import { useCatalog } from '@/state/CatalogContext';
 import { useAuth } from '@/auth/AuthContext';
 import { EMPTY_GUEST, readGuest, writeGuest, hasContactDetails } from '@/lib/buyerDetails';
@@ -117,11 +117,16 @@ type ShopValue = {
 
   lastOrderId: string;
   /**
-   * Creates the real order(s) server-side (one per boutique) and returns the
-   * primary order number. Every order is prepaid, so this takes the verified
-   * Razorpay payment. Throws with a user-facing message on failure.
+   * Creates the real prepaid order(s) server-side (one per boutique) and returns
+   * the primary order number, taking the verified Razorpay payment. Throws with
+   * a user-facing message on failure.
    */
   placeOrder: (payment: PaymentInfo) => Promise<string>;
+  /**
+   * Creates the same order(s) with no payment behind them, to be settled in cash
+   * at the door. Throws if the bag isn't COD-eligible.
+   */
+  placeCodOrder: () => Promise<string>;
   /**
    * Completes an order whose payment was captured but never settled (see
    * `@/lib/pendingPayment`). Replays the stored payment — it never re-charges.
@@ -139,8 +144,17 @@ type ShopValue = {
   subtotal: number;
   discount: number;
   shipFee: number;
+  /** COD handling fee across the bag; 0 unless paying cash. */
+  codFee: number;
   total: number;
   coupon: Coupon | undefined;
+
+  /** True when the buyer has chosen cash on delivery. */
+  payingCash: boolean;
+  /** Why cash isn't offered on this bag, or null when it is available. */
+  codUnavailableReason: string | null;
+  /** How many separate deliveries (and cash collections) this bag becomes. */
+  codDeliveries: number;
 };
 
 const ShopContext = createContext<ShopValue | null>(null);
@@ -368,13 +382,50 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     [cart, productById],
   );
 
+  /**
+   * The boutiques this bag will split into — one order, and one cash
+   * collection, per boutique. Also tells us whether every one of them accepts
+   * cash, since a single opt-out disqualifies the whole bag.
+   */
+  const cartBoutiques = useMemo(() => {
+    const ids = new Set<string>();
+    let allAcceptCod = true;
+    for (const id of Object.keys(cart)) {
+      const p = productById(id);
+      if (!p) continue;
+      const b = boutiques.find((x) => x.name === p.boutique);
+      if (!b) continue;
+      ids.add(b.id);
+      if (b.codEnabled === false) allAcceptCod = false;
+    }
+    return { deliveries: ids.size, allAcceptCod };
+  }, [cart, productById, boutiques]);
+
+  const payingCash = payMethod === 'cod';
+
+  /** Why cash isn't offered on this bag, or null when it is. */
+  const codUnavailableReason = useMemo(
+    () => codBlockedReason(subtotal, appliedCoupon, cartBoutiques.allAcceptCod),
+    [subtotal, appliedCoupon, cartBoutiques.allAcceptCod],
+  );
+
+  // Adding one more item can push a bag past the COD cap. Silently leaving
+  // "Cash on Delivery" selected would then show a total including the handling
+  // fee for a method the buyer can no longer use, so fall back to online.
+  useEffect(() => {
+    if (payMethod === 'cod' && codUnavailableReason) setPayMethod(PAY_METHODS[0].key);
+  }, [payMethod, codUnavailableReason]);
+
   // Mirrors the design: a flat coupon only counts once its minimum is met.
   // Coupon eligibility, discount, delivery and total all come from the shared
   // rules in `@/lib/pricing`, so the coupon screen previews exactly what
   // checkout will charge (and both stay aligned with api/_pricing.js).
-  const { coupon, discount, shipFee, total } = useMemo(
-    () => computeTotals(subtotal, appliedCoupon),
-    [subtotal, appliedCoupon],
+  //
+  // The COD handling fee is one per delivery, so it only enters the total once
+  // the buyer has actually chosen to pay cash.
+  const { coupon, discount, shipFee, codFee, total } = useMemo(
+    () => computeTotals(subtotal, appliedCoupon, payingCash ? cartBoutiques.deliveries : 0),
+    [subtotal, appliedCoupon, payingCash, cartBoutiques.deliveries],
   );
 
   const orderItems = useMemo(
@@ -407,7 +458,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const settleOrder = useCallback(async (
     items: PendingOrderItem[],
     couponCode: string | null,
-    payment: PaymentInfo,
+    payment: PaymentInfo | null,
+    /** 'COD' writes an unpaid order; omitted means a verified prepaid one. */
+    paymentMethod?: 'COD',
   ): Promise<string> => {
     // A signed-in buyer sends their token so the order is tied to their account
     // (readable cross-device via RLS); guests omit it and stay phone-keyed.
@@ -417,14 +470,16 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     if (token) headers.Authorization = `Bearer ${token}`;
 
     // The server re-derives the discount/shipping from this code and binds the
-    // paid amount to it — the browser's discount value is never trusted.
+    // paid amount to it — the browser's discount value is never trusted. On the
+    // COD path there is no amount to bind, so the server re-checks the cap and
+    // each boutique's cod_enabled flag instead.
     const res = await fetch('/api/place-order', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ items, guest, payment, couponCode }),
+      body: JSON.stringify({ items, guest, payment, couponCode, paymentMethod }),
     });
     const data = (await res.json().catch(() => ({}))) as {
-      orders?: { order_number: string; boutique_id: string; total?: number }[];
+      orders?: { order_number: string; boutique_id: string; total?: number; cod_fee?: number; shipping_fee?: number }[];
       error?: string;
     };
 
@@ -454,8 +509,11 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       itemsByBoutique.set(bid, arr);
     }
     const placedAt = new Date().toISOString();
+    const isCodOrder = paymentMethod === 'COD';
     const placed: PlacedOrder[] = data.orders.map((o) => {
       const orderLines = itemsByBoutique.get(o.boutique_id) ?? [];
+      const fee = Number(o.cod_fee ?? 0);
+      const shipping = Number(o.shipping_fee ?? 0);
       return {
         id: '#' + o.order_number,
         orderNumber: o.order_number,
@@ -463,10 +521,14 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         boutique: boutiques.find((b) => b.id === o.boutique_id)?.name ?? 'Boutique',
         boutiqueId: o.boutique_id,
         status: 'pending',
-        // Prefer the server's total: it's the authoritative figure the buyer
-        // was actually charged, including this boutique's share of shipping.
-        total: o.total ?? orderLines.reduce((s, it) => s + it.price * it.qty, 0),
+        // Prefer the server's total: it's the authoritative goods figure, plus
+        // the delivery and cash-handling this particular order carries.
+        total: (o.total ?? orderLines.reduce((s, it) => s + it.price * it.qty, 0)) + shipping + fee,
         items: orderLines,
+        paymentMethod: isCodOrder ? 'COD' : 'Razorpay',
+        paymentStatus: isCodOrder ? 'pending' : 'paid',
+        codFee: fee,
+        shippingFee: shipping,
       };
     });
     addOrders(placed);
@@ -478,7 +540,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     setCart({});
     setAppliedCoupon(null);
     setLastOrderId(oid);
-    showToast('Order placed successfully');
+    showToast(isCodOrder ? 'Order placed — pay cash on delivery' : 'Order placed successfully');
     return oid;
   }, [guest, boutiques, productById, showToast]);
 
@@ -502,6 +564,26 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [cart, appliedCoupon, total, settleOrder]);
 
   /**
+   * Places an unpaid cash-on-delivery order.
+   *
+   * Nothing is parked in `pendingPayment` here: there is no captured money to
+   * strand, so a failure means the order simply was not placed and the buyer can
+   * retry safely. The server independently re-checks the cap and every
+   * boutique's cod_enabled flag, so this refusal is a courtesy, not the gate.
+   */
+  const placeCodOrder = useCallback(async (): Promise<string> => {
+    if (codUnavailableReason) throw new Error(codUnavailableReason);
+    const items = Object.entries(cart).map(([product_id, line]) => ({
+      product_id,
+      qty: line.qty,
+      size: line.size,
+    }));
+    if (items.length === 0) throw new Error('Your bag is empty');
+
+    return settleOrder(items, appliedCoupon, null, 'COD');
+  }, [cart, appliedCoupon, codUnavailableReason, settleOrder]);
+
+  /**
    * Finishes a payment that was captured but never became an order. Replays the
    * stored cart and payment id; the server's replay guard guarantees this can't
    * double-charge or double-create.
@@ -522,12 +604,13 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     orderItems,
     payMethod, setPayMethod,
     guest, setGuest, clearGuest, hasBuyerDetails,
-    lastOrderId, placeOrder, retryPendingPayment,
+    lastOrderId, placeOrder, placeCodOrder, retryPendingPayment,
     toast, showToast,
     sellModal,
     openSellModal: useCallback(() => setSellModal(true), []),
     closeSellModal: useCallback(() => setSellModal(false), []),
-    subtotal, discount, shipFee, total, coupon,
+    subtotal, discount, shipFee, codFee, total, coupon,
+    payingCash, codUnavailableReason, codDeliveries: cartBoutiques.deliveries,
   };
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

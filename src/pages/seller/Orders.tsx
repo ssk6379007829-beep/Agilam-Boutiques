@@ -7,7 +7,9 @@ import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique } from '@/data/orders';
 import { toOrderView } from '@/lib/orderView';
 
-const TABS = ['All', 'Pending', 'Shipped', 'Delivered'];
+// "To collect" is not a fulfilment status — it is every COD order whose cash is
+// still outstanding, which is the list a seller actually chases at end of day.
+const TABS = ['All', 'Pending', 'Accepted', 'Shipped', 'Delivered', 'To collect'];
 
 export function Orders() {
   const navigate = useNavigate();
@@ -17,13 +19,30 @@ export function Orders() {
   const { boutique } = useMyBoutique();
   const { data: orderRows, loading } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
 
-  const orders = (orderRows ?? []).map((o, i) => toOrderView(o, i)).filter((o) => tab === 'All' || o.status === tab);
+  const all = (orderRows ?? []).map((o, i) => toOrderView(o, i));
+  const orders = all.filter((o) =>
+    tab === 'All' ? true : tab === 'To collect' ? o.collectAmount > 0 : o.status === tab,
+  );
+  const outstanding = all.reduce((sum, o) => sum + o.collectAmount, 0);
 
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 8px;')}>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Orders</div>
       </div>
+
+      {outstanding > 0 && (
+        <div
+          onClick={() => setTab('To collect')}
+          style={css('margin:2px 20px 10px;background:#FFF8E8;border:1px solid #F0DCB4;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;')}
+        >
+          <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:21px;")}>payments</span>
+          <span style={css('flex:1;min-width:0;font-size:13px;font-weight:600;color:#7A5C2A;line-height:1.5;')}>
+            <strong>{fmt(outstanding)}</strong> still to collect in cash across your open COD orders.
+          </span>
+          <span style={css("font-family:'Material Symbols Outlined';color:#C9AE7F;")}>chevron_right</span>
+        </div>
+      )}
 
       <div className="agx-scroll" style={css('display:flex;gap:8px;overflow-x:auto;padding:4px 20px 10px;')}>
         {TABS.map((t) => {
@@ -53,8 +72,8 @@ export function Orders() {
                   {/* Whether the money is already collected decides how the
                       seller hands the parcel over, so it belongs on the list. */}
                   {o.channel === 'online' && o.paymentMethod && (
-                    <span style={css(`font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:${o.paymentMethod === 'COD' ? '#FBF0DA' : '#E5F3EC'};color:${o.paymentMethod === 'COD' ? '#B0862B' : '#2FA36B'};`)}>
-                      {o.paymentMethod === 'COD' ? 'COD' : 'Paid'}
+                    <span style={css(`font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:${o.collectAmount > 0 ? '#FBF0DA' : '#E5F3EC'};color:${o.collectAmount > 0 ? '#B0862B' : '#2FA36B'};`)}>
+                      {!o.isCod ? 'Paid' : o.collectAmount > 0 ? `COD · collect ${fmt(o.collectAmount)}` : 'COD · collected'}
                     </span>
                   )}
                 </span>

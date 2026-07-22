@@ -12,15 +12,20 @@ import type { OrderWithDetails } from '@/data/types';
 /**
  * Seller earnings, computed from the boutique's own orders.
  *
- * Two money streams are kept apart on purpose, because conflating them would
- * misstate what Agilam actually owes the seller:
+ * Three money streams are kept apart, because conflating them would misstate
+ * what Agilam actually owes the seller — or what the seller owes Agilam:
  *
- *   • Online orders are collected by Agilam, so commission comes off the top
- *     and the remainder is settled to the seller's payout account.
- *   • Offline / walk-in bills (the POS flow) are collected by the seller
- *     directly — no payout is due and no commission is charged.
+ *   • Prepaid online orders are collected by Agilam, so commission comes off
+ *     the top and the remainder is settled to the seller's payout account.
+ *   • Cash on delivery is collected by the SELLER at the door. Agilam never
+ *     touches that money, so its commission on those orders becomes a debt the
+ *     seller carries, netted off their next online payout rather than invoiced.
+ *   • Offline / walk-in bills (the POS flow) are the seller's own trade — no
+ *     payout is due and no commission is charged.
  *
- * Rejected orders are excluded throughout: they are not money anyone earned.
+ * Rejected and cancelled orders are excluded throughout: they are not money
+ * anyone earned. So is any COD order whose cash has not been collected yet —
+ * a promise of payment is not revenue.
  */
 
 const COMMISSION = POLICY_TERMS.commissionPct / 100;
@@ -79,41 +84,61 @@ export function Earnings() {
     return () => { cancelled = true; };
   }, [boutiqueId]);
 
-  const all = (orderRows ?? []).filter((o) => o.status !== 'rejected');
+  const live = (orderRows ?? []).filter((o) => o.status !== 'rejected' && o.status !== 'cancelled');
   const monthStart = startOfMonth();
   const prevStart = startOfPrevMonth();
   const at = (o: OrderWithDetails) => new Date(o.created_at).getTime();
+  const isCod = (o: OrderWithDetails) => o.payment_method === 'COD';
+  const collected = (o: OrderWithDetails) => (o.payment_status ?? 'paid') === 'paid';
 
-  const thisMonth = all.filter((o) => at(o) >= monthStart);
-  const lastMonth = all.filter((o) => at(o) >= prevStart && at(o) < monthStart);
+  const thisMonth = live.filter((o) => at(o) >= monthStart);
+  const lastMonth = live.filter((o) => at(o) >= prevStart && at(o) < monthStart);
 
   const online = thisMonth.filter((o) => (o.channel ?? 'online') === 'online');
   const offline = thisMonth.filter((o) => o.channel === 'offline');
+  const prepaid = online.filter((o) => !isCod(o));
+  const cod = online.filter(isCod);
 
-  const onlineGross = online.reduce((s, o) => s + Number(o.total), 0);
+  // Agilam holds this money and settles it to the seller, less commission.
+  const prepaidGross = prepaid.reduce((s, o) => s + Number(o.total), 0);
+  const prepaidCommission = Math.round(prepaidGross * COMMISSION);
+  const prepaidNet = prepaidGross - prepaidCommission;
+
+  // The seller holds this money. Only counted once they confirm the cash
+  // arrived — an uncollected COD order is a promise, not revenue.
+  const codCollected = cod.filter(collected);
+  const codCash = codCollected.reduce((s, o) => s + Number(o.total) + Number(o.cod_fee ?? 0), 0);
+  // Commission is charged on the goods value, not on Agilam's own handling fee.
+  const codCommissionOwed = Math.round(codCollected.reduce((s, o) => s + Number(o.total), 0) * COMMISSION);
+  const codOutstanding = cod.filter((o) => !collected(o)).reduce((s, o) => s + Number(o.total) + Number(o.cod_fee ?? 0), 0);
+
   const offlineCollected = offline.reduce((s, o) => s + Number(o.total), 0);
-  const commission = Math.round(onlineGross * COMMISSION);
-  const netEarnings = onlineGross - commission;
+
+  // What the seller actually takes home this month: their share of the prepaid
+  // orders, plus the cash they already hold, minus what they owe on that cash.
+  const netEarnings = prepaidNet + codCash - codCommissionOwed;
 
   // Settled once the buyer has the goods; anything still in flight is money
   // Agilam is holding, which is what the seller wants to see as "pending".
-  const settledGross = online.filter((o) => o.status === 'delivered').reduce((s, o) => s + Number(o.total), 0);
-  const pendingPayout = Math.round((onlineGross - settledGross) * (1 - COMMISSION));
-  const settledPayout = netEarnings - pendingPayout;
+  const settledGross = prepaid.filter((o) => o.status === 'delivered').reduce((s, o) => s + Number(o.total), 0);
+  const pendingPayout = Math.round((prepaidGross - settledGross) * (1 - COMMISSION));
+  // The COD debt comes out of the payout Agilam is about to make, which is why
+  // it is netted here rather than billed separately.
+  const settledPayout = prepaidNet - pendingPayout - codCommissionOwed;
 
   const lastMonthNet = lastMonth
-    .filter((o) => (o.channel ?? 'online') === 'online')
+    .filter((o) => (o.channel ?? 'online') === 'online' && (!isCod(o) || collected(o)))
     .reduce((s, o) => s + Number(o.total), 0) * (1 - COMMISSION);
   const deltaPct = lastMonthNet > 0 ? Math.round(((netEarnings - lastMonthNet) / lastMonthNet) * 100) : null;
 
-  const bars = lastSevenDays(all);
+  const bars = lastSevenDays(live);
   const peak = Math.max(...bars.map((b) => b.total), 1);
 
   const TILES = [
     { label: 'Orders this month', value: String(thisMonth.length), color: '#2A1A20' },
     { label: 'Pending payout', value: fmt(pendingPayout), color: '#C99A3F' },
-    { label: 'Settled to you', value: fmt(settledPayout), color: '#2FA36B' },
-    { label: `Commission (${POLICY_TERMS.commissionPct}%)`, value: fmt(commission), color: '#8A7078' },
+    { label: 'Settled to you', value: fmt(Math.max(0, settledPayout)), color: '#2FA36B' },
+    { label: `Commission (${POLICY_TERMS.commissionPct}%)`, value: fmt(prepaidCommission + codCommissionOwed), color: '#8A7078' },
   ];
 
   return (
@@ -139,7 +164,7 @@ export function Earnings() {
             {loading ? '—' : fmt(netEarnings)}
           </div>
           <div style={css('font-size:12.5px;opacity:.82;margin-top:6px;')}>
-            {fmt(onlineGross)} in online orders, less {POLICY_TERMS.commissionPct}% Agilam commission
+            {fmt(prepaidGross)} prepaid{codCash > 0 ? ` + ${fmt(codCash)} collected in cash` : ''}, less {POLICY_TERMS.commissionPct}% Agilam commission
           </div>
           {deltaPct != null && (
             <div style={css('display:flex;gap:6px;align-items:center;margin-top:10px;font-size:13px;font-weight:700;')}>
@@ -158,6 +183,46 @@ export function Earnings() {
           </div>
         ))}
       </div>
+
+      {/* Cash on delivery — the seller holds the money, so Agilam's cut on it
+          is a debt rather than a deduction. Stated plainly, with the figure. */}
+      {(codCommissionOwed > 0 || codOutstanding > 0) && (
+        <div style={css('margin-top:14px;background:#FFF8E8;border:1px solid #F0DCB4;border-radius:20px;padding:16px 18px;')}>
+          <div style={css('display:flex;align-items:center;gap:9px;')}>
+            <span style={css("font-family:'Material Symbols Outlined';color:#C99A3F;font-size:20px;")}>payments</span>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:#7A5C2A;")}>Cash on delivery</div>
+          </div>
+
+          <div style={css('display:flex;gap:14px;flex-wrap:wrap;margin-top:13px;')}>
+            <div style={css('flex:1;min-width:130px;')}>
+              <div style={css('font-size:11.5px;color:#A9925F;font-weight:700;')}>Cash you collected</div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:#7A5C2A;")}>{fmt(codCash)}</div>
+            </div>
+            <div style={css('flex:1;min-width:130px;')}>
+              <div style={css('font-size:11.5px;color:#A9925F;font-weight:700;')}>Commission owed on it</div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:#C0392B;")}>– {fmt(codCommissionOwed)}</div>
+            </div>
+            <div style={css('flex:1;min-width:130px;')}>
+              <div style={css('font-size:11.5px;color:#A9925F;font-weight:700;')}>Still to collect</div>
+              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:#7A5C2A;")}>{fmt(codOutstanding)}</div>
+            </div>
+          </div>
+
+          <div style={css('font-size:12.5px;color:#7A5C2A;font-weight:600;line-height:1.6;margin-top:12px;')}>
+            You keep the cash your customers hand over. Agilam’s {POLICY_TERMS.commissionPct}% on those orders is deducted from your next online payout — nothing is debited from your account, and there is no invoice to pay.
+            {codOutstanding > 0 && ' Cash you have not collected yet is not counted as earnings.'}
+          </div>
+
+          {codOutstanding > 0 && (
+            <button
+              onClick={() => navigate('/seller/orders')}
+              style={css('margin-top:12px;height:42px;padding:0 18px;border:none;border-radius:12px;background:#B9862F;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;')}
+            >
+              See orders to collect
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Offline takings — collected by the seller, not settled by Agilam --- */}
       {offline.length > 0 && (

@@ -4,8 +4,10 @@ import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useCatalog } from '@/state/CatalogContext';
 import { useBuyerOrders } from '@/hooks/useBuyerOrders';
+import { useShop } from '@/state/ShopContext';
+import { cancelCodOrder } from '@/data/orders';
 import { TONES, TRACK_STAGES, fmt } from '@/data/demo';
-import { deliveryEstimate, formatOrderDate, STATUS_STAGE, type PlacedOrder } from '@/lib/orderHistory';
+import { deliveryEstimate, formatOrderDate, patchLocalOrder, STATUS_STAGE, isCancellable, type PlacedOrder } from '@/lib/orderHistory';
 
 /** Order-list tabs. "Active" is everything the buyer is still waiting on. */
 const TABS = [
@@ -21,21 +23,43 @@ export function MyOrders() {
   const navigate = useNavigate();
   const { productById } = useCatalog();
   const { orders: allOrders, refresh, refreshing, error } = useBuyerOrders();
+  const { guest, showToast } = useShop();
   const [tab, setTab] = useState<TabKey>('all');
+  const [cancelling, setCancelling] = useState<string | null>(null);
+
+  const isActive = (o: PlacedOrder) => o.status === 'pending' || o.status === 'accepted' || o.status === 'shipped';
+  const isClosed = (o: PlacedOrder) => o.status === 'rejected' || o.status === 'cancelled';
 
   const counts = useMemo(() => ({
-    active: allOrders.filter((o) => o.status === 'pending' || o.status === 'shipped').length,
+    active: allOrders.filter(isActive).length,
     delivered: allOrders.filter((o) => o.status === 'delivered').length,
-    cancelled: allOrders.filter((o) => o.status === 'rejected').length,
+    cancelled: allOrders.filter(isClosed).length,
     all: allOrders.length,
   }), [allOrders]);
 
   const orders = useMemo(() => {
-    if (tab === 'active') return allOrders.filter((o) => o.status === 'pending' || o.status === 'shipped');
+    if (tab === 'active') return allOrders.filter(isActive);
     if (tab === 'delivered') return allOrders.filter((o) => o.status === 'delivered');
-    if (tab === 'cancelled') return allOrders.filter((o) => o.status === 'rejected');
+    if (tab === 'cancelled') return allOrders.filter(isClosed);
     return allOrders;
   }, [allOrders, tab]);
+
+  const cancel = async (o: PlacedOrder) => {
+    if (!window.confirm(`Cancel order ${o.id}? The boutique will be told and nothing will be delivered.`)) return;
+    setCancelling(o.orderNumber);
+    try {
+      await cancelCodOrder(o.orderNumber, guest.phone);
+      // A guest's orders never come back from the server, so the local mirror
+      // has to be corrected here or the card would still read "Arriving…".
+      patchLocalOrder(o.orderNumber, { status: 'cancelled' });
+      showToast('Order cancelled');
+      await refresh();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not cancel this order');
+    } finally {
+      setCancelling(null);
+    }
+  };
 
   // Open a live chat with the order's boutique, tagged with the order as an
   // enquiry card. Mirrors the button on the order tracking screen.
@@ -50,7 +74,7 @@ export function MyOrders() {
           tone: item?.tone ?? 0,
           qty: o.items.reduce((s, it) => s + it.qty, 0),
           amount: o.total,
-          status: o.status === 'rejected' ? 'Cancelled' : TRACK_STAGES[STATUS_STAGE[o.status]].label,
+          status: isClosed(o) ? 'Cancelled' : TRACK_STAGES[STATUS_STAGE[o.status]].label,
         },
       },
     });
@@ -141,8 +165,16 @@ export function MyOrders() {
             const item = o.items[0];
             const extra = o.items.length - 1;
             const delivered = o.status === 'delivered';
-            const rejected = o.status === 'rejected';
-            const badge = rejected ? 'Cancelled' : TRACK_STAGES[STATUS_STAGE[o.status]].label;
+            const rejected = isClosed(o);
+            const badge = o.status === 'cancelled'
+              ? 'Cancelled'
+              : o.status === 'rejected'
+                ? 'Declined'
+                : TRACK_STAGES[STATUS_STAGE[o.status]].label;
+            // Cash still owed on this order: shown so the buyer knows to have
+            // it ready, and hidden the moment the boutique records collection.
+            const owes = o.paymentMethod === 'COD' && (o.paymentStatus ?? 'pending') === 'pending' && !rejected;
+            const canCancel = isCancellable(o);
             return (
               <div
                 key={o.id}
@@ -173,10 +205,20 @@ export function MyOrders() {
                       </span>
                       {delivered
                         ? `Delivered · ${formatOrderDate(o.placedAt)}`
-                        : rejected
-                          ? 'Cancelled — refund on its way'
-                          : `Arriving ${deliveryEstimate(o.placedAt)}`}
+                        : o.status === 'cancelled'
+                          ? 'Cancelled by you'
+                          : o.status === 'rejected'
+                            ? o.paymentMethod === 'COD'
+                              ? 'Declined by the boutique'
+                              : 'Declined — refund on its way'
+                            : `Arriving ${deliveryEstimate(o.placedAt)}`}
                     </div>
+                    {owes && (
+                      <div style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;margin-top:5px;color:#B0862B;')}>
+                        <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>payments</span>
+                        Pay {fmt(o.total)} in cash on delivery
+                      </div>
+                    )}
                     <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:8px;')}>
                       <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:18px;")}>{fmt(o.total)}</span>
                       <span style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#8A7078;')}>
@@ -185,16 +227,28 @@ export function MyOrders() {
                     </div>
                   </div>
                 </div>
-                <div style={css('display:flex;gap:10px;margin-top:13px;padding-top:13px;border-top:1px solid #F4E6EC;')}>
+                <div style={css('display:flex;gap:10px;margin-top:13px;padding-top:13px;border-top:1px solid #F4E6EC;flex-wrap:wrap;')}>
+                  {/* Cancelling is only offered while it's genuinely free to do
+                      — an un-dispatched COD order costs nobody anything yet. */}
+                  {canCancel && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); void cancel(o); }}
+                      disabled={cancelling === o.orderNumber}
+                      style={css(`flex:1;min-width:140px;height:42px;border:1.5px solid #E7A7B4;background:#fff;color:#C0455E;border-radius:13px;font-weight:800;font-size:13px;cursor:${cancelling === o.orderNumber ? 'wait' : 'pointer'};opacity:${cancelling === o.orderNumber ? 0.6 : 1};display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;`)}
+                    >
+                      <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
+                      {cancelling === o.orderNumber ? 'Cancelling…' : 'Cancel order'}
+                    </button>
+                  )}
                   <button
                     onClick={(e) => { e.stopPropagation(); chatWithBoutique(o); }}
-                    style={css('flex:1;height:42px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}
+                    style={css('flex:1;min-width:140px;height:42px;border:1.5px solid #F0D8E2;background:#fff;color:#B02454;border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
                   >
                     <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>chat</span>Chat with boutique
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate(`/buyer/orders/${encodeURIComponent(o.id)}/track`); }}
-                    style={css('flex:1;height:42px;border:none;background:#FCE0EC;color:#B02454;border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;')}
+                    style={css('flex:1;min-width:140px;height:42px;border:none;background:#FCE0EC;color:#B02454;border-radius:13px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;')}
                   >
                     <span style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>local_shipping</span>
                     {delivered || rejected ? 'Order details' : 'Track order'}
