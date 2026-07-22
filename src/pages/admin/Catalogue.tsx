@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useAsync } from '@/hooks/useAsync';
@@ -8,7 +8,7 @@ import {
 } from '@/components/admin/kit';
 import {
   fetchAllTaxonomy, setTaxonomyStatus, createTaxonomy, updateTaxonomy, deleteTaxonomy,
-  countProductsUsing, KIND_LABEL, type TaxonomyKind, type TaxonomyRow,
+  uploadTaxonomyImage, countProductsUsing, KIND_LABEL, type TaxonomyKind, type TaxonomyRow,
 } from '@/data/taxonomy';
 
 /**
@@ -31,8 +31,97 @@ import {
 
 const KINDS: TaxonomyKind[] = ['category', 'occasion', 'fabric', 'color', 'size'];
 
+/** The two vocabularies the buyer app draws as picture tiles. */
+const HAS_TILE_ART = (kind: TaxonomyKind) => kind === 'category' || kind === 'occasion';
+
 const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
+/**
+ * The picture a category or occasion is drawn with on the buyer side — the
+ * Home circle rail and the Collections tiles.
+ *
+ * This replaced a "type a Material Symbols icon name" box, which asked an admin
+ * to know an icon font's vocabulary by heart and, when they guessed wrong, drew
+ * nothing at all. A photograph is also simply the better tile: these are
+ * garments, and the buyer is shopping with their eyes.
+ *
+ * Optional throughout. With no upload the tile falls back to a photo of
+ * something actually listed under the term (see @/lib/collections), so a
+ * category approved this morning is never a blank square.
+ */
+function TilePicker({
+  kind,
+  value,
+  onChange,
+  onError,
+}: {
+  kind: TaxonomyKind;
+  value: string;
+  onChange: (url: string) => void;
+  onError: (message: string) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      onChange(await uploadTaxonomyImage(kind, file));
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Photo upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <div style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>Tile picture — optional</div>
+      <div style={css('display:flex;gap:12px;align-items:flex-start;margin-top:8px;')}>
+        {/* 4:5, the aspect the Collections tiles crop to. */}
+        <button
+          type="button"
+          onClick={() => input.current?.click()}
+          style={css(`width:104px;height:130px;flex:none;border-radius:16px;border:2px dashed ${value ? 'transparent' : '#E6BCCF'};background:${value ? '#fff' : '#FFFDFE'};position:relative;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:0;`)}
+        >
+          {value ? (
+            <img src={value} alt="" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
+          ) : (
+            <>
+              <Icon name={uploading ? 'progress_activity' : 'add_photo_alternate'} size={26} color={T.accent2} />
+              <span style={css('font-size:11px;color:#B79AA6;font-weight:700;')}>
+                {uploading ? 'Uploading…' : 'Upload'}
+              </span>
+            </>
+          )}
+          <input
+            ref={input}
+            type="file"
+            accept="image/*"
+            style={css('display:none;')}
+            onChange={(e) => pick(e.target.files?.[0])}
+          />
+        </button>
+
+        <div style={css('flex:1;min-width:0;')}>
+          <div style={css(`color:${T.muted};font-size:12.5px;line-height:1.6;`)}>
+            Shown on the Home rail and the Collections page. A tall, well-lit shot
+            of the garment works best — it is cropped to a circle on Home and to
+            4:5 on the collections grid.
+          </div>
+          {value && (
+            <div style={css('margin-top:10px;display:flex;gap:8px;')}>
+              <GhostButton icon="swap_horiz" onClick={() => input.current?.click()}>Replace</GhostButton>
+              <GhostButton icon="delete" tone="danger" onClick={() => onChange('')}>Remove</GhostButton>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type WithBoutique = TaxonomyRow & { boutique?: { name: string } | null };
 
@@ -47,11 +136,13 @@ export function Catalogue() {
   const [busy, setBusy] = useState(false);
 
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ kind: 'category' as TaxonomyKind, name: '', hex: '', icon: '' });
+  const [draft, setDraft] = useState({ kind: 'category' as TaxonomyKind, name: '', hex: '', imageUrl: '' });
 
   const [retire, setRetire] = useState<{ row: TaxonomyRow; uses: number } | null>(null);
-  const [renaming, setRenaming] = useState<TaxonomyRow | null>(null);
-  const [renameTo, setRenameTo] = useState('');
+  // One edit drawer rather than a rename-only one: the thing an admin most
+  // often wants to change about an existing category is its picture.
+  const [edit, setEdit] = useState<TaxonomyRow | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: '', hex: '', imageUrl: '' });
 
   // Memoised so `live` below is not recomputed on every keystroke elsewhere —
   // `data ?? []` is a fresh array each render otherwise.
@@ -113,16 +204,25 @@ export function Catalogue() {
     }
   };
 
-  const doRename = async () => {
-    if (!renaming || !renameTo.trim()) return;
+  const openEdit = (row: TaxonomyRow) => {
+    setEdit(row);
+    setEditDraft({ name: row.name, hex: row.hex ?? '', imageUrl: row.image_url ?? '' });
+  };
+
+  const doEdit = async () => {
+    if (!edit || !editDraft.name.trim()) return;
     setBusy(true);
     try {
-      await updateTaxonomy(renaming.id, { name: renameTo.trim() });
-      showToast('Renamed');
-      setRenaming(null);
+      await updateTaxonomy(edit.id, {
+        name: editDraft.name.trim(),
+        hex: edit.kind === 'color' ? editDraft.hex || null : edit.hex,
+        image_url: HAS_TILE_ART(edit.kind) ? editDraft.imageUrl || null : edit.image_url,
+      });
+      showToast('Saved');
+      setEdit(null);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Rename failed');
+      showToast(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setBusy(false);
     }
@@ -139,11 +239,11 @@ export function Catalogue() {
         kind: draft.kind,
         name: draft.name,
         hex: draft.kind === 'color' ? draft.hex || null : null,
-        icon: draft.icon || null,
+        imageUrl: HAS_TILE_ART(draft.kind) ? draft.imageUrl || null : null,
       });
       showToast(`“${draft.name.trim()}” added`);
       setAdding(false);
-      setDraft({ kind: 'category', name: '', hex: '', icon: '' });
+      setDraft({ kind: 'category', name: '', hex: '', imageUrl: '' });
       reload();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not add it');
@@ -159,8 +259,17 @@ export function Catalogue() {
       width: '2fr',
       render: (r) => (
         <span style={css('display:flex;align-items:center;gap:9px;min-width:0;')}>
-          {r.hex && <span style={css(`width:18px;height:18px;flex:none;border-radius:50%;background:${r.hex};box-shadow:0 0 0 1px ${T.field};`)} />}
-          {r.icon && !r.hex && <Icon name={r.icon} size={18} color={T.accent} />}
+          {r.hex ? (
+            <span style={css(`width:20px;height:20px;flex:none;border-radius:50%;background:${r.hex};box-shadow:0 0 0 1px ${T.field};`)} />
+          ) : r.image_url ? (
+            <img src={r.image_url} alt="" style={css(`width:28px;height:28px;flex:none;border-radius:8px;object-fit:cover;box-shadow:0 0 0 1px ${T.field};`)} />
+          ) : HAS_TILE_ART(r.kind) ? (
+            // No picture yet — the buyer tile falls back to a photo of something
+            // listed under it, so this is a nudge rather than a fault.
+            <span style={css(`width:28px;height:28px;flex:none;border-radius:8px;background:${T.head};display:flex;align-items:center;justify-content:center;`)} title="No tile picture yet">
+              <Icon name="image" size={15} color="#C3A7B4" />
+            </span>
+          ) : null}
           <span style={css('font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{r.name}</span>
         </span>
       ),
@@ -185,7 +294,7 @@ export function Catalogue() {
       align: 'right',
       render: (r) => (
         <span style={css('display:flex;gap:6px;justify-content:flex-end;')}>
-          <IconButton icon="edit" title="Rename" onClick={() => { setRenaming(r); setRenameTo(r.name); }} />
+          <IconButton icon="edit" title="Edit name and picture" onClick={() => openEdit(r)} />
           <IconButton icon="delete" tone="danger" title="Remove from the list" onClick={() => askRetire(r)} />
         </span>
       ),
@@ -343,44 +452,75 @@ export function Catalogue() {
               </div>
             </label>
           )}
-          {(draft.kind === 'category' || draft.kind === 'occasion') && (
-            <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
-              Icon — a Material Symbols name, optional
-              <input
-                value={draft.icon}
-                onChange={(e) => setDraft({ ...draft, icon: e.target.value })}
-                placeholder="checkroom"
-                style={css(`width:100%;margin-top:6px;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:inherit;color:#2A1A20;`)}
-              />
-            </label>
+          {HAS_TILE_ART(draft.kind) && (
+            <TilePicker
+              kind={draft.kind}
+              value={draft.imageUrl}
+              onChange={(url) => setDraft({ ...draft, imageUrl: url })}
+              onError={showToast}
+            />
           )}
         </div>
       </Drawer>
 
-      {/* ── Rename ─────────────────────────────────────────────────────── */}
+      {/* ── Edit an existing term ──────────────────────────────────────── */}
       <Drawer
-        open={!!renaming}
-        onClose={() => setRenaming(null)}
-        title="Rename term"
+        open={!!edit}
+        onClose={() => setEdit(null)}
+        title={edit ? `Edit “${edit.name}”` : ''}
         footer={
           <div style={css('display:flex;gap:10px;')}>
-            <GhostButton onClick={() => setRenaming(null)}>Cancel</GhostButton>
+            <GhostButton onClick={() => setEdit(null)}>Cancel</GhostButton>
             <div style={css('flex:1;')} />
-            <GhostButton icon="check" tone="primary" onClick={doRename}>{busy ? 'Saving…' : 'Save'}</GhostButton>
+            <GhostButton icon="check" tone="primary" onClick={doEdit}>{busy ? 'Saving…' : 'Save'}</GhostButton>
           </div>
         }
       >
-        <div style={css(`color:${T.muted};font-size:13.5px;line-height:1.6;`)}>
-          This renames the browsing term only. Products already listed keep the
-          old spelling on their record, so rename to correct a typo — not to
-          repurpose a term that has stock under it.
+        <div style={css('display:flex;flex-direction:column;gap:14px;')}>
+          <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+            Name
+            <input
+              value={editDraft.name}
+              onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
+              autoFocus
+              style={css(`width:100%;margin-top:6px;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:inherit;color:#2A1A20;`)}
+            />
+            <span style={css(`display:block;color:${T.muted};font-size:12px;margin-top:6px;line-height:1.5;`)}>
+              Renaming changes the browsing term only — products already listed keep
+              the old spelling on their record. Correct a typo here; do not repurpose
+              a term that has stock under it.
+            </span>
+          </label>
+
+          {edit?.kind === 'color' && (
+            <label style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>
+              Swatch
+              <div style={css('display:flex;gap:10px;align-items:center;margin-top:6px;')}>
+                <input
+                  type="color"
+                  value={editDraft.hex || '#E7719F'}
+                  onChange={(e) => setEditDraft({ ...editDraft, hex: e.target.value })}
+                  style={css(`width:52px;height:48px;border:1.5px solid ${T.field};border-radius:13px;background:#fff;cursor:pointer;padding:4px;`)}
+                />
+                <input
+                  value={editDraft.hex}
+                  onChange={(e) => setEditDraft({ ...editDraft, hex: e.target.value })}
+                  placeholder="#E7719F"
+                  style={css(`flex:1;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#2A1A20;`)}
+                />
+              </div>
+            </label>
+          )}
+
+          {edit && HAS_TILE_ART(edit.kind) && (
+            <TilePicker
+              kind={edit.kind}
+              value={editDraft.imageUrl}
+              onChange={(url) => setEditDraft({ ...editDraft, imageUrl: url })}
+              onError={showToast}
+            />
+          )}
         </div>
-        <input
-          value={renameTo}
-          onChange={(e) => setRenameTo(e.target.value)}
-          autoFocus
-          style={css(`width:100%;margin-top:14px;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:inherit;color:#2A1A20;`)}
-        />
       </Drawer>
 
       <ConfirmDialog

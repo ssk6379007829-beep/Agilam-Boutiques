@@ -113,8 +113,12 @@ export function Collections() {
                 className="agx-lift"
                 style={css(`display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:1px solid #F2E4EA;background:#fff;border-radius:18px;cursor:pointer;text-align:left;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);`)}
               >
-                <span style={css(`width:44px;height:44px;flex:none;border-radius:14px;background:${o.toneHex};display:flex;align-items:center;justify-content:center;`)}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#8E1C44;")}>{o.icon}</span>
+                <span style={css(`position:relative;width:44px;height:44px;flex:none;border-radius:14px;overflow:hidden;background:${o.toneHex};display:flex;align-items:center;justify-content:center;`)}>
+                  {o.image ? (
+                    <ImageSlot src={o.image} placeholder={o.name} style={css('position:absolute;inset:0;')} />
+                  ) : (
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#8E1C44;")}>{o.icon}</span>
+                  )}
                 </span>
                 <span style={css('min-width:0;flex:1;')}>
                   <span style={css('display:block;font-size:14.5px;font-weight:800;color:#2A1A20;')}>{o.name}</span>

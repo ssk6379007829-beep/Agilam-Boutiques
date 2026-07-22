@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { uploadImage } from '@/lib/uploadImage';
 
 /**
  * The catalogue vocabulary (migration 0024).
@@ -125,7 +126,7 @@ export async function createTaxonomy(input: {
   kind: TaxonomyKind;
   name: string;
   hex?: string | null;
-  icon?: string | null;
+  imageUrl?: string | null;
   sortOrder?: number;
 }) {
   const { error } = await supabase.from('taxonomy').insert({
@@ -134,15 +135,24 @@ export async function createTaxonomy(input: {
     name_key: input.name.trim().toLowerCase().replace(/\s+/g, ' '),
     status: 'approved',
     hex: input.hex ?? null,
-    icon: input.icon ?? null,
+    image_url: input.imageUrl ?? null,
     sort_order: input.sortOrder ?? 500,
   });
   if (error) throw error;
 }
 
+/**
+ * Tile art for a category or occasion, in the admin-only `catalogue-images`
+ * bucket (migration 0024). Grouped per vocabulary so the bucket stays readable
+ * in the Supabase dashboard.
+ */
+export async function uploadTaxonomyImage(kind: TaxonomyKind, file: File): Promise<string> {
+  return uploadImage('catalogue-images', kind, file, '0024');
+}
+
 export async function updateTaxonomy(
   id: string,
-  patch: Partial<{ name: string; hex: string | null; icon: string | null; sort_order: number }>,
+  patch: Partial<{ name: string; hex: string | null; image_url: string | null; sort_order: number }>,
 ) {
   // Keep the derived key in step even though the trigger would also do it —
   // the admin table sorts on `name`, and a rename must not leave a stale key.

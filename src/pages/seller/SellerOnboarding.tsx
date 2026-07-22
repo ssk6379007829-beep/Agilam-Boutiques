@@ -78,7 +78,7 @@ type Form = {
   name: string; ownerName: string; description: string; logoUrl: string; coverUrl: string;
   phone: string; whatsapp: string; email: string; instagram: string;
   addressLine: string; area: string; city: string; district: string; state: string; pincode: string; mapUrl: string;
-  category: string; gstNumber: string; businessReg: string; yearsInBusiness: string;
+  categories: string[]; gstNumber: string; businessReg: string; yearsInBusiness: string;
   openTime: string; closeTime: string; workingDays: string[];
   deliveryAvailable: boolean; deliveryAreas: string; deliveryCharge: string;
   codEnabled: boolean; onlinePaymentEnabled: boolean;
@@ -89,7 +89,7 @@ const EMPTY: Form = {
   name: '', ownerName: '', description: '', logoUrl: '', coverUrl: '',
   phone: '', whatsapp: '', email: '', instagram: '',
   addressLine: '', area: '', city: '', district: '', state: '', pincode: '', mapUrl: '',
-  category: '', gstNumber: '', businessReg: '', yearsInBusiness: '',
+  categories: [], gstNumber: '', businessReg: '', yearsInBusiness: '',
   openTime: '10:00', closeTime: '20:00', workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   deliveryAvailable: true, deliveryAreas: '', deliveryCharge: '0',
   codEnabled: true, onlinePaymentEnabled: true,
@@ -131,7 +131,7 @@ function validateStep(step: number, f: Form): Errors {
     if (!PIN_RE.test(f.pincode.trim())) e.pincode = 'Enter a valid 6-digit pincode';
   }
   if (step === 4) {
-    if (!f.category) e.category = 'Pick your main category';
+    if (f.categories.length === 0) e.categories = 'Pick at least one category';
     if (f.gstNumber.trim() && !GST_RE.test(f.gstNumber.trim().toUpperCase())) e.gstNumber = 'Enter a valid 15-character GSTIN';
     if (f.yearsInBusiness.trim() && Number(f.yearsInBusiness) > 100) e.yearsInBusiness = 'Enter a number between 0 and 100';
   }
@@ -158,6 +158,17 @@ function validateStep(step: number, f: Form): Errors {
 
 const orNull = (s: string) => s.trim() || null;
 
+/**
+ * `boutiques.category` is a single text column (migration 0021), but a boutique
+ * that sells sarees usually sells blouses and lehengas too — so the wizard lets
+ * the seller tick several and stores them comma-separated. Everywhere the value
+ * is only ever displayed ("Sarees, Bridal Wear" under the shop name), so the
+ * joined string reads correctly without a schema change.
+ */
+const joinCategories = (list: string[]) => list.join(', ');
+const splitCategories = (raw: string | null | undefined) =>
+  (raw ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+
 /** The wizard form mapped onto the columns the boutique row actually stores. */
 function toPatch(f: Form): BoutiquePatch {
   return {
@@ -179,7 +190,7 @@ function toPatch(f: Form): BoutiquePatch {
     state: f.state.trim(),
     pincode: f.pincode.trim(),
     map_url: orNull(f.mapUrl),
-    category: f.category,
+    category: joinCategories(f.categories),
     gst_number: orNull(f.gstNumber.toUpperCase()),
     business_reg_number: orNull(f.businessReg),
     years_in_business: f.yearsInBusiness.trim() ? Number(f.yearsInBusiness) : null,
@@ -300,7 +311,7 @@ export function SellerOnboarding() {
           state: row.state ?? '',
           pincode: row.pincode ?? '',
           mapUrl: row.map_url ?? '',
-          category: row.category ?? '',
+          categories: splitCategories(row.category),
           gstNumber: priv?.gst_number ?? '',
           businessReg: priv?.business_reg_number ?? '',
           yearsInBusiness: row.years_in_business != null ? String(row.years_in_business) : '',
@@ -636,7 +647,7 @@ export function SellerOnboarding() {
 
         {step === 4 && (
           <SectionCard>
-            <ChipPicker label="Boutique category *" options={CATEGORIES} value={form.category ? [form.category] : []} onChange={(next) => set('category', next[0] ?? '')} error={errors.category} />
+            <ChipPicker label="Boutique categories *" options={CATEGORIES} value={form.categories} onChange={(next) => set('categories', next)} multiple error={errors.categories} hint="Pick every kind of wear you sell — buyers see all of them on your shop." />
             <Field label="GST number" value={form.gstNumber} onChange={(v) => set('gstNumber', v.toUpperCase().slice(0, 15))} placeholder="33ABCDE1234F1Z5" error={errors.gstNumber} hint="Optional. Kept private — never shown to buyers." />
             <Field label="Business registration number" value={form.businessReg} onChange={(v) => set('businessReg', v)} placeholder="Udyam / shop licence number" hint="Optional. Speeds up verification. Kept private." />
             <Field label="Years in business" value={form.yearsInBusiness} onChange={(v) => set('yearsInBusiness', v.replace(/\D/g, '').slice(0, 3))} placeholder="12" inputMode="numeric" error={errors.yearsInBusiness} />
@@ -749,7 +760,7 @@ function ReviewStep({
     },
     {
       step: 4, title: 'Business',
-      rows: [['Category', dash(form.category)], ['GST number', dash(form.gstNumber)], ['Registration', dash(form.businessReg)], ['Years in business', dash(form.yearsInBusiness)]],
+      rows: [['Categories', dash(joinCategories(form.categories))], ['GST number', dash(form.gstNumber)], ['Registration', dash(form.businessReg)], ['Years in business', dash(form.yearsInBusiness)]],
     },
     {
       step: 5, title: 'Store settings',

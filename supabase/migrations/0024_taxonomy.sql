@@ -231,6 +231,40 @@ select distinct on (kind, name_key) kind, name, name_key, 'approved', 900
   ) s
 on conflict (kind, name_key) do nothing;
 
+-- ── Storage: collection tile art ────────────────────────────────────────────
+-- A category the admin approves needs a picture, and the design's six hand-drawn
+-- circles cannot supply one for a name it never anticipated. Until there is an
+-- upload the tile falls back to a photo of something listed under it, which is
+-- a decent stand-in but not a chosen image — so the admin can put a real one here.
+--
+-- Unlike the product and branding buckets, writing here is admins only: this art
+-- appears on the Home rail and the Collections page, i.e. it is Agilam's own
+-- shop window rather than any one seller's.
+insert into storage.buckets (id, name, public)
+values ('catalogue-images', 'catalogue-images', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "catalogue-images: public read"  on storage.objects;
+drop policy if exists "catalogue-images: admin upload" on storage.objects;
+drop policy if exists "catalogue-images: admin update" on storage.objects;
+drop policy if exists "catalogue-images: admin delete" on storage.objects;
+
+create policy "catalogue-images: public read" on storage.objects for select
+  using (bucket_id = 'catalogue-images');
+
+create policy "catalogue-images: admin upload" on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'catalogue-images' and is_admin());
+
+create policy "catalogue-images: admin update" on storage.objects for update
+  to authenticated
+  using (bucket_id = 'catalogue-images' and is_admin())
+  with check (bucket_id = 'catalogue-images' and is_admin());
+
+create policy "catalogue-images: admin delete" on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'catalogue-images' and is_admin());
+
 -- ── Grants ──────────────────────────────────────────────────────────────────
 grant select on taxonomy to anon, authenticated;
 grant insert on taxonomy to authenticated;

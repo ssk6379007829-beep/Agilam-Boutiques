@@ -73,9 +73,9 @@ export function TextArea({
   );
 }
 
-/** A row of mutually-exclusive pills — used for boutique category. */
+/** A row of pills — one pick by default, any number of them with `multiple`. */
 export function ChipPicker({
-  label, options, value, onChange, error, multiple,
+  label, options, value, onChange, error, multiple, hint,
 }: {
   label: string;
   options: readonly string[];
@@ -83,6 +83,7 @@ export function ChipPicker({
   onChange: (next: string[]) => void;
   error?: string;
   multiple?: boolean;
+  hint?: string;
 }) {
   const toggle = (opt: string) => {
     if (!multiple) return onChange(value[0] === opt ? [] : [opt]);
@@ -107,7 +108,7 @@ export function ChipPicker({
           );
         })}
       </div>
-      {error && <span style={css(ERR)}>{error}</span>}
+      {error ? <span style={css(ERR)}>{error}</span> : hint ? <span style={css(HINT)}>{hint}</span> : null}
     </div>
   );
 }

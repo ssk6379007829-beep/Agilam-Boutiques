@@ -45,7 +45,7 @@ export type CategoryTile = {
   from: number;
 };
 
-export type OccasionTile = { name: string; count: number; icon: string; toneHex: string };
+export type OccasionTile = { name: string; count: number; icon: string; toneHex: string; image?: string };
 export type ColourTile = { name: string; count: number; hex: string };
 export type BudgetTile = { label: string; maxPrice: number; count: number };
 export type FabricTile = { name: string; count: number };
@@ -121,8 +121,11 @@ export function buildCollections(products: Product[], vocab: Vocabulary): Collec
     .map((term, i) => ({
       name: term.name,
       count: occCounts.get(norm(term.name)) ?? 0,
+      // The glyph is the fallback, not the default: an uploaded photo replaces
+      // it in the tile's swatch square.
       icon: term.icon ?? GENERIC_OCCASION_ICON,
       toneHex: TONES[i % TONES.length],
+      image: term.image_url ?? undefined,
     }))
     // Left in the admin's order: it is a narrative (bridal → casual), not a
     // ranking, and reshuffling it by popularity would read as arbitrary.
