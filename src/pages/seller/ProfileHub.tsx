@@ -17,6 +17,7 @@ export function ProfileHub() {
   const subline = [boutique?.city, ownerName && `Owner: ${ownerName}`].filter(Boolean).join(' · ');
 
   const rows = [
+    { label: 'Inspire Posts', icon: 'auto_awesome', border: '1px solid #F5E4EC', to: '/seller/posts' },
     { label: 'Billing (Offline Sales)', icon: 'receipt_long', border: '1px solid #F5E4EC', to: '/seller/billing' },
     { label: 'Earnings', icon: 'payments', border: '1px solid #F5E4EC', to: '/seller/earnings' },
     { label: 'Analytics', icon: 'insights', border: '1px solid #F5E4EC', to: '/seller/analytics' },

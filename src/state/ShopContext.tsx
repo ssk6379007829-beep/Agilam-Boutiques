@@ -20,6 +20,7 @@ import {
   writeLocalFollows,
   clearLocalCollections,
 } from '@/lib/buyerLocal';
+import { clearLocalFeedInteractions } from '@/lib/feedLocal';
 import {
   loadCollections,
   mergeGuestCollections,
@@ -331,6 +332,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       setWishlist({});
       setFollows({});
       clearLocalCollections();
+      // Feed likes/saves are per-buyer too — leaving them would show the next
+      // person on this device the previous account's hearts.
+      clearLocalFeedInteractions();
     }
   }, [session?.user?.id]);
 

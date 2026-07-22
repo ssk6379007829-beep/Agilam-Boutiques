@@ -32,6 +32,7 @@ import { Messages as BuyerMessages } from '@/pages/buyer/Messages';
 import { Chat as BuyerChat } from '@/pages/buyer/Chat';
 import { Profile as BuyerProfile } from '@/pages/buyer/Profile';
 import { Policy } from '@/pages/buyer/Policy';
+import { Inspire } from '@/pages/buyer/Inspire';
 
 /**
  * The seller and admin consoles are only ever reached by signed-in
@@ -47,6 +48,8 @@ const SellerLayout = lazyNamed(() => import('@/components/layout/SellerLayout'),
 const Dashboard = lazyNamed(() => import('@/pages/seller/Dashboard'), 'Dashboard');
 const AddProduct = lazyNamed(() => import('@/pages/seller/AddProduct'), 'AddProduct');
 const MyProducts = lazyNamed(() => import('@/pages/seller/MyProducts'), 'MyProducts');
+const SellerPosts = lazyNamed(() => import('@/pages/seller/Posts'), 'Posts');
+const PostEditor = lazyNamed(() => import('@/pages/seller/PostEditor'), 'PostEditor');
 const Orders = lazyNamed(() => import('@/pages/seller/Orders'), 'Orders');
 const OrderDetail = lazyNamed(() => import('@/pages/seller/OrderDetail'), 'OrderDetail');
 const Customers = lazyNamed(() => import('@/pages/seller/Customers'), 'Customers');
@@ -102,6 +105,8 @@ export default function App() {
         {/* Sort shares the results grid behind a lighter sort-only sheet. */}
         <Route path="sort" element={<><Results /><SortSheet /></>} />
         <Route path="boutiques" element={<Boutiques />} />
+        {/* Inspire — the feed of posts from boutiques the buyer follows. */}
+        <Route path="inspire" element={<Inspire />} />
         <Route path="boutique/:id" element={<BoutiqueProfile />} />
         <Route path="product/:id" element={<ProductDetail />} />
         <Route path="wishlist" element={<Wishlist />} />
@@ -136,6 +141,10 @@ export default function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="add-product" element={<AddProduct />} />
         <Route path="products" element={<MyProducts />} />
+        {/* Inspire posts. `new` is matched before `:id` so it isn't read as one. */}
+        <Route path="posts" element={<SellerPosts />} />
+        <Route path="posts/new" element={<PostEditor />} />
+        <Route path="posts/:id" element={<PostEditor />} />
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
         <Route path="customers" element={<Customers />} />

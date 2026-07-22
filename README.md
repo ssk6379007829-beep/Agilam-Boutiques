@@ -50,7 +50,9 @@ This app uses `BrowserRouter`, so the included `vercel.json` rewrite is required
 - `/auth/signin/:role`, `/auth/signup/:role` — email + password sign in/up for buyers and sellers
 - `/admin/login` — email + password sign in for admins
 - `/buyer/*` — buyer mobile web app (home, search, boutiques, product detail, wishlist, chat, profile)
-- `/seller/*` — boutique owner mobile web app (dashboard, products, orders, earnings, subscription, chat)
+  - `/buyer/inspire` — the boutique feed: posts from the shops you follow, with like / share / save and a shop call to action (requires migration `0020`)
+  - `/buyer/policy/:slug` — delivery, shipping, returns, cancellation, product, privacy and terms, plus About and Help
+- `/seller/*` — boutique owner mobile web app (dashboard, products, orders, earnings, chat, and `posts` — the Inspire composer)
 - `/admin/*` — desktop admin console (overview, approvals, boutiques, subscriptions, featured, customers, reports, payments, ads)
 
 Role is resolved from the signed-in user's `profiles.role` row — there's no manual role switcher in the shipped app.

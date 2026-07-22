@@ -6,6 +6,7 @@ export type AccountStatus = 'active' | 'blocked';
 export type SubPlan = 'boutique' | 'featured';
 export type SubStatus = 'active' | 'due' | 'expired';
 export type AdStatus = 'live' | 'paused' | 'draft';
+export type PostStatus = 'published' | 'hidden';
 
 export interface Database {
   public: {
@@ -103,6 +104,37 @@ export interface Database {
         Update: Partial<{ buyer_id: string; boutique_id: string }>;
         Relationships: [];
       };
+      // ── Inspire feed (migration 0020) ──────────────────────────────────
+      posts: {
+        Row: {
+          id: string;
+          boutique_id: string;
+          title: string;
+          caption: string;
+          images: string[];
+          product_id: string | null;
+          category: string | null;
+          cta_label: string;
+          status: PostStatus;
+          likes_count: number;
+          created_at: string;
+        };
+        Insert: Partial<Database['public']['Tables']['posts']['Row']> & { boutique_id: string };
+        Update: Partial<Database['public']['Tables']['posts']['Row']>;
+        Relationships: [];
+      };
+      post_likes: {
+        Row: { post_id: string; buyer_id: string; created_at: string };
+        Insert: { post_id: string; buyer_id: string };
+        Update: Partial<{ post_id: string; buyer_id: string }>;
+        Relationships: [];
+      };
+      post_saves: {
+        Row: { post_id: string; buyer_id: string; created_at: string };
+        Insert: { post_id: string; buyer_id: string };
+        Update: Partial<{ post_id: string; buyer_id: string }>;
+        Relationships: [];
+      };
       reviews: {
         Row: {
           id: string;
@@ -197,6 +229,10 @@ export interface Database {
     Functions: {
       toggle_boutique_follow: {
         Args: { bid: string; do_follow: boolean };
+        Returns: number;
+      };
+      toggle_post_like: {
+        Args: { pid: string; do_like: boolean };
         Returns: number;
       };
       create_offline_sale: {

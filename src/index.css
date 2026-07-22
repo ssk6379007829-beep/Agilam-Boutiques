@@ -168,6 +168,30 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   animation: agx-pop .32s cubic-bezier(.2,.7,.2,1);
 }
 
+/* ---------- Inspire feed ---------- */
+/* Double-tap-to-like burst over the photo. */
+@keyframes agx-burst {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(.4); }
+  35%  { opacity: 1; transform: translate(-50%,-50%) scale(1.15); }
+  70%  { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(1.1); }
+}
+/* One readable column, the way a feed should read — never full-bleed on desktop. */
+.agx-feed { display: flex; flex-direction: column; gap: 18px; max-width: 620px; margin: 0 auto; }
+
+/* Floating bag: clears the nav dock, and the safe area under it. */
+.agx-fab-bag {
+  position: fixed;
+  right: 16px;
+  bottom: calc(112px + env(safe-area-inset-bottom));
+  z-index: 45;
+}
+@media (max-width: 640px) { .agx-fab-bag { bottom: calc(92px + env(safe-area-inset-bottom)); right: 14px; } }
+/* The product page already pins its own action bar to the bottom edge and lifts
+   the dock above it, so the bag has to clear both. */
+body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(160px + env(safe-area-inset-bottom)); }
+@media (min-width: 900px) { body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(112px + env(safe-area-inset-bottom)); } }
+
 /* ---------- product imagery ----------
    One card ratio for the whole catalogue. Every product thumbnail — home rails,
    results, wishlist, boutique profile, recommendations — uses this so a grid
