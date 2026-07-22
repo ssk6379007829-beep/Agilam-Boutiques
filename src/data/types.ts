@@ -149,7 +149,7 @@ export interface OrderWithDetails {
   cancel_reason?: string | null;
   buyer: { full_name: string; phone: string | null; city: string | null } | null;
   boutique: { name: string; tone: number } | null;
-  items: { id: string; title: string; price: number; qty: number; size: string | null; color: string | null }[];
+  items: { id: string; product_id: string | null; title: string; price: number; qty: number; size: string | null; color: string | null }[];
 }
 
 export interface ConversationWithPeer {

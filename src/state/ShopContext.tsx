@@ -537,12 +537,15 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     clearPendingPayment();
 
     const oid = data.orders[0].order_number;
-    setCart({});
+    // Empty the bag through `clearCart`, not `setCart({})`: a signed-in buyer's
+    // cart lives in the account, so wiping only the in-memory copy left the
+    // just-ordered rows in the DB and the next load put them straight back.
+    clearCart();
     setAppliedCoupon(null);
     setLastOrderId(oid);
     showToast(isCodOrder ? 'Order placed — pay cash on delivery' : 'Order placed successfully');
     return oid;
-  }, [guest, boutiques, productById, showToast]);
+  }, [guest, boutiques, productById, showToast, clearCart]);
 
   const placeOrder = useCallback(async (payment: PaymentInfo): Promise<string> => {
     // The server prices the order from the product ids, so the browser only

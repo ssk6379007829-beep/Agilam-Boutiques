@@ -7,6 +7,7 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { updateBoutique, uploadBoutiqueImage } from '@/data/boutiques';
 import { updateMyProfile } from '@/data/profiles';
 import { resolveDisplayName } from '@/lib/displayName';
+import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 
 const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;box-sizing:border-box;';
 const labelStyle = 'font-size:13px;font-weight:700;color:#7A5C67;';
@@ -27,6 +28,7 @@ export function BoutiqueProfileEdit() {
   const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null);
   const logoInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
+  const { cropImage, cropper } = useImageCropper();
 
   // Seed the form from the seller's own row once it arrives (and again if they
   // save elsewhere), so the fields always reflect the logged-in account.
@@ -46,8 +48,12 @@ export function BoutiqueProfileEdit() {
   const initial = (name || owner || 'B').trim().charAt(0).toUpperCase();
 
   // Branding images save immediately — they have no "unsaved" state to hold.
-  const pickImage = async (kind: 'logo' | 'cover', file: File | undefined) => {
-    if (!file || !boutique) return;
+  const pickImage = async (kind: 'logo' | 'cover', picked: File | undefined) => {
+    if (!boutique) return;
+    // The logo renders in a square badge and the cover as a wide banner — both
+    // crop on the buyer's side, so the seller places the crop themselves.
+    const file = await cropImage(picked, kind === 'logo' ? CROP.logo : CROP.cover);
+    if (!file) return;
     setUploading(kind);
     try {
       const url = await uploadBoutiqueImage(boutique.id, kind, file);
@@ -96,6 +102,7 @@ export function BoutiqueProfileEdit() {
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;")}>Boutique Profile</div>
       </div>
 
+      {cropper}
       <div style={css('padding:4px 20px 0;')}>
         <input ref={coverInput} type="file" accept="image/*" hidden onChange={(e) => { void pickImage('cover', e.target.files?.[0]); e.target.value = ''; }} />
         <input ref={logoInput} type="file" accept="image/*" hidden onChange={(e) => { void pickImage('logo', e.target.files?.[0]); e.target.value = ''; }} />

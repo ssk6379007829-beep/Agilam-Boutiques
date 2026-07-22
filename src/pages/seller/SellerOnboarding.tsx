@@ -6,6 +6,7 @@ import { FullscreenLoader } from '@/auth/RequireRole';
 import { useToast } from '@/components/ui/Toast';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
 import { resolveDisplayName } from '@/lib/displayName';
+import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
 import {
   fetchMyBoutique,
@@ -231,6 +232,7 @@ export function SellerOnboarding() {
   const [uploading, setUploading] = useState<'logo' | 'cover' | null>(null);
   const logoInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
+  const { cropImage, cropper } = useImageCropper();
   const topRef = useRef<HTMLDivElement>(null);
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
@@ -343,8 +345,12 @@ export function SellerOnboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, authed, authLoading]);
 
-  const pickImage = async (kind: 'logo' | 'cover', file: File | undefined) => {
-    if (!file || !boutique) return;
+  const pickImage = async (kind: 'logo' | 'cover', picked: File | undefined) => {
+    if (!boutique) return;
+    // Same frames the buyer app renders these in — a square badge and a wide
+    // banner — so the seller sees the crop before it goes live.
+    const file = await cropImage(picked, kind === 'logo' ? CROP.logo : CROP.cover);
+    if (!file) return;
     setUploading(kind);
     try {
       const url = await uploadBoutiqueImage(boutique.id, kind, file);
@@ -459,6 +465,7 @@ export function SellerOnboarding() {
 
   return (
     <div ref={topRef} style={css('min-height:100vh;background:#FBF6F2;padding-bottom:40px;')}>
+      {cropper}
       {/* Header ------------------------------------------------------------ */}
       <div style={css('background:linear-gradient(135deg,#8E1C44 0%,#B02454 52%,#D6336C 100%);color:#fff;position:relative;overflow:hidden;')}>
         <div style={css('position:absolute;top:-90px;right:-50px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(244,217,166,.22),transparent 70%);pointer-events:none;')} />
@@ -579,7 +586,7 @@ export function SellerOnboarding() {
                       <span style={css('font-size:10.5px;color:#B79AA6;font-weight:700;')}>Logo *</span>
                     </>
                   )}
-                  <input ref={logoInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => pickImage('logo', e.target.files?.[0])} />
+                  <input ref={logoInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void pickImage('logo', e.target.files?.[0]); e.target.value = ''; }} />
                 </div>
                 <div
                   onClick={() => coverInput.current?.click()}
@@ -593,7 +600,7 @@ export function SellerOnboarding() {
                       <span style={css('font-size:10.5px;color:#B79AA6;font-weight:700;')}>Cover image</span>
                     </>
                   )}
-                  <input ref={coverInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => pickImage('cover', e.target.files?.[0])} />
+                  <input ref={coverInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void pickImage('cover', e.target.files?.[0]); e.target.value = ''; }} />
                 </div>
               </div>
               {errors.logoUrl && <span style={css('display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:#D6455A;')}>{errors.logoUrl}</span>}

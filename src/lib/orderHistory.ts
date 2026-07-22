@@ -125,7 +125,7 @@ export type BuyerDbOrder = {
   cod_fee?: number;
   shipping_fee?: number;
   boutique: { name: string; tone: number } | null;
-  items: { title: string; price: number; qty: number; size: string | null }[];
+  items: { product_id?: string | null; title: string; price: number; qty: number; size: string | null }[];
 };
 
 /** Map a signed-in buyer's DB order onto the local PlacedOrder shape. */
@@ -147,7 +147,10 @@ export function fromBuyerOrder(o: BuyerDbOrder): PlacedOrder {
     paymentStatus: o.payment_status ?? 'paid',
     codFee,
     shippingFee,
-    items: (o.items ?? []).map((it) => ({ pid: '', title: it.title, tone, qty: it.qty, size: it.size ?? '', price: Number(it.price) })),
+    // `pid` is what the order screens look the product photo up by, so it has to
+    // survive the round-trip through the server copy — without it every line
+    // falls back to the empty placeholder tile.
+    items: (o.items ?? []).map((it) => ({ pid: it.product_id ?? '', title: it.title, tone, qty: it.qty, size: it.size ?? '', price: Number(it.price) })),
   };
 }
 

@@ -10,6 +10,7 @@ import {
   fetchAllTaxonomy, setTaxonomyStatus, createTaxonomy, updateTaxonomy, deleteTaxonomy,
   uploadTaxonomyImage, countProductsUsing, KIND_LABEL, type TaxonomyKind, type TaxonomyRow,
 } from '@/data/taxonomy';
+import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 
 /**
  * Catalogue vocabulary — the words the whole marketplace shops by.
@@ -63,8 +64,12 @@ function TilePicker({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const { cropImage, cropper } = useImageCropper();
 
-  const pick = async (file: File | undefined) => {
+  const pick = async (picked: File | undefined) => {
+    // 4:5 is what the Collections grid draws, and the Home circle takes its
+    // centre — so framing here settles both.
+    const file = await cropImage(picked, CROP.tile);
     if (!file) return;
     setUploading(true);
     try {
@@ -78,6 +83,7 @@ function TilePicker({
 
   return (
     <div>
+      {cropper}
       <div style={css('font-size:13px;font-weight:700;color:#7A5C67;')}>Tile picture — optional</div>
       <div style={css('display:flex;gap:12px;align-items:flex-start;margin-top:8px;')}>
         {/* 4:5, the aspect the Collections tiles crop to. */}
@@ -101,7 +107,7 @@ function TilePicker({
             type="file"
             accept="image/*"
             style={css('display:none;')}
-            onChange={(e) => pick(e.target.files?.[0])}
+            onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ''; }}
           />
         </button>
 

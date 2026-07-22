@@ -4,6 +4,7 @@ import { useShop } from '@/state/ShopContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { uploadProductImage } from '@/data/products';
 import { TaxonomySelect } from '@/components/seller/TaxonomySelect';
+import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 
 export type ProductFormValues = {
   title: string;
@@ -71,6 +72,7 @@ export function ProductForm({
   const [uploading, setUploading] = useState<'cover' | 'gallery' | null>(null);
   const coverInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
+  const { cropImage, cropper } = useImageCropper();
 
   const set = <K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -78,7 +80,10 @@ export function ProductForm({
   const toggleSize = (s: string) =>
     setForm((f) => ({ ...f, sizes: f.sizes.includes(s) ? f.sizes.filter((x) => x !== s) : [...f.sizes, s] }));
 
-  const onCoverPick = async (file: File | undefined) => {
+  const onCoverPick = async (picked: File | undefined) => {
+    // Cards crop to 3:4, so the seller frames it rather than discovering later
+    // that the buyer's grid cut the hem off.
+    const file = await cropImage(picked, CROP.product);
     if (!file) return;
     setUploading('cover');
     try {
@@ -92,8 +97,10 @@ export function ProductForm({
     }
   };
 
-  const onGalleryPick = async (file: File | undefined) => {
-    if (!file || form.images.length >= 3) return;
+  const onGalleryPick = async (picked: File | undefined) => {
+    if (form.images.length >= 3) return;
+    const file = await cropImage(picked, CROP.product);
+    if (!file) return;
     setUploading('gallery');
     try {
       const url = await uploadProductImage(boutiqueId, file);
@@ -149,7 +156,8 @@ export function ProductForm({
               <span style={css('font-size:10px;color:#B79AA6;font-weight:700;')}>Cover *</span>
             </>
           )}
-          <input ref={coverInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => onCoverPick(e.target.files?.[0])} />
+          {/* Clearing the value lets the same photo be re-picked after a cancelled crop. */}
+          <input ref={coverInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void onCoverPick(e.target.files?.[0]); e.target.value = ''; }} />
         </div>
 
         {[0, 1, 2].map((i) => {
@@ -173,8 +181,9 @@ export function ProductForm({
             </div>
           );
         })}
-        <input ref={galleryInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => onGalleryPick(e.target.files?.[0])} />
+        <input ref={galleryInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void onGalleryPick(e.target.files?.[0]); e.target.value = ''; }} />
       </div>
+      {cropper}
       {errors.imageUrl && <span style={css(errStyle)}>{errors.imageUrl}</span>}
 
       <label style={css(labelStyle)}>
