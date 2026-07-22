@@ -143,9 +143,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .agx-mob-actionbar { display: flex !important; }
 }
 
-/* ---------- header search ---------- */
+/* ---------- header ----------
+   Desktop keeps an always-open search field. Below 960px the header collapses
+   to one row — wordmark, search icon, profile — so the app opens with content
+   on screen instead of ~130px of chrome. */
 .agx-search-desktop { width: 280px; flex: none; }
-.agx-search-mobile { display: block; width: 100%; }
+@media (max-width: 959px) {
+  .agx-app-header { gap: 10px !important; padding-top: 10px !important; padding-bottom: 10px !important; }
+  .agx-brand-mark { width: 108px !important; height: 42px !important; }
+}
 
 /* ---------- wishlist heart ----------
    The app loads Material *Symbols*, where fill is the variable `FILL` axis —

@@ -94,6 +94,7 @@ export function AppShell({
               style={css('display:flex;align-items:center;gap:11px;border:none;background:none;cursor:pointer;padding:0;height:48px;flex:none;')}
             >
               <img
+                className="agx-brand-mark"
                 src="/agilam-wordmark.png"
                 alt="Agilam Boutiques"
                 style={css('width:128px;height:50px;border-radius:13px;object-fit:contain;')}
@@ -106,16 +107,13 @@ export function AppShell({
 
             <ProfileAvatar initials={initials} onClick={() => navigate(profileTo)} className="agx-only-desktop" />
 
-            {/* Mobile profile — the desktop search/profile are hidden below 960px. */}
+            {/* Below 960px the header is a single row: wordmark, search icon,
+                profile. A permanently-open search field cost a whole second row
+                of chrome on every screen — it opens as a sheet on tap instead. */}
+            {searchable && <GlobalSearch className="agx-only-mobile" variant="icon" />}
+
             <ProfileAvatar initials={initials} onClick={() => navigate(profileTo)} className="agx-only-mobile" />
           </div>
-
-          {/* Mobile search row — below the logo/profile row, full width. */}
-          {searchable && (
-            <div className="agx-only-mobile agx-app-header" style={css('padding:0 16px 12px;')}>
-              <GlobalSearch className="agx-search-mobile" />
-            </div>
-          )}
         </header>
 
         <main className="agx-app agx-app-main" style={css('flex:1;width:100%;padding:16px 18px 128px;')}>
