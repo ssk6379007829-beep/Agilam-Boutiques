@@ -170,7 +170,7 @@ export function Home() {
               />
             </div>
             <div style={css('padding:12px 2px 0;')}>
-              <div style={css('font-size:14.5px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
+              <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
               <div style={css('font-size:12.5px;color:#8A7078;margin-top:2px;')}>{p.boutique}</div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:7px;')}>
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:19px;")}>{fmt(p.price)}</span>
@@ -209,7 +209,7 @@ export function Home() {
               </div>
             </div>
             <div style={css('padding:12px 2px 0;')}>
-              <div style={css('font-size:14.5px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
+              <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:19px;margin-top:3px;")}>{fmt(p.price)}</div>
             </div>
           </div>

@@ -22,16 +22,32 @@ input:focus, textarea:focus { outline: none; }
 @keyframes agx-fade { from { opacity: 0; } to { opacity: 1; } }
 .agx-app { width: 100%; max-width: 1440px; margin: 0 auto; }
 .agx-nav-scroll { overflow-x: auto; }
-.agx-pgrid { display: grid; grid-template-columns: repeat(2, 1fr); }
-@media (min-width: 640px) { .agx-pgrid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 900px) { .agx-pgrid { grid-template-columns: repeat(4, 1fr); } }
-@media (min-width: 1200px) { .agx-pgrid { grid-template-columns: repeat(5, 1fr); } }
-@media (min-width: 1560px) { .agx-pgrid { grid-template-columns: repeat(6, 1fr); } }
+/* ---------- catalogue grids ----------
+   Tracks are minmax(0, 1fr), never plain 1fr, and every direct child is
+   min-width: 0.
+
+   A grid item defaults to `min-width: auto`, which means its track can never be
+   narrower than the item's min-content width. Product cards put the title on a
+   single line (white-space: nowrap + ellipsis), so min-content is the FULL
+   untruncated title — "Elegant Floral Printed Soft Silk Saree" was forcing its
+   column hundreds of pixels wider than the viewport. The result was mismatched
+   column widths, a taller image in the wider column (3/4 of a wider box), rows
+   that no longer lined up, and titles clipped off the right edge. The ellipsis
+   never appeared precisely because the column kept growing to fit.
+
+   These two declarations are what make the truncation work, so keep them
+   together on any grid that holds a card with a nowrap line in it. */
+.agx-pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 640px) { .agx-pgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .agx-pgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .agx-pgrid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1560px) { .agx-pgrid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .agx-hide-sm { display: none !important; } }
-.agx-rgrid { display: grid; gap: 18px; grid-template-columns: repeat(2, 1fr); }
-@media (min-width: 620px) { .agx-rgrid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 900px) { .agx-rgrid { grid-template-columns: repeat(4, 1fr); } }
-@media (min-width: 1200px) { .agx-rgrid { grid-template-columns: repeat(5, 1fr); } }
+.agx-rgrid { display: grid; gap: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 620px) { .agx-rgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .agx-rgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .agx-rgrid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.agx-pgrid > *, .agx-rgrid > * { min-width: 0; }
 @media (max-width: 780px) { .agx-filters { width: 100% !important; position: static !important; } }
 .agx-cart-grid { grid-template-columns: 1fr; }
 @media (min-width: 840px) { .agx-cart-grid { grid-template-columns: minmax(0,1fr) 350px; } }
@@ -41,10 +57,11 @@ input:focus, textarea:focus { outline: none; }
 /* Seller forms: paired fields sit side by side, stacking on a phone. */
 @media (max-width: 560px) { .agx-form-row { grid-template-columns: 1fr !important; } }
 /* Seller dashboard: 4 overview tiles → 2 up on a phone. */
-.agx-sd-stats { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
-@media (min-width: 860px) { .agx-sd-stats { grid-template-columns: repeat(4, 1fr); } }
-.agx-sd-quick { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
-@media (min-width: 860px) { .agx-sd-quick { grid-template-columns: repeat(4, 1fr); } }
+.agx-sd-stats { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 860px) { .agx-sd-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.agx-sd-quick { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 860px) { .agx-sd-quick { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.agx-sd-stats > *, .agx-sd-quick > * { min-width: 0; }
 .agx-sd-split { display: grid; gap: 16px; grid-template-columns: 1fr; }
 @media (min-width: 1000px) { .agx-sd-split { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); } }
 /* ---------- v2 elevation system ---------- */
@@ -217,6 +234,23 @@ body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(160px + env(safe-area-inset-
 /* The photo fills the box; overlays (heart, rating, badges) position themselves. */
 .agx-prod-fill { position: absolute; inset: 0; }
 .agx-prod-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Product-card title.
+   Two lines, clamped, and always reserving both — so a one-word title and a
+   long one leave the price on the same baseline and every row of the grid
+   lines up. A single nowrap line truncated far too early in a phone's ~170px
+   column ("Elegant Floral Print…"), which is what this replaces. */
+.agx-card-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.25;
+  min-height: 2.5em;
+  overflow-wrap: anywhere;
+}
+/* The boutique name under it stays a single line — it's secondary, and a
+   wrapped shop name would push the price out of alignment again. */
+.agx-card-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* The save-for-later heart sits in the same corner on every card. */
 .agx-card-wish { position: absolute; right: 9px; top: 9px; z-index: 2; }
 /* Order/bag lines list the photo beside text, so they use a smaller fixed box. */
@@ -231,8 +265,9 @@ body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(160px + env(safe-area-inset-
   grid-template-columns: 1fr;
   align-items: stretch;
 }
-@media (min-width: 760px)  { .agx-testimonials { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1060px) { .agx-testimonials { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 760px)  { .agx-testimonials { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1060px) { .agx-testimonials { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.agx-testimonials > * { min-width: 0; }
 
 /* ---------- policy pages ---------- */
 .agx-policy-grid { grid-template-columns: 1fr; }

@@ -289,7 +289,7 @@ export function BoutiqueProfile() {
                   )}
                 </div>
                 <div style={css('padding:11px 2px 0;text-align:center;')}>
-                  <div style={css('font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
+                  <div className="agx-card-title" style={css('font-size:13.5px;font-weight:700;')}>{p.title}</div>
                   <div style={css("display:inline-block;margin-top:8px;font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:16px;border:1px solid #F0D8E2;border-radius:12px;padding:6px 16px;background:#fff;")}>
                     {fmt(p.price)}
                   </div>

@@ -32,8 +32,8 @@ export function ProductCard({ product: p, onOpen, wished, onToggleWish, showRati
         )}
       </div>
       <div className="pt-2">
-        <div className="truncate text-[13.5px] font-bold leading-tight">{p.title}</div>
-        {showBoutique && <div className="mt-0.5 text-xs text-rose-muted">{p.boutique?.name}</div>}
+        <div className="agx-card-title text-[13.5px] font-bold">{p.title}</div>
+        {showBoutique && <div className="agx-card-sub mt-0.5 text-xs text-rose-muted">{p.boutique?.name}</div>}
         <div className="mt-1 flex items-center justify-between">
           <span className="text-[15px] font-extrabold text-rose-primaryDark">{fmtInr(p.price)}</span>
           {showRating && (

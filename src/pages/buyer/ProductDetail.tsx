@@ -249,8 +249,8 @@ export function ProductDetail() {
           />
         </div>
         <div style={css('padding:10px 2px 0;')}>
-          <div style={css('font-size:14px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
-          <div style={css('font-size:12px;color:#8A7078;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.boutique}</div>
+          <div className="agx-card-title" style={css('font-size:14px;font-weight:700;')}>{p.title}</div>
+          <div className="agx-card-sub" style={css('font-size:12px;color:#8A7078;margin-top:2px;')}>{p.boutique}</div>
           <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:6px;')}>
             <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:18px;")}>{fmt(p.price)}</span>
             <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:#5C4650;')}>

@@ -231,8 +231,8 @@ export function Results() {
                     </div>
                   </div>
                   <div style={css('padding:11px 2px 0;')}>
-                    <div style={css('font-size:14px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
-                    <div style={css('font-size:12.5px;color:#8A7078;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.boutique}</div>
+                    <div className="agx-card-title" style={css('font-size:14px;font-weight:700;')}>{p.title}</div>
+                    <div className="agx-card-sub" style={css('font-size:12.5px;color:#8A7078;')}>{p.boutique}</div>
                     <div style={css('display:flex;align-items:center;gap:8px;margin-top:6px;')}>
                       <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:18px;")}>{fmt(p.price)}</span>
                       <span style={css(`font-size:11px;font-weight:800;color:${stockFg(p.stock)};`)}>{stockLabel(p.stock)}</span>
