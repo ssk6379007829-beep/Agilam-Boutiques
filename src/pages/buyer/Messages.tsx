@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ThreadList } from '@/components/chat/ThreadList';
 import { useAsync } from '@/hooks/useAsync';
+import { useCatalog } from '@/state/CatalogContext';
 import { getBuyerId, fetchConversationsForBuyer } from '@/data/chat';
 import type { Thread } from '@/data/demo';
 
@@ -15,6 +16,9 @@ const relTime = (iso: string | null) => {
 };
 
 export function Messages() {
+  // The inbox is keyed by boutique, so the catalogue can supply each shop's
+  // logo for the thread avatar.
+  const { boutiqueById } = useCatalog();
   // Only read an existing identity — merely opening the inbox shouldn't mint an
   // anonymous account; that happens when the buyer actually opens a chat.
   const [buyerId, setBuyerId] = useState<string | null>(null);
@@ -38,6 +42,7 @@ export function Messages() {
     unread: c.unread,
     online: false,
     tone: c.boutique_tone % 8,
+    avatar: boutiqueById(c.boutique_id)?.logo || undefined,
   }));
 
   return <ThreadList threads={threads} chatBase="/buyer/chat" />;

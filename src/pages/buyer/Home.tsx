@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { SiteFooter } from '@/components/buyer/SiteFooter';
+import { WishButton } from '@/components/buyer/WishButton';
+import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { CATEGORIES, HOME_REVIEWS, TONES, fmt, img } from '@/data/demo';
@@ -13,17 +16,10 @@ const HERO_SLIDES = [
 ];
 
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
-const starRow = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
-
-/** Initials for a boutique's logo badge: "Elegance Boutique" -> "EB". */
-const monogram = (name: string) => {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  return (words.slice(0, 2).map((w) => w[0]).join('') || name.slice(0, 2)).toUpperCase();
-};
 
 export function Home() {
   const navigate = useNavigate();
-  const { wishlist, toggleWish, setFilters } = useShop();
+  const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
 
   // Home shows a curated slice of the catalogue in each rail.
@@ -44,13 +40,22 @@ export function Home() {
     timer.current = setInterval(() => setHeroIndex((x) => (x + 1) % 3), 4200);
   };
 
-  const goResults = () => navigate('/buyer/results');
+  // Every route into the collections grid starts from a clean slate, so a tile
+  // never inherits the filters (or the search term) left behind by the last
+  // visit — that was what made the results title and breadcrumb disagree with
+  // what was actually on screen.
+  const goResults = (sort?: string) => {
+    setQuery('');
+    setFilters({ ...DEFAULT_FILTERS, sort: sort ?? DEFAULT_FILTERS.sort });
+    navigate('/buyer/results');
+  };
 
   // A collection circle lands on results already filtered. Which field it maps
   // to is read off the catalogue rather than hardcoded, so a tile like "Bridal"
   // (an occasion, not a category) still resolves — and anything the catalogue
   // doesn't know, like "More", just opens the full grid.
   const openCategory = (name: string) => {
+    setQuery('');
     if (PRODUCTS.some((p) => p.cat === name)) setFilters({ ...DEFAULT_FILTERS, cats: [name] });
     else if (PRODUCTS.some((p) => p.occasion === name)) setFilters({ ...DEFAULT_FILTERS, occasions: [name] });
     else setFilters(DEFAULT_FILTERS);
@@ -83,7 +88,7 @@ export function Home() {
                         {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
                       </div>
                       <div style={css('font-size:clamp(14px,1.4vw,17px);opacity:.9;margin-top:14px;font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
-                      <button onClick={goResults} style={css('pointer-events:auto;margin-top:24px;background:#fff;color:#B02454;border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
+                      <button onClick={() => goResults()} style={css('pointer-events:auto;margin-top:24px;background:#fff;color:#B02454;border:none;border-radius:15px;padding:14px 26px;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 16px 36px -14px rgba(0,0,0,.5);')}>
                         Shop the edit<span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
                       </button>
                     </div>
@@ -151,15 +156,18 @@ export function Home() {
       <div className="agx-scroll" style={css('display:flex;gap:18px;overflow-x:auto;padding-bottom:6px;')}>
         {NEW_ARRIVALS.map((p) => (
           <div key={p.id} onClick={() => openProduct(p.id)} className="agx-lift" style={css('flex:none;width:230px;cursor:pointer;')}>
-            <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:22px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.6);`)}>
-              <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
+            <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
+              <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
               <div style={css('position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.94);color:#B02454;padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.14);')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>fiber_new</span>
                 <span className="agx-eyebrow" style={css('font-size:8.5px;letter-spacing:.14em;')}>New</span>
               </div>
-              <button onClick={(e: MouseEvent) => { e.stopPropagation(); toggleWish(p.id); }} style={css('position:absolute;right:10px;top:10px;width:36px;height:36px;border-radius:12px;border:none;background:rgba(255,255,255,.9);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(0,0,0,.3);')}>
-                <span style={css(`font-family:'Material Symbols Outlined';font-size:19px;color:${wishlist[p.id] ? '#D6336C' : '#B79AA6'};`)}>{wishlist[p.id] ? 'favorite' : 'favorite_border'}</span>
-              </button>
+              <WishButton
+                wished={!!wishlist[p.id]}
+                title={p.title}
+                onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
+                className="agx-card-wish"
+              />
             </div>
             <div style={css('padding:12px 2px 0;')}>
               <div style={css('font-size:14.5px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
@@ -181,21 +189,19 @@ export function Home() {
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Most-loved right now</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin-top:6px;")}>Best sellers</div>
         </div>
-        <a href="#" onClick={(e) => { e.preventDefault(); goResults(); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>See all →</a>
+        <a href="#" onClick={(e) => { e.preventDefault(); goResults('Popularity'); }} className="agx-eyebrow" style={css('font-size:10px;color:#B02454;')}>See all →</a>
       </div>
       <div className="agx-rgrid">
         {BEST_SELLERS.map((p) => (
           <div key={p.id} onClick={() => openProduct(p.id)} className="agx-lift" style={css('cursor:pointer;')}>
-            <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:22px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.6);`)}>
-              <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
-              <button
-                onClick={(e: MouseEvent) => { e.stopPropagation(); toggleWish(p.id); }}
-                style={css('position:absolute;right:10px;top:10px;width:36px;height:36px;border-radius:12px;border:none;background:rgba(255,255,255,.9);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(0,0,0,.3);')}
-              >
-                <span style={css(`font-family:'Material Symbols Outlined';font-size:19px;color:${wishlist[p.id] ? '#D6336C' : '#B79AA6'};`)}>
-                  {wishlist[p.id] ? 'favorite' : 'favorite_border'}
-                </span>
-              </button>
+            <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
+              <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
+              <WishButton
+                wished={!!wishlist[p.id]}
+                title={p.title}
+                onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
+                className="agx-card-wish"
+              />
               <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
                 <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#2FA36B;")}>star</span>{p.rating}
                 <span style={css('width:1px;height:10px;background:#D9C4CE;')} />
@@ -228,9 +234,7 @@ export function Home() {
             {/* Identity — logo + name shown separately below the cover */}
             <div style={css('padding:14px 16px 16px;')}>
               <div style={css('display:flex;align-items:center;gap:11px;')}>
-                <div style={css('width:44px;height:44px;flex:none;border-radius:50%;background:linear-gradient(135deg,#D6336C,#8E1E43);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px -12px rgba(214,51,108,.9);')}>
-                  <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#fff;letter-spacing:.02em;")}>{monogram(b.name)}</span>
-                </div>
+                <BoutiqueLogo name={b.name} src={b.logo} size={44} />
                 <div style={css('min-width:0;flex:1;')}>
                   <div style={css('display:flex;align-items:center;gap:5px;')}>
                     <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
@@ -252,82 +256,71 @@ export function Home() {
         ))}
       </div>
 
-      {/* CUSTOMER REVIEWS (full-bleed) */}
-      <div style={css('width:100vw;margin-left:calc(50% - 50vw);background:#FBF6F2;margin-top:44px;')}>
-        <div style={css('max-width:1440px;margin:0 auto;padding:clamp(34px,4vw,60px) clamp(20px,4vw,56px);')}>
-          <div style={css('text-align:center;max-width:560px;margin:0 auto;')}>
+      {/* CUSTOMER REVIEWS (full-bleed)
+          Three testimonials used to run through the 5-column product grid, so
+          they sat squeezed on the left with two empty cells beside them. They
+          now have a dedicated, centred track (`.agx-testimonials`) that caps at
+          three across, and each card is a proper pull-quote: the mark, the
+          words, then the person — equal height whatever the quote length. */}
+      <div style={css('width:100vw;margin-left:calc(50% - 50vw);background:linear-gradient(180deg,#FBF6F2 0%,#F8EFF3 100%);margin-top:44px;border-top:1px solid #F2E4EA;')}>
+        <div style={css('max-width:1180px;margin:0 auto;padding:clamp(36px,4.5vw,64px) clamp(20px,4vw,56px);')}>
+          <div style={css('text-align:center;max-width:600px;margin:0 auto;')}>
             <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>Loved across Tamil Nadu</div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,40px);line-height:1.08;margin-top:6px;")}>What shoppers say about Agilam</div>
+            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,40px);line-height:1.08;margin-top:8px;text-wrap:balance;")}>
+              What shoppers say about {' '}<span style={css('font-style:italic;color:#B02454;')}>Agilam</span>
+            </div>
+            <div style={css('color:#8A7078;font-size:14px;margin-top:10px;line-height:1.6;')}>
+              Real reviews from buyers who found their piece through a local boutique.
+            </div>
           </div>
-          <div className="agx-rgrid" style={css('margin-top:30px;')}>
+
+          <div className="agx-testimonials" style={css('margin-top:clamp(24px,3vw,38px);')}>
             {HOME_REVIEWS.map((r) => (
-              <div key={r.name} style={css('background:#fff;border:1px solid #F0E2E9;border-radius:20px;padding:24px 22px;box-shadow:0 18px 44px -34px rgba(107,20,54,.5);display:flex;flex-direction:column;')}>
-                <div style={css('color:#E0B84B;font-size:16px;letter-spacing:2px;')}>{starRow(r.rating)}</div>
-                <div style={css('font-size:14.5px;line-height:1.6;color:#3F2E36;margin-top:12px;text-wrap:pretty;')}>“{r.text}”</div>
-                <div style={css('display:flex;align-items:center;gap:12px;margin-top:18px;')}>
-                  <div style={css(`width:42px;height:42px;flex:none;border-radius:50%;background:${TONES[r.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:#5C1E38;`)}>{r.name[0]}</div>
-                  <div>
-                    <div style={css('font-size:14px;font-weight:800;color:#241019;')}>{r.name}</div>
-                    <div style={css('font-size:12px;color:#8A7078;display:flex;align-items:center;gap:3px;')}>
-                      <span style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>location_on</span>{r.city}
-                    </div>
-                  </div>
+              <figure
+                key={r.name}
+                style={css('margin:0;background:#fff;border:1px solid #F0E2E9;border-radius:22px;padding:clamp(22px,2.4vw,28px);box-shadow:0 18px 44px -34px rgba(107,20,54,.5);display:flex;flex-direction:column;height:100%;')}
+              >
+                {/* Opening mark — anchors the quote without shouting. */}
+                <span style={css("font-family:'Playfair Display',serif;font-size:52px;line-height:.6;color:#F3C6D8;height:26px;")}>“</span>
+
+                <blockquote style={css('margin:14px 0 0;font-size:15px;line-height:1.65;color:#3F2E36;text-wrap:pretty;flex:1;')}>
+                  {r.text}
+                </blockquote>
+
+                {/* Stars as glyphs rather than characters, so the row lines up. */}
+                <div style={css('display:flex;align-items:center;gap:2px;margin-top:18px;')} aria-label={`${r.rating} out of 5 stars`}>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <span
+                      key={i}
+                      className={i <= r.rating ? 'agx-heart agx-heart-on' : 'agx-heart'}
+                      style={css(`font-size:17px;color:${i <= r.rating ? '#E0B84B' : '#E8D7DF'};`)}
+                    >
+                      star
+                    </span>
+                  ))}
                 </div>
-              </div>
+
+                <figcaption style={css('display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid #F5E7ED;')}>
+                  <span style={css(`width:44px;height:44px;flex:none;border-radius:50%;background:${TONES[r.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:#5C1E38;`)}>
+                    {r.name[0]}
+                  </span>
+                  <span style={css('min-width:0;')}>
+                    <span style={css('display:block;font-size:14.5px;font-weight:800;color:#241019;')}>{r.name}</span>
+                    <span style={css('display:flex;align-items:center;gap:3px;font-size:12.5px;color:#8A7078;margin-top:2px;')}>
+                      <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>location_on</span>{r.city}
+                    </span>
+                  </span>
+                  <span style={css('margin-left:auto;display:flex;align-items:center;gap:4px;flex:none;font-size:11px;font-weight:800;color:#2FA36B;background:#E9F6EF;border-radius:999px;padding:5px 10px;')} title="Verified purchase">
+                    <span style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>verified</span>Verified
+                  </span>
+                </figcaption>
+              </figure>
             ))}
           </div>
         </div>
       </div>
 
-      {/* FOOTER (full-bleed) */}
-      <div style={css('width:100vw;margin-left:calc(50% - 50vw);margin-top:44px;background:linear-gradient(140deg,#5C1330,#8E1C44 60%,#B02454);color:#fff;')}>
-        <div style={css('max-width:1440px;margin:0 auto;padding:clamp(40px,5vw,64px) clamp(20px,4vw,56px) 28px;')}>
-          <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:36px;')}>
-            <div style={css('max-width:320px;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;letter-spacing:-.01em;")}>Agilam</div>
-              <div style={css('font-size:13.5px;line-height:1.6;opacity:.82;margin-top:10px;')}>Tamil Nadu's home for local boutiques. Discover, chat and shop verified stores — all in one place.</div>
-              <div style={css('display:flex;gap:10px;margin-top:18px;')}>
-                {['photo_camera', 'chat', 'mail'].map((ic) => (
-                  <span key={ic} style={css('width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;')}>
-                    <span style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#F4D9A6;")}>{ic}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div className="agx-eyebrow" style={css('font-size:10px;color:#F4D9A6;')}>Shop</div>
-              <div style={css('display:flex;flex-direction:column;gap:11px;margin-top:16px;font-size:13.5px;opacity:.88;')}>
-                <a href="#" onClick={(e) => { e.preventDefault(); goResults(); }} style={css('color:#fff;')}>New arrivals</a>
-                <a href="#" onClick={(e) => { e.preventDefault(); goResults(); }} style={css('color:#fff;')}>Best sellers</a>
-                <a href="#" onClick={(e) => { e.preventDefault(); goBoutiques(); }} style={css('color:#fff;')}>Boutiques</a>
-                <a href="#" onClick={(e) => { e.preventDefault(); goResults(); }} style={css('color:#fff;')}>Collections</a>
-              </div>
-            </div>
-            <div>
-              <div className="agx-eyebrow" style={css('font-size:10px;color:#F4D9A6;')}>Company</div>
-              <div style={css('display:flex;flex-direction:column;gap:11px;margin-top:16px;font-size:13.5px;opacity:.88;')}>
-                <a href="#" onClick={(e) => e.preventDefault()} style={css('color:#fff;')}>About Agilam</a>
-                <a href="#" onClick={(e) => e.preventDefault()} style={css('color:#fff;')}>Sell on Agilam</a>
-                <a href="#" onClick={(e) => e.preventDefault()} style={css('color:#fff;')}>Careers</a>
-                <a href="#" onClick={(e) => e.preventDefault()} style={css('color:#fff;')}>Contact</a>
-              </div>
-            </div>
-            <div>
-              <div className="agx-eyebrow" style={css('font-size:10px;color:#F4D9A6;')}>Help</div>
-              <div style={css('display:flex;flex-direction:column;gap:11px;margin-top:16px;font-size:13.5px;opacity:.88;')}>
-                <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/orders'); }} style={css('color:#fff;')}>Track order</a>
-                <a href="#" onClick={(e) => e.preventDefault()} style={css('color:#fff;')}>Returns &amp; refunds</a>
-                <a href="#" onClick={(e) => e.preventDefault()} style={css('color:#fff;')}>Shipping</a>
-                <a href="#" onClick={(e) => e.preventDefault()} style={css('color:#fff;')}>FAQ</a>
-              </div>
-            </div>
-          </div>
-          <div style={css('border-top:1px solid rgba(255,255,255,.15);margin-top:36px;padding-top:20px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px;opacity:.75;')}>
-            <span>© 2026 Agilam Boutiques. Made in Tamil Nadu.</span>
-            <span style={css('display:flex;gap:18px;')}><a href="#" onClick={(e) => e.preventDefault()} style={css('color:#fff;')}>Privacy</a><a href="#" onClick={(e) => e.preventDefault()} style={css('color:#fff;')}>Terms</a></span>
-          </div>
-        </div>
-      </div>
+      <SiteFooter />
     </div>
   );
 }

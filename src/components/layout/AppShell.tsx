@@ -3,6 +3,7 @@ import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
 import { SellModal } from '@/components/SellModal';
+import { GlobalSearch } from '@/components/buyer/GlobalSearch';
 import { initialsFrom, resolveDisplayName } from '@/lib/displayName';
 
 /**
@@ -57,7 +58,19 @@ function Tab({ tab, active, onClick }: { tab: TabDef; active: boolean; onClick: 
   );
 }
 
-export function AppShell({ tabs, profileTo }: { tabs: TabDef[]; profileTo: string }) {
+export function AppShell({
+  tabs,
+  profileTo,
+  /** Where the wordmark takes you — the app's landing screen for this role. */
+  homeTo,
+  /** Buyer-only: the header catalogue search. */
+  searchable,
+}: {
+  tabs: TabDef[];
+  profileTo: string;
+  homeTo: string;
+  searchable?: boolean;
+}) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { toast, sellModal, guest } = useShop();
@@ -73,30 +86,23 @@ export function AppShell({ tabs, profileTo }: { tabs: TabDef[]; profileTo: strin
       <div style={css('min-height:100vh;display:flex;flex-direction:column;background:#FBF6F2;')}>
         <header style={css('position:sticky;top:0;z-index:30;background:rgba(251,246,242,.88);backdrop-filter:blur(14px);border-bottom:1px solid #EFDCE4;')}>
           <div className="agx-app agx-app-header" style={css('display:flex;align-items:center;gap:20px;padding:14px 16px;')}>
+            {/* The wordmark is the way home from anywhere in the app. */}
             <button
-              onClick={() => navigate(profileTo)}
-              style={css('display: flex; align-items: center; gap: 11px; border: none; background: none; cursor: pointer; padding: 0; width: 249px; height: 48px')}
+              onClick={() => navigate(homeTo)}
+              aria-label="Agilam Boutiques — go to home"
+              title="Go to home"
+              style={css('display:flex;align-items:center;gap:11px;border:none;background:none;cursor:pointer;padding:0;height:48px;flex:none;')}
             >
               <img
                 src="/agilam-wordmark.png"
                 alt="Agilam Boutiques"
-                style={css('width: 128px; height: 50px; border-radius: 13px; object-fit: contain')}
+                style={css('width:128px;height:50px;border-radius:13px;object-fit:contain;')}
               />
-              <div className="agx-hide-sm" style={css('text-align:left;')} />
             </button>
 
-            <div style={css('flex:1;')} />
+            <div style={css('flex:1;min-width:8px;')} />
 
-            <div
-              className="agx-only-desktop"
-              style={css('align-items:center;gap:8px;background:#fff;border:1px solid #EFDCE4;border-radius:14px;padding:0 14px;height:44px;width:260px;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
-            >
-              <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:20px;")}>search</span>
-              <input
-                placeholder="Search boutiques &amp; styles"
-                style={css('border:none;background:none;flex:1;font-size:13.5px;font-weight:600;color:#241019;min-width:0;')}
-              />
-            </div>
+            {searchable && <GlobalSearch className="agx-only-desktop agx-search-desktop" />}
 
             <ProfileAvatar initials={initials} onClick={() => navigate(profileTo)} className="agx-only-desktop" />
 
@@ -105,15 +111,11 @@ export function AppShell({ tabs, profileTo }: { tabs: TabDef[]; profileTo: strin
           </div>
 
           {/* Mobile search row — below the logo/profile row, full width. */}
-          <div className="agx-only-mobile agx-app-header" style={css('padding:0 16px 12px;')}>
-            <div style={css('flex:1;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #EFDCE4;border-radius:14px;padding:0 14px;height:44px;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}>
-              <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:20px;")}>search</span>
-              <input
-                placeholder="Search boutiques &amp; styles"
-                style={css('border:none;background:none;flex:1;font-size:13.5px;font-weight:600;color:#241019;min-width:0;')}
-              />
+          {searchable && (
+            <div className="agx-only-mobile agx-app-header" style={css('padding:0 16px 12px;')}>
+              <GlobalSearch className="agx-search-mobile" />
             </div>
-          </div>
+          )}
         </header>
 
         <main className="agx-app agx-app-main" style={css('flex:1;width:100%;padding:16px 18px 128px;')}>

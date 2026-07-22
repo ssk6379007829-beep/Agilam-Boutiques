@@ -117,6 +117,20 @@ export function mergeServerOrders(serverOrders: PlacedOrder[]): PlacedOrder[] {
   return merged;
 }
 
+/**
+ * Human-readable delivery estimate for an order that hasn't arrived yet.
+ * Derived from when it was placed — the boutiques dispatch in 1–2 working days
+ * and our partners quote 3–7 after that, so this is the honest outer edge.
+ */
+export function deliveryEstimate(placedAt: string): string {
+  const d = new Date(placedAt);
+  if (Number.isNaN(d.getTime())) return '';
+  const from = new Date(d.getTime() + 4 * 86400000);
+  const to = new Date(d.getTime() + 9 * 86400000);
+  const fmtDay = (x: Date) => x.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  return `${fmtDay(from)} – ${fmtDay(to)}`;
+}
+
 /** "19 Jul 2026" for order cards. */
 export function formatOrderDate(iso: string): string {
   const d = new Date(iso);

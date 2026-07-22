@@ -15,7 +15,7 @@ export function BuyerLayout() {
 
   return (
     <>
-      <AppShell tabs={tabs} profileTo="/buyer/profile" />
+      <AppShell tabs={tabs} profileTo="/buyer/profile" homeTo="/buyer/home" searchable />
       <LoginPrompt />
     </>
   );

@@ -14,5 +14,5 @@ const tabs: TabDef[] = [
 ];
 
 export function SellerLayout() {
-  return <AppShell tabs={tabs} profileTo="/seller/profile" />;
+  return <AppShell tabs={tabs} profileTo="/seller/profile" homeTo="/seller/dashboard" />;
 }

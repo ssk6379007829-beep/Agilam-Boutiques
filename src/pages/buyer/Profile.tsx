@@ -7,6 +7,7 @@ import { ProfileEditSheet } from '@/components/buyer/ProfileEditSheet';
 import { AccountSheet } from '@/components/buyer/AccountSheet';
 import { readOrders } from '@/lib/orderHistory';
 import { syncAccount } from '@/lib/accountSync';
+import { APP_VERSION, COMPANY, CONTACT_LINKS } from '@/data/company';
 
 /** "selva.kumar" / "selva_kumar" -> "Selva Kumar" for an email-derived name. */
 function prettifyName(local: string): string {
@@ -95,14 +96,67 @@ export function Profile() {
     { label: 'Bag', value: cartCount, icon: 'shopping_bag', go: () => navigate('/buyer/cart') },
   ];
 
-  const rows = [
+  type Row = { label: string; sub: string; icon: string; go?: () => void; href?: string };
+
+  /** Shopping — everything tied to this buyer's own activity. */
+  const shoppingRows: Row[] = [
     { label: 'My Orders', sub: 'Track & manage purchases', icon: 'receipt_long', go: () => navigate('/buyer/orders') },
-    { label: 'Wishlist', sub: 'Pieces you saved', icon: 'favorite', go: () => navigate('/buyer/wishlist') },
+    { label: 'Wishlist', sub: wishCount ? `${wishCount} ${wishCount === 1 ? 'piece' : 'pieces'} saved` : 'Pieces you saved', icon: 'favorite', go: () => navigate('/buyer/wishlist') },
     { label: 'Messages', sub: 'Chats with boutiques', icon: 'chat', go: () => navigate('/buyer/messages') },
     { label: 'Coupons & Offers', sub: 'Deals ready to use', icon: 'confirmation_number', go: () => navigate('/buyer/coupons') },
-    { label: 'Delivery Address', sub: guest.address ? guest.address : 'Add where we ship', icon: 'location_on', go: () => setEditing(true) },
-    { label: 'Help & Support', sub: 'We’re here to help', icon: 'help', go: () => showToast('Support: hello@agilam.in') },
+    { label: 'Delivery Address', sub: guest.address || 'Add where we ship', icon: 'location_on', go: () => setEditing(true) },
   ];
+
+  /** Support — reaches a real inbox and a real phone, from `@/data/company`. */
+  const supportRows: Row[] = [
+    { label: 'Help & Support', sub: 'FAQs and how to reach us', icon: 'support_agent', go: () => navigate('/buyer/policy/help') },
+    { label: 'Contact Us', sub: COMPANY.supportEmail, icon: 'mail', href: CONTACT_LINKS.support },
+    { label: 'Call Support', sub: `${COMPANY.phone} · ${COMPANY.supportHours}`, icon: 'call', href: CONTACT_LINKS.call },
+    { label: 'About Us', sub: 'Why Agilam exists', icon: 'info', go: () => navigate('/buyer/policy/about') },
+  ];
+
+  /** Legal — the policy pages, reachable from the account as required. */
+  const legalRows: Row[] = [
+    { label: 'Delivery Policy', sub: 'Timelines & charges', icon: 'local_shipping', go: () => navigate('/buyer/policy/delivery-policy') },
+    { label: 'Return & Refund Policy', sub: 'How returns work', icon: 'autorenew', go: () => navigate('/buyer/policy/return-refund-policy') },
+    { label: 'Cancellation Policy', sub: 'Changing your mind', icon: 'cancel', go: () => navigate('/buyer/policy/cancellation-policy') },
+    { label: 'Privacy Policy', sub: 'How we handle your data', icon: 'shield_person', go: () => navigate('/buyer/policy/privacy-policy') },
+    { label: 'Terms & Conditions', sub: 'The agreement between us', icon: 'gavel', go: () => navigate('/buyer/policy/terms') },
+  ];
+
+  const renderRows = (title: string, rows: Row[]) => (
+    <>
+      <div className="agx-eyebrow" style={css('font-size:9.5px;color:#8A7078;margin:20px 26px 8px;')}>{title}</div>
+      <div style={css('margin:0 20px;background:#fff;border-radius:20px;padding:6px;box-shadow:0 12px 30px -22px rgba(107,20,54,.55);')}>
+        {rows.map((r, i) => {
+          const inner = (
+            <>
+              <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;')}>
+                <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>{r.icon}</span>
+              </span>
+              <span style={css('flex:1;min-width:0;')}>
+                <span style={css('display:block;font-weight:800;font-size:14.5px;color:#241019;')}>{r.label}</span>
+                <span style={css('display:block;font-size:12px;color:#9A8088;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{r.sub}</span>
+              </span>
+              <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;flex:none;")}>chevron_right</span>
+            </>
+          );
+          const rowCss = css(
+            `width:100%;display:flex;align-items:center;gap:13px;padding:13px 12px;border:none;background:none;cursor:pointer;text-align:left;color:inherit;${
+              i < rows.length - 1 ? 'border-bottom:1px solid #F5E4EC;' : ''
+            }`,
+          );
+          // Contact rows are real mail:/tel: links so the device opens the right
+          // app, rather than a button that only shows the address in a toast.
+          return r.href ? (
+            <a key={r.label} href={r.href} style={rowCss}>{inner}</a>
+          ) : (
+            <button key={r.label} onClick={r.go} style={rowCss}>{inner}</button>
+          );
+        })}
+      </div>
+    </>
+  );
 
   // Log out returns to the public buyer app.
   const logout = async () => {
@@ -179,25 +233,11 @@ export function Profile() {
           </button>
         )}
 
-        {/* Menu */}
-        <div style={css('margin:16px 20px 0;background:#fff;border-radius:20px;padding:6px;box-shadow:0 12px 30px -22px rgba(107,20,54,.55);')}>
-          {rows.map((r, i) => (
-            <button
-              key={r.label}
-              onClick={r.go}
-              style={css(`width:100%;display:flex;align-items:center;gap:13px;padding:13px 12px;border:none;background:none;cursor:pointer;text-align:left;${i < rows.length - 1 ? 'border-bottom:1px solid #F5E4EC;' : ''}`)}
-            >
-              <span style={css('width:40px;height:40px;flex:none;border-radius:12px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:21px;")}>{r.icon}</span>
-              </span>
-              <span style={css('flex:1;min-width:0;')}>
-                <span style={css('display:block;font-weight:800;font-size:14.5px;color:#241019;')}>{r.label}</span>
-                <span style={css('display:block;font-size:12px;color:#9A8088;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{r.sub}</span>
-              </span>
-              <span style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;flex:none;")}>chevron_right</span>
-            </button>
-          ))}
-        </div>
+        {/* Menu, grouped so the legal pages don't sit in the middle of the
+            shopping shortcuts. */}
+        {renderRows('Shopping', shoppingRows)}
+        {renderRows('Support', supportRows)}
+        {renderRows('Policies', legalRows)}
 
         {/* Sell CTA */}
         <button onClick={openSellModal} style={css('margin:16px 20px 0;width:calc(100% - 40px);display:flex;align-items:center;gap:13px;padding:15px;border:none;border-radius:18px;background:linear-gradient(135deg,#8E1C44,#B02454);color:#fff;cursor:pointer;box-shadow:0 16px 34px -18px rgba(142,28,68,.9);text-align:left;')}>
@@ -212,12 +252,25 @@ export function Profile() {
         </button>
 
         <button onClick={logout} style={css('margin:16px 20px 0;width:calc(100% - 40px);height:50px;border:1.5px solid #F0D8E2;background:#fff;color:#D6455A;border-radius:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;')}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>logout</span>Log out
+          <span style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>logout</span>
+          {signedIn ? 'Log out' : 'Clear my details'}
         </button>
 
         <button onClick={() => navigate('/admin/login')} style={css('margin:12px 20px 0;width:calc(100% - 40px);height:42px;border:none;background:none;color:#B79AA6;font-size:12.5px;font-weight:700;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}>
           <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>shield_person</span>Admin login · internal use
         </button>
+
+        {/* Build stamp — the first thing support asks for. Injected from
+            package.json at build time, so it can't drift from what's deployed. */}
+        <div style={css('margin:18px 20px 0;text-align:center;color:#C0A8B3;')}>
+          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:#B79AA6;")}>{COMPANY.brand}</div>
+          <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:5px;letter-spacing:.06em;")}>
+            Version {APP_VERSION}
+          </div>
+          <div style={css('font-size:11.5px;margin-top:6px;')}>
+            © {new Date().getFullYear()} {COMPANY.legalName}
+          </div>
+        </div>
       </div>
 
       {editing && (

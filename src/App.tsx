@@ -30,6 +30,7 @@ import { Coupons } from '@/pages/buyer/Coupons';
 import { Messages as BuyerMessages } from '@/pages/buyer/Messages';
 import { Chat as BuyerChat } from '@/pages/buyer/Chat';
 import { Profile as BuyerProfile } from '@/pages/buyer/Profile';
+import { Policy } from '@/pages/buyer/Policy';
 
 /**
  * The seller and admin consoles are only ever reached by signed-in
@@ -106,11 +107,16 @@ export default function App() {
         <Route path="payment" element={<Payment />} />
         <Route path="order-confirmation" element={<OrderConfirmation />} />
         <Route path="orders" element={<MyOrders />} />
+        {/* Order detail and tracking are one screen — the buyer's question is
+            always "where is it and what was in it". */}
+        <Route path="orders/:id" element={<TrackOrder />} />
         <Route path="orders/:id/track" element={<TrackOrder />} />
         <Route path="coupons" element={<Coupons />} />
         <Route path="messages" element={<BuyerMessages />} />
         <Route path="chat/:id" element={<BuyerChat />} />
         <Route path="profile" element={<BuyerProfile />} />
+        {/* Policies, About and Help — content lives in @/data/policies. */}
+        <Route path="policy/:slug" element={<Policy />} />
       </Route>
 
       <Route

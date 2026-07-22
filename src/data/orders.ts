@@ -10,6 +10,28 @@ export async function fetchOrdersForBuyer(buyerId: string): Promise<OrderWithDet
   return (data ?? []) as unknown as OrderWithDetails[];
 }
 
+/**
+ * Live order-status updates for a signed-in buyer.
+ *
+ * The boutique moves an order through pending → shipped → delivered from its
+ * own console. Without this the buyer's tracking screen only ever showed the
+ * status captured at checkout, so an order that had already shipped still read
+ * "Order Placed" until the page was reloaded.
+ */
+export function subscribeToBuyerOrders(buyerId: string, onChange: () => void) {
+  const channel = supabase
+    .channel(`buyer-orders:${buyerId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'orders', filter: `buyer_id=eq.${buyerId}` },
+      () => onChange(),
+    )
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
 export async function fetchOrdersForBoutique(boutiqueId: string): Promise<OrderWithDetails[]> {
   const { data, error } = await supabase.from('orders').select(SELECT).eq('boutique_id', boutiqueId).order('created_at', { ascending: false });
   if (error) throw error;

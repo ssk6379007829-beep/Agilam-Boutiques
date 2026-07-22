@@ -1,6 +1,11 @@
+import { createRequire } from 'node:module';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+
+// The app prints its build version on the buyer profile screen; read it from
+// package.json so the two can never drift.
+const { version: appVersion } = createRequire(import.meta.url)('./package.json') as { version: string };
 
 /**
  * Serves the Vercel-style serverless functions in /api during `vite dev`, so
@@ -114,6 +119,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [react(), devApi(env)],
+    define: {
+      __APP_VERSION__: JSON.stringify(appVersion),
+    },
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),

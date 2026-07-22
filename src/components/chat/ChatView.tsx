@@ -3,13 +3,35 @@ import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
-import { fetchMessages, parseOrderCard, parseProductCard, sendMessage, subscribeToMessages } from '@/data/chat';
+import {
+  fetchMessages,
+  fetchPeerLastSeen,
+  parseOrderCard,
+  parseProductCard,
+  sendMessage,
+  subscribeToMessages,
+  subscribeToPresence,
+} from '@/data/chat';
 import { TONES, fmt } from '@/data/demo';
 
 type Bubble = { id?: string; me: boolean; text: string; time: string };
 
 const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+/** "Last seen 12 min ago" / "Last seen yesterday" / "" when we've never heard from them. */
+function lastSeenLabel(iso: string | null): string {
+  if (!iso) return 'Offline';
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return 'Last seen just now';
+  if (mins < 60) return `Last seen ${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `Last seen ${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return 'Last seen yesterday';
+  if (days < 7) return `Last seen ${days} days ago`;
+  return 'Offline';
+}
 
 /**
  * Conversation view, shared by the buyer and seller chats.
@@ -42,7 +64,13 @@ export function ChatView({
   const live = Boolean(conversationId && senderId);
   const [thread, setThread] = useState<Bubble[]>([]);
   const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  // Whether the *other* participant is joined to this conversation right now,
+  // and when we last heard from them. Both drive the header status line.
+  const [peerOnline, setPeerOnline] = useState(false);
+  const [peerLastSeen, setPeerLastSeen] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!conversationId || !senderId) return;
@@ -62,26 +90,63 @@ export function ChatView({
     };
   }, [conversationId, senderId]);
 
+  // Presence + last-seen, so the header reports the peer rather than the reader.
+  useEffect(() => {
+    if (!conversationId || !senderId) {
+      setPeerOnline(false);
+      setPeerLastSeen(null);
+      return;
+    }
+    fetchPeerLastSeen(conversationId, senderId).then(setPeerLastSeen).catch(() => {});
+    return subscribeToPresence(conversationId, senderId, setPeerOnline);
+  }, [conversationId, senderId]);
+
+  // A message arriving from the other side is itself proof of recent activity.
+  useEffect(() => {
+    const last = thread[thread.length - 1];
+    if (last && !last.me) setPeerLastSeen(new Date().toISOString());
+  }, [thread]);
+
   // Keep the newest message in view as the thread grows.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [thread]);
 
+  // Grow the composer with the draft, up to a few lines, then let it scroll.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [draft]);
+
   const send = async () => {
     const text = draft.trim();
-    if (!text || !live || !conversationId || !senderId) return;
+    if (!text || !live || !conversationId || !senderId || sending) return;
     setDraft('');
+    setSending(true);
     try {
       await sendMessage(conversationId, senderId, text);
       // Realtime echoes the inserted row back; no optimistic append needed.
     } catch (e) {
       setDraft(text);
       showToast(e instanceof Error ? e.message : 'Could not send');
+    } finally {
+      setSending(false);
+      inputRef.current?.focus();
     }
   };
 
   const monogram = (name.trim()[0] ?? '·').toUpperCase();
-  const statusLabel = live ? 'Online now' : pending ? 'Connecting…' : 'Offline';
+  const statusLabel = pending
+    ? 'Connecting…'
+    : !live
+      ? 'Offline'
+      : peerOnline
+        ? 'Online now'
+        : lastSeenLabel(peerLastSeen);
+  const statusOn = live && peerOnline;
+  const canSend = live && !!draft.trim() && !sending;
 
   return (
     <div className="agx-chat-root" style={css('position:fixed;inset:0;z-index:40;background:radial-gradient(120% 60% at 50% 0%,#FDF3F7 0%,#FBF6F2 42%,#F7EEF1 100%);display:flex;flex-direction:column;')}>
@@ -93,12 +158,12 @@ export function ChatView({
           </button>
           <div style={css('position:relative;flex:none;')}>
             <div style={css("width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#E14A7E,#B02454 70%,#8E1C44);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 12px 26px -14px rgba(176,36,84,.9);")}>{monogram}</div>
-            {live && <span className="agx-online-dot" style={css('position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border-radius:50%;background:#2FA36B;border:2.5px solid #fff;')} />}
+            {statusOn && <span className="agx-online-dot" style={css('position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border-radius:50%;background:#2FA36B;border:2.5px solid #fff;')} />}
           </div>
           <div style={css('flex:1;min-width:0;')}>
             <div style={css('font-weight:800;font-size:15.5px;color:#241019;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{name}</div>
-            <div style={css(`font-size:11.5px;font-weight:700;color:${live ? '#2FA36B' : '#B79AA6'};display:flex;align-items:center;gap:5px;`)}>
-              {live && <span style={css('width:6px;height:6px;border-radius:50%;background:#2FA36B;')} />}{statusLabel}
+            <div style={css(`font-size:11.5px;font-weight:700;color:${statusOn ? '#2FA36B' : '#B79AA6'};display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`)}>
+              {statusOn && <span style={css('flex:none;width:6px;height:6px;border-radius:50%;background:#2FA36B;')} />}{statusLabel}
             </div>
           </div>
           <div style={css('flex:none;display:flex;align-items:center;gap:6px;background:#FBF1F5;border:1px solid #F3DDE8;border-radius:11px;padding:6px 10px;')}>
@@ -190,32 +255,44 @@ export function ChatView({
         })}
       </div>
 
-      {/* Floating composer — sits just above the nav dock (see .agx-chat-root). */}
-      <div style={css('flex:none;padding:8px 12px 4px;')}>
-        <div style={css('display:flex;gap:9px;align-items:center;background:rgba(255,255,255,.9);backdrop-filter:blur(18px) saturate(1.3);border:1px solid #F1DEE7;border-radius:22px;padding:7px 8px 7px 8px;box-shadow:0 2px 0 rgba(255,255,255,.6) inset,0 22px 44px -22px rgba(107,20,54,.5);')}>
+      {/* Composer — pinned to the bottom of the chat column, clearing both the
+          nav dock and the iOS home indicator (see `.agx-chat-composer`). The
+          field is a textarea so a long message wraps instead of scrolling
+          sideways inside a one-line input; Enter sends, Shift+Enter breaks. */}
+      <div className="agx-chat-composer">
+        <div style={css('display:flex;gap:8px;align-items:flex-end;background:rgba(255,255,255,.92);backdrop-filter:blur(18px) saturate(1.3);border:1px solid #F1DEE7;border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.6) inset,0 22px 44px -22px rgba(107,20,54,.5);')}>
           <button
             onClick={() => showToast('Photo sharing is coming soon')}
             disabled={!live}
-            aria-label="Attach"
-            style={css(`width:42px;height:42px;flex:none;border-radius:15px;border:none;background:#FBF1F5;cursor:${live ? 'pointer' : 'not-allowed'};opacity:${live ? 1 : 0.5};display:flex;align-items:center;justify-content:center;`)}
+            aria-label="Attach a photo"
+            className="agx-chat-attach"
+            style={css(`width:40px;height:40px;flex:none;border-radius:14px;border:none;background:#FBF1F5;cursor:${live ? 'pointer' : 'not-allowed'};opacity:${live ? 1 : 0.5};align-items:center;justify-content:center;`)}
           >
-            <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:22px;")}>add_photo_alternate</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:21px;")}>add_photo_alternate</span>
           </button>
-          <input
+          <textarea
+            ref={inputRef}
             value={draft}
+            rows={1}
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && send()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
             disabled={!live}
+            aria-label="Message"
             placeholder={live ? 'Type a message…' : pending ? 'Connecting…' : 'Message…'}
-            style={css('border:none;background:none;flex:1;font-size:14.5px;font-weight:500;color:#241019;min-width:0;padding:0 4px;')}
+            style={css('border:none;background:none;flex:1;min-width:0;resize:none;overflow-y:auto;max-height:120px;font-size:15px;line-height:1.4;font-weight:500;color:#241019;padding:10px 4px;')}
           />
           <button
             onClick={send}
-            disabled={!live || !draft.trim()}
-            aria-label="Send"
-            style={css(`width:44px;height:44px;flex:none;border-radius:15px;border:none;background:linear-gradient(135deg,#E14A7E,#B02454 75%,#8E1C44);cursor:${live && draft.trim() ? 'pointer' : 'not-allowed'};opacity:${live && draft.trim() ? 1 : 0.5};display:flex;align-items:center;justify-content:center;box-shadow:0 12px 24px -12px rgba(176,36,84,.9);transition:opacity .2s ease;`)}
+            disabled={!canSend}
+            aria-label="Send message"
+            style={css(`width:40px;height:40px;flex:none;border-radius:14px;border:none;background:linear-gradient(135deg,#E14A7E,#B02454 75%,#8E1C44);cursor:${canSend ? 'pointer' : 'not-allowed'};opacity:${canSend ? 1 : 0.5};display:flex;align-items:center;justify-content:center;box-shadow:0 12px 24px -12px rgba(176,36,84,.9);transition:opacity .2s ease;`)}
           >
-            <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:21px;")}>send</span>
+            <span style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:20px;")}>send</span>
           </button>
         </div>
       </div>

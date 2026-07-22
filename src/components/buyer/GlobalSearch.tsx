@@ -1,0 +1,242 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { css } from '@/lib/css';
+import { ImageSlot } from '@/components/ui/ImageSlot';
+import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
+import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
+import { useCatalog } from '@/state/CatalogContext';
+import { useDebounced } from '@/hooks/useDebounced';
+import { TONES, fmt } from '@/data/demo';
+
+/**
+ * The header search box, for real this time.
+ *
+ * It was previously an uncontrolled input wired to nothing — typing in it did
+ * nothing on any screen. It now searches the live catalogue across product
+ * titles, categories, occasions, fabrics, colours and boutique names, shows
+ * typed suggestions as you go, and commits the term to `ShopContext.query`,
+ * which the results grid filters on.
+ */
+
+type Suggestion =
+  | { kind: 'product'; id: string; title: string; sub: string; image: string; tone: number; price: number }
+  | { kind: 'boutique'; id: string; title: string; sub: string; logo?: string }
+  | { kind: 'term'; id: string; title: string; sub: string };
+
+const MAX_PER_GROUP = 4;
+
+export function GlobalSearch({ className, autoFocusOnOpen }: { className?: string; autoFocusOnOpen?: boolean }) {
+  const navigate = useNavigate();
+  const { query, setQuery, setFilters } = useShop();
+  const { products, boutiques } = useCatalog();
+
+  // The box keeps its own text so typing stays responsive; the committed term
+  // (what the results grid filters on) is only pushed on submit or on picking a
+  // suggestion. Seeded from the context so returning to a search keeps it.
+  const [text, setText] = useState(query);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const debounced = useDebounced(text, 140);
+
+  useEffect(() => setText(query), [query]);
+  useEffect(() => {
+    if (autoFocusOnOpen) inputRef.current?.focus();
+  }, [autoFocusOnOpen]);
+
+  // Close the dropdown on an outside click or Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  const suggestions = useMemo<Suggestion[]>(() => {
+    const q = debounced.trim().toLowerCase();
+    if (q.length < 2) return [];
+
+    const productHits = products
+      .filter((p) =>
+        [p.title, p.cat, p.occasion, p.fabric, p.color, p.boutique].some((f) => f?.toLowerCase().includes(q)),
+      )
+      .slice(0, MAX_PER_GROUP)
+      .map<Suggestion>((p) => ({
+        kind: 'product',
+        id: p.id,
+        title: p.title,
+        sub: `${p.cat} · ${p.boutique}`,
+        image: p.image,
+        tone: p.tone,
+        price: p.price,
+      }));
+
+    const boutiqueHits = boutiques
+      .filter((b) => b.name.toLowerCase().includes(q) || b.city.toLowerCase().includes(q))
+      .slice(0, MAX_PER_GROUP)
+      .map<Suggestion>((b) => ({ kind: 'boutique', id: b.id, title: b.name, sub: b.city, logo: b.logo }));
+
+    // Category / occasion shortcuts, so "bridal" offers the edit as well as the
+    // individual pieces that happen to mention it.
+    const facets = new Set<string>();
+    products.forEach((p) => {
+      if (p.cat?.toLowerCase().includes(q)) facets.add(p.cat);
+      if (p.occasion?.toLowerCase().includes(q)) facets.add(p.occasion);
+    });
+    const termHits = [...facets].slice(0, 3).map<Suggestion>((t) => ({
+      kind: 'term',
+      id: t,
+      title: t,
+      sub: 'Browse the edit',
+    }));
+
+    return [...termHits, ...productHits, ...boutiqueHits];
+  }, [debounced, products, boutiques]);
+
+  const commit = (term: string) => {
+    setQuery(term);
+    // A fresh search shouldn't inherit filters from a previous browse, or the
+    // grid can come back empty for a term that clearly has matches.
+    setFilters({ ...DEFAULT_FILTERS });
+    setOpen(false);
+    inputRef.current?.blur();
+    navigate('/buyer/results');
+  };
+
+  const pick = (s: Suggestion) => {
+    setOpen(false);
+    inputRef.current?.blur();
+    if (s.kind === 'product') {
+      navigate(`/buyer/product/${s.id}`);
+      return;
+    }
+    if (s.kind === 'boutique') {
+      navigate(`/buyer/boutique/${s.id}`);
+      return;
+    }
+    // A facet term browses that edit rather than running a text search.
+    setText(s.title);
+    setQuery('');
+    const isCat = products.some((p) => p.cat === s.title);
+    setFilters({ ...DEFAULT_FILTERS, ...(isCat ? { cats: [s.title] } : { occasions: [s.title] }) });
+    navigate('/buyer/results');
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (active >= 0 && suggestions[active]) pick(suggestions[active]);
+    else if (text.trim()) commit(text.trim());
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') { setOpen(false); return; }
+    if (!open || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive((i) => (i + 1) % suggestions.length); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => (i <= 0 ? suggestions.length - 1 : i - 1)); }
+  };
+
+  const clear = () => {
+    setText('');
+    setQuery('');
+    setOpen(false);
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div ref={boxRef} className={className} style={css('position:relative;')}>
+      <form
+        onSubmit={onSubmit}
+        role="search"
+        style={css('display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #EFDCE4;border-radius:14px;padding:0 8px 0 14px;height:44px;width:100%;box-shadow:0 8px 22px -18px rgba(107,20,54,.6);')}
+      >
+        <span style={css("font-family:'Material Symbols Outlined';color:#B79AA6;font-size:20px;flex:none;")}>search</span>
+        <input
+          ref={inputRef}
+          value={text}
+          onChange={(e) => { setText(e.target.value); setActive(-1); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          // Deliberately not type="search": WebKit adds its own clear button,
+          // which would sit next to ours.
+          type="text"
+          inputMode="search"
+          enterKeyHint="search"
+          autoComplete="off"
+          aria-label="Search boutiques and styles"
+          placeholder="Search boutiques &amp; styles"
+          style={css('border:none;background:none;flex:1;font-size:13.5px;font-weight:600;color:#241019;min-width:0;')}
+        />
+        {text && (
+          <button
+            type="button"
+            onClick={clear}
+            aria-label="Clear search"
+            style={css('width:30px;height:30px;flex:none;border-radius:9px;border:none;background:#FBF0F4;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+          >
+            <span style={css("font-family:'Material Symbols Outlined';color:#B02454;font-size:18px;")}>close</span>
+          </button>
+        )}
+      </form>
+
+      {open && text.trim().length >= 2 && (
+        <div
+          className="agx-scroll"
+          style={css('position:absolute;left:0;right:0;top:52px;z-index:80;max-height:min(60vh,420px);overflow-y:auto;background:#fff;border:1px solid #F2E4EA;border-radius:18px;box-shadow:0 26px 60px -26px rgba(107,20,54,.55);padding:6px;')}
+        >
+          {suggestions.length === 0 ? (
+            <div style={css('padding:20px 14px;text-align:center;color:#8A7078;font-size:13px;')}>
+              Nothing matched “{text.trim()}”.
+              <button
+                onClick={() => commit(text.trim())}
+                style={css('display:block;margin:10px auto 0;border:none;background:#FCE0EC;color:#B02454;border-radius:10px;padding:8px 14px;font-weight:800;font-size:12.5px;cursor:pointer;')}
+              >
+                Search anyway
+              </button>
+            </div>
+          ) : (
+            <>
+              {suggestions.map((s, i) => (
+                <button
+                  key={`${s.kind}:${s.id}`}
+                  onMouseEnter={() => setActive(i)}
+                  onClick={() => pick(s)}
+                  style={css(`width:100%;display:flex;align-items:center;gap:11px;padding:9px 10px;border:none;border-radius:12px;cursor:pointer;text-align:left;background:${i === active ? '#FCF3F7' : 'transparent'};`)}
+                >
+                  {s.kind === 'product' && (
+                    <span className="agx-thumb-media" style={css(`width:38px;background:${TONES[s.tone]};`)}>
+                      <ImageSlot src={s.image} placeholder={s.title} className="agx-prod-fill" />
+                    </span>
+                  )}
+                  {s.kind === 'boutique' && <BoutiqueLogo name={s.title} src={s.logo} size={38} radius={12} />}
+                  {s.kind === 'term' && (
+                    <span style={css('width:38px;height:38px;flex:none;border-radius:12px;background:#FCE0EC;display:flex;align-items:center;justify-content:center;')}>
+                      <span style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:20px;")}>category</span>
+                    </span>
+                  )}
+                  <span style={css('flex:1;min-width:0;')}>
+                    <span style={css('display:block;font-size:13.5px;font-weight:800;color:#241019;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{s.title}</span>
+                    <span style={css('display:block;font-size:11.5px;color:#8A7078;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{s.sub}</span>
+                  </span>
+                  {s.kind === 'product' && (
+                    <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:#B02454;font-size:14.5px;flex:none;")}>{fmt(s.price)}</span>
+                  )}
+                </button>
+              ))}
+              <button
+                onClick={() => commit(text.trim())}
+                style={css('width:100%;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:4px;padding:11px;border:none;border-top:1px solid #F5E7ED;background:none;cursor:pointer;color:#B02454;font-weight:800;font-size:12.5px;')}
+              >
+                See all results for “{text.trim()}”
+                <span style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>arrow_forward</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

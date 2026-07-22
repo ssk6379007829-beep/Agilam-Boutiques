@@ -1,4 +1,5 @@
 import { Icon } from '@/components/ui/Icon';
+import { WishButton } from '@/components/buyer/WishButton';
 import { fmtInr, toneHex } from '@/lib/tokens';
 import type { ProductWithBoutique } from '@/data/types';
 
@@ -9,32 +10,25 @@ type Props = {
   onToggleWish?: (e: React.MouseEvent) => void;
   showRating?: boolean;
   showBoutique?: boolean;
-  imageHeight?: number;
   width?: number;
 };
 
-export function ProductCard({ product: p, onOpen, wished, onToggleWish, showRating, showBoutique, imageHeight = 180, width }: Props) {
+/**
+ * Tailwind-flavoured product card. The catalogue surfaces use the `css()`
+ * variants inline; this shares their 3:4 crop (`.agx-prod-media`) and the
+ * shared heart so the two can't drift apart.
+ */
+export function ProductCard({ product: p, onOpen, wished, onToggleWish, showRating, showBoutique, width }: Props) {
   return (
     <div onClick={onOpen} className="cursor-pointer" style={width ? { flex: 'none', width } : undefined}>
-      <div
-        className="relative overflow-hidden rounded-[18px] shadow-soft"
-        style={{ height: imageHeight, background: toneHex(p.tone) }}
-      >
+      <div className="agx-prod-media shadow-soft" style={{ background: toneHex(p.tone) }}>
         {p.image_url ? (
           <img src={p.image_url} alt={p.title} className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center px-3 text-center text-xs font-semibold text-black/40">{p.title}</div>
         )}
         {onToggleWish && (
-          <button
-            type="button"
-            onClick={onToggleWish}
-            aria-label={wished ? `Remove ${p.title} from wishlist` : `Add ${p.title} to wishlist`}
-            aria-pressed={!!wished}
-            className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-[10px] border-none bg-white/85"
-          >
-            <Icon name={wished ? 'favorite' : 'favorite_border'} className="text-lg" style={{ color: wished ? '#D6336C' : '#B79AA6' }} />
-          </button>
+          <WishButton wished={!!wished} title={p.title} onToggle={onToggleWish} className="agx-card-wish" />
         )}
       </div>
       <div className="pt-2">

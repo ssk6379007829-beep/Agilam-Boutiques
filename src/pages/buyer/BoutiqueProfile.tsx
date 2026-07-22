@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { ShareBoutiqueSheet } from '@/components/ShareBoutiqueSheet';
+import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
+import { WishButton } from '@/components/buyer/WishButton';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { subscribeToBoutiqueFollowers } from '@/data/boutiques';
@@ -24,12 +26,6 @@ import { TONES, fmt } from '@/data/demo';
  * call, share and product nav.
  */
 
-function monogram(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const initials = words.slice(0, 2).map((w) => w[0]).join('');
-  return (initials || name.slice(0, 2)).toUpperCase();
-}
-
 /** Compact count: 1240 → "1.2K", 999 → "999". */
 function compact(n: number): string {
   if (n < 1000) return String(n);
@@ -40,7 +36,7 @@ function compact(n: number): string {
 export function BoutiqueProfile() {
   const navigate = useNavigate();
   const { id, slug } = useParams();
-  const { showToast, follows, toggleFollow: toggleFollowAccount } = useShop();
+  const { showToast, follows, toggleFollow: toggleFollowAccount, wishlist, toggleWish } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   const [bqFilter, setBqFilter] = useState('All');
   const [shareOpen, setShareOpen] = useState(false);
@@ -130,14 +126,14 @@ export function BoutiqueProfile() {
       {/* ---------- Identity (flush white panel, no card) ---------- */}
       <div
         className="agx-reveal"
-        style={css('position:relative;margin-top:-26px;background:#fff;border-radius:30px 30px 0 0;padding:56px clamp(18px,4vw,28px) 30px;')}
+        style={css('position:relative;margin-top:-26px;background:#fff;border-radius:30px 30px 0 0;padding:64px clamp(18px,4vw,28px) 30px;')}
       >
         <div style={css('max-width:560px;margin:0 auto;')}>
-          {/* Monogram avatar overlapping the panel's top edge */}
-          <div
-            style={css('position:absolute;top:-42px;left:50%;transform:translateX(-50%);width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#D6336C,#8E1E43);border:4px solid #fff;box-shadow:0 16px 34px -16px rgba(214,51,108,.9);display:flex;align-items:center;justify-content:center;')}
-          >
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:30px;color:#fff;letter-spacing:.02em;")}>{monogram(ab.name)}</span>
+          {/* Shop logo, overlapping the panel's top edge — the boutique's own
+              branding is the first thing on its profile. Falls back to a
+              monogram on the brand gradient when no logo has been uploaded. */}
+          <div style={css('position:absolute;top:-50px;left:50%;transform:translateX(-50%);')}>
+            <BoutiqueLogo name={ab.name} src={ab.logo} size={100} ring={4} />
           </div>
 
           {/* Name + verified */}
@@ -274,8 +270,14 @@ export function BoutiqueProfile() {
           <div className="agx-rgrid" style={css('margin-top:18px;')}>
             {boutiqueProducts.map((p) => (
               <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift agx-reveal" style={css('cursor:pointer;')}>
-                <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -24px rgba(107,20,54,.6);`)}>
-                  <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
+                <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
+                  <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
+                  <WishButton
+                    wished={!!wishlist[p.id]}
+                    title={p.title}
+                    onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
+                    className="agx-card-wish"
+                  />
                   <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
                     <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#E0B84B;")}>star</span>
                     {p.rating}

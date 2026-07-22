@@ -5,6 +5,10 @@ import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { ProductReviews } from '@/components/buyer/ProductReviews';
+import { ImageZoom } from '@/components/buyer/ImageZoom';
+import { WishButton } from '@/components/buyer/WishButton';
+import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
+import { shareProduct } from '@/lib/shareProduct';
 import { TONES, fmt } from '@/data/demo';
 
 const RATING_BARS = [
@@ -32,6 +36,7 @@ export function ProductDetail() {
   // bag already holds for this piece (see `selectedSize` below).
   const [pickedSize, setPickedSize] = useState<string | null>(null);
   const [showSizeChart, setShowSizeChart] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
   const [openPanels, setOpenPanels] = useState<Record<string, boolean>>({ details: true });
   const togglePanel = (k: string) => setOpenPanels((p) => ({ ...p, [k]: !p[k] }));
 
@@ -46,6 +51,7 @@ export function ProductDetail() {
   useEffect(() => {
     setActiveImg(0);
     setPickedSize(null);
+    setZoomOpen(false);
     galleryRef.current?.scrollTo({ left: 0 });
   }, [id]);
 
@@ -73,14 +79,12 @@ export function ProductDetail() {
   }
   // More from the same boutique/shop
   const sameBoutique = PRODUCTS.filter((p) => p.boutique === ap.boutique && p.id !== ap.id).slice(0, 12);
-  const boutiqueId = BOUTIQUES.find((x) => x.name === ap.boutique)?.id ?? '';
+  const boutique = BOUTIQUES.find((x) => x.name === ap.boutique);
+  const boutiqueId = boutique?.id ?? '';
   // Broad "you may also like" — same category surfaced first, up to 30 items
   const youMayLike = [...PRODUCTS.filter((p) => p.id !== ap.id)]
     .sort((a, b) => (b.cat === ap.cat ? 1 : 0) - (a.cat === ap.cat ? 1 : 0))
     .slice(0, 30);
-
-  const wishIcon = wishlist[ap.id] ? 'favorite' : 'favorite_border';
-  const wishColor = wishlist[ap.id] ? '#D6336C' : '#B79AA6';
 
   const stockLabel = ap.stock === 0 ? 'Out of stock' : ap.stock <= 5 ? `Low · ${ap.stock} left` : 'In stock';
   const stockFg = ap.stock === 0 ? '#D6455A' : ap.stock <= 5 ? '#C99A3F' : '#2FA36B';
@@ -133,19 +137,18 @@ export function ProductDetail() {
       },
     });
   };
+  // Shares the photo alongside the caption where the browser supports it, so
+  // the piece arrives in WhatsApp looking like the piece — see `shareProduct`.
   const onShare = async () => {
-    const url = window.location.href;
-    const shareData = { title: ap.title, text: `${ap.title} · ${fmt(ap.price)} on Agilam`, url };
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(url);
-        alert('Product link copied to clipboard');
-      }
-    } catch {
-      /* share cancelled or unavailable */
-    }
+    const result = await shareProduct({
+      title: ap.title,
+      price: fmt(ap.price),
+      url: window.location.href,
+      image: gallery[imgIndex] || ap.image,
+      boutique: ap.boutique,
+    });
+    if (result === 'copied') showToast('Product details copied — paste to share');
+    else if (result === 'failed') showToast("Couldn't share this product");
   };
 
   // Once the piece is in the bag the "Add to Bag" button becomes a quantity
@@ -228,19 +231,22 @@ export function ProductDetail() {
   };
 
   const renderCard = (p: (typeof PRODUCTS)[number]) => {
-    const liked = !!wishlist[p.id];
     return (
       <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>
-        <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:18px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.55);`)}>
-          <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
+        <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
+          <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
           {p.featured && (
             <div style={css('position:absolute;left:9px;top:9px;display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,#D9B25A,#B0863B);color:#fff;padding:4px 9px;border-radius:999px;')}>
               <span className="agx-eyebrow" style={css('font-size:8px;letter-spacing:.14em;')}>Featured</span>
             </div>
           )}
-          <button onClick={(e) => { e.stopPropagation(); toggleWish(p.id); }} style={css('position:absolute;right:9px;top:9px;width:34px;height:34px;border-radius:11px;border:none;background:rgba(255,255,255,.9);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px -10px rgba(0,0,0,.4);')}>
-            <span style={css(`font-family:'Material Symbols Outlined';font-size:18px;color:${liked ? '#D6336C' : '#B79AA6'};`)}>{liked ? 'favorite' : 'favorite_border'}</span>
-          </button>
+          <WishButton
+            wished={!!wishlist[p.id]}
+            title={p.title}
+            size={34}
+            onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
+            className="agx-card-wish"
+          />
         </div>
         <div style={css('padding:10px 2px 0;')}>
           <div style={css('font-size:14px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
@@ -276,7 +282,11 @@ export function ProductDetail() {
               style={css('position:absolute;inset:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;')}
             >
               {gallery.map((src, i) => (
-                <div key={`${ap.id}-g${i}`} style={css('position:relative;flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;')}>
+                <div
+                  key={`${ap.id}-g${i}`}
+                  onClick={() => setZoomOpen(true)}
+                  style={css('position:relative;flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;cursor:zoom-in;')}
+                >
                   <ImageSlot src={src} placeholder={ap.title} alt={`${ap.title} — photo ${i + 1}`} style={css('position:absolute;inset:0;')} />
                 </div>
               ))}
@@ -285,13 +295,38 @@ export function ProductDetail() {
               <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>arrow_back</span>
             </button>
             <div style={css('position:absolute;right:16px;top:16px;display:flex;gap:10px;')}>
-              <button onClick={onShare} style={css('width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}>
+              <button
+                onClick={() => setZoomOpen(true)}
+                aria-label="Zoom into the photo"
+                title="Zoom"
+                style={css('width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}
+              >
+                <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>zoom_in</span>
+              </button>
+              <button
+                onClick={onShare}
+                aria-label={`Share ${ap.title}`}
+                title="Share"
+                style={css('width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}
+              >
                 <span style={css("font-family:'Material Symbols Outlined';color:#B02454;")}>share</span>
               </button>
-              <button onClick={() => toggleWish(ap.id)} style={css('width:44px;height:44px;border-radius:14px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 26px -12px rgba(0,0,0,.4);')}>
-                <span style={css(`font-family:'Material Symbols Outlined';color:${wishColor};`)}>{wishIcon}</span>
-              </button>
+              <WishButton
+                wished={!!wishlist[ap.id]}
+                title={ap.title}
+                size={44}
+                onToggle={() => toggleWish(ap.id)}
+              />
             </div>
+
+            {/* A visible affordance: buyers judge zari and weave from the photo,
+                so say the close-up is there rather than hoping they tap. */}
+            <button
+              onClick={() => setZoomOpen(true)}
+              style={css('position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:none;border-radius:999px;background:rgba(36,16,25,.5);backdrop-filter:blur(6px);color:#fff;font-size:11.5px;font-weight:800;cursor:pointer;')}
+            >
+              <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>zoom_in</span>Tap to zoom
+            </button>
 
             {gallery.length > 1 && (
               <>
@@ -360,7 +395,7 @@ export function ProductDetail() {
           </div>
 
           <div onClick={openBoutique} className="agx-lift" style={css('display:flex;align-items:center;gap:11px;margin-top:20px;padding:13px 15px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:16px;cursor:pointer;')}>
-            <div style={css("width:42px;height:42px;border-radius:12px;background:#F4D6E2;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:rgba(42,26,32,.55);")}>{ap.boutique[0]}</div>
+            <BoutiqueLogo name={ap.boutique} src={boutique?.logo} size={42} radius={12} />
             <div style={css('flex:1;')}>
               <div style={css('display:flex;align-items:center;gap:5px;')}>
                 <span style={css('font-weight:700;font-size:14.5px;')}>{ap.boutique}</span>
@@ -476,7 +511,7 @@ export function ProductDetail() {
       {sameBoutique.length > 0 && (
         <div style={css('max-width:1300px;margin:0 auto;padding:clamp(20px,3vw,36px) clamp(16px,4vw,44px) 0;')}>
           <div style={css('display:flex;align-items:center;gap:12px;flex-wrap:wrap;')}>
-            <div style={css("width:44px;height:44px;flex:none;border-radius:13px;background:#F4D6E2;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:rgba(42,26,32,.55);")}>{ap.boutique[0]}</div>
+            <BoutiqueLogo name={ap.boutique} src={boutique?.logo} size={44} radius={13} />
             <div style={css('flex:1;min-width:0;')}>
               <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>From the same shop</div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(22px,2.6vw,32px);line-height:1.08;margin-top:2px;")}>More from {ap.boutique}</div>
@@ -510,6 +545,17 @@ export function ProductDetail() {
         </button>
         {renderBagControl(52)}
       </div>
+
+      {/* FULL-SCREEN PHOTO VIEWER */}
+      {zoomOpen && (
+        <ImageZoom
+          images={gallery}
+          index={imgIndex}
+          title={ap.title}
+          onIndexChange={goToImage}
+          onClose={() => setZoomOpen(false)}
+        />
+      )}
 
       {/* SIZE CHART MODAL */}
       {showSizeChart && (

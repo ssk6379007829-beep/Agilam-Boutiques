@@ -1,10 +1,9 @@
 import { useMemo, useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
-import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
-import { TONES } from '@/data/demo';
+import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 
 /** Compact review counts the way the design shows them: 2100 → "2.1k". */
 function formatCount(n: number): string {
@@ -229,9 +228,9 @@ export function Boutiques() {
             className="agx-lift"
             style={css(`display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;${i > 0 ? 'border-top:1px solid #F5E7ED;' : ''}`)}
           >
-            <div className="agx-zoom" style={css(`position:relative;width:74px;height:74px;flex:none;border-radius:16px;overflow:hidden;background:${TONES[b.tone]};`)}>
-              <ImageSlot src={b.image || undefined} placeholder={`${b.name} — cover`} style={css('position:absolute;inset:0;')} />
-            </div>
+            {/* The shop's own logo is the boutique's identity in the directory —
+                it falls back to the cover photo, then to a monogram. */}
+            <BoutiqueLogo name={b.name} src={b.logo || b.image} size={74} radius={18} className="agx-zoom" />
 
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('display:flex;align-items:center;gap:6px;')}>

@@ -1,22 +1,35 @@
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
-import { COLORS, OCCASIONS, PRODUCTS, SIZES, SORTS, fmt, productSizes } from '@/data/demo';
+import { useCatalog } from '@/state/CatalogContext';
+import { COLORS, OCCASIONS, SIZES, fmt, productSizes } from '@/data/demo';
 
 const FILTER_CATS = ['Sarees', 'Lehengas', 'Gowns', 'Kurtis', 'Bridal'];
 
-/** Bottom-sheet filter overlay, shown over the results screen on mobile. */
+/**
+ * Bottom-sheet filter overlay, shown over the results screen on mobile.
+ *
+ * Sorting is deliberately not here: the results screen has its own Sort control
+ * (chips on desktop, a dedicated sheet on mobile), and offering it in both
+ * places meant two controls competing over one piece of state.
+ */
 export function FilterSheet() {
   const navigate = useNavigate();
-  const { filters, toggleFilter, setSort, setMaxPrice, resetFilters } = useShop();
+  const { filters, toggleFilter, setMaxPrice, resetFilters, query } = useShop();
+  // The count on the confirm button has to come from the live catalogue — it
+  // was counting the eight hardcoded demo products, so it never matched the
+  // grid the buyer was about to see.
+  const { products: PRODUCTS } = useCatalog();
 
+  const q = query.trim().toLowerCase();
   const results = PRODUCTS.filter(
     (p) =>
       p.price <= filters.maxPrice &&
       (filters.cats.length === 0 || filters.cats.includes(p.cat)) &&
       (filters.colors.length === 0 || filters.colors.includes(p.color)) &&
       (filters.occasions.length === 0 || filters.occasions.includes(p.occasion)) &&
-      (filters.sizes.length === 0 || productSizes(p).some((s) => filters.sizes.includes(s))),
+      (filters.sizes.length === 0 || productSizes(p).some((s) => filters.sizes.includes(s))) &&
+      (q === '' || [p.title, p.cat, p.occasion, p.fabric, p.color, p.boutique].some((f) => f?.toLowerCase().includes(q))),
   );
 
   const close = () => navigate('/buyer/results');
@@ -78,19 +91,7 @@ export function FilterSheet() {
           })}
         </div>
 
-        <div style={css('font-weight:800;font-size:14px;margin-top:18px;')}>Sort by</div>
-        <div style={css('display:flex;flex-direction:column;gap:2px;margin-top:8px;')}>
-          {SORTS.map((s) => {
-            const on = filters.sort === s;
-            return (
-              <button key={s} onClick={() => setSort(s)} style={css(`display:flex;align-items:center;justify-content:space-between;border:none;background:none;padding:11px 4px;cursor:pointer;font-size:14px;font-weight:${on ? 800 : 600};color:${on ? '#2A1A20' : '#6B5560'};border-bottom:1px solid #F5E4EC;`)}>
-                {s}<span style={css(`font-family:'Material Symbols Outlined';color:#D6336C;opacity:${on ? 1 : 0};`)}>check_circle</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div style={css('display:flex;gap:12px;margin-top:22px;')}>
+        <div style={css('display:flex;gap:12px;margin-top:24px;')}>
           <button onClick={resetFilters} style={css('flex:1;height:52px;border:1.5px solid #F0D8E2;background:#fff;border-radius:14px;font-weight:700;cursor:pointer;color:#B02454;')}>Reset</button>
           <button onClick={close} style={css('flex:2;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>
             Show {results.length} results

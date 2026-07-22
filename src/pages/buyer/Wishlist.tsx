@@ -1,7 +1,7 @@
-import { type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { WishButton, WishHeart } from '@/components/buyer/WishButton';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt } from '@/data/demo';
@@ -27,11 +27,14 @@ export function Wishlist() {
         <div className="agx-rgrid" style={css('margin-top:20px;')}>
           {items.map((p) => (
             <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>
-              <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.6);`)}>
-                <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
-                <button onClick={(e: MouseEvent) => { e.stopPropagation(); toggleWish(p.id); }} style={css('position:absolute;right:10px;top:10px;width:36px;height:36px;border-radius:12px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(0,0,0,.3);')}>
-                  <span style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>favorite</span>
-                </button>
+              <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
+                <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
+                <WishButton
+                  wished
+                  title={p.title}
+                  onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
+                  className="agx-card-wish"
+                />
                 <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 8px;font-size:11px;font-weight:800;color:#241019;box-shadow:0 4px 10px rgba(0,0,0,.14);')}>
                   <span style={css("font-family:'Material Symbols Outlined';font-size:13px;color:#2FA36B;")}>star</span>{p.rating}
                 </div>
@@ -46,7 +49,7 @@ export function Wishlist() {
       ) : (
         <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:80px 30px;')}>
           <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,#FCE0EC,#F7CFDF);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
-            <span style={css("font-family:'Material Symbols Outlined';font-size:40px;color:#B02454;")}>favorite_border</span>
+            <WishHeart wished={false} size={40} />
           </div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:20px;")}>Your wishlist is empty</div>
           <div style={css('color:#8A7078;font-size:14.5px;margin-top:8px;max-width:340px;line-height:1.55;')}>Tap the heart on any piece and it lands here — your personal edit, ready when you are.</div>

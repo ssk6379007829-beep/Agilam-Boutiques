@@ -66,7 +66,10 @@ export type Boutique = {
   featured?: boolean;
   products: number;
   desc: string;
+  /** Cover photo. */
   image: string;
+  /** Shop logo (`boutiques.logo_url`). Optional — surfaces fall back to a monogram. */
+  logo?: string;
 };
 
 export const BOUTIQUES: Boutique[] = [
@@ -122,7 +125,17 @@ export const HOME_REVIEWS: HomeReview[] = [
   { name: 'Divya S', city: 'Madurai', rating: 4, tone: 4, text: 'Lovely saree and true to the photos. Delivery took a little longer than expected but the quality more than made up for it.' },
 ];
 
-export type Thread = { id: string; name: string; last: string; time: string; unread: number; online: boolean; tone: number };
+export type Thread = {
+  id: string;
+  name: string;
+  last: string;
+  time: string;
+  unread: number;
+  online: boolean;
+  tone: number;
+  /** Boutique logo, where the inbox knows one. Falls back to a monogram. */
+  avatar?: string;
+};
 
 export const MESSAGES: Thread[] = [
   { id: 'm1', name: 'Elegance Boutique', last: 'Yes, the Rose Zari saree is available in your size!', time: '2m', unread: 2, online: true, tone: 0 },

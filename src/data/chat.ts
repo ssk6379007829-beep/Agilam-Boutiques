@@ -179,6 +179,61 @@ export function parseOrderCard(body: string): OrderCard | null {
   }
 }
 
+/**
+ * Live presence for one conversation.
+ *
+ * The header used to read "Online now" the moment the thread loaded, which said
+ * nothing about the other side — a boutique that had been closed for a week
+ * still showed as online. This tracks the viewer on a Realtime presence channel
+ * keyed to the conversation and reports whether *anyone else* is joined, so the
+ * indicator reflects the peer rather than the reader.
+ *
+ * Presence is ephemeral (it lives in the channel, not the database), so a
+ * dropped connection clears it automatically.
+ */
+export function subscribeToPresence(
+  conversationId: string,
+  selfId: string,
+  onChange: (peerOnline: boolean) => void,
+) {
+  const channel = supabase.channel(`presence:${conversationId}`, {
+    config: { presence: { key: selfId } },
+  });
+
+  const report = () => {
+    const state = channel.presenceState();
+    onChange(Object.keys(state).some((k) => k !== selfId));
+  };
+
+  channel
+    .on('presence', { event: 'sync' }, report)
+    .on('presence', { event: 'join' }, report)
+    .on('presence', { event: 'leave' }, report)
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') void channel.track({ at: new Date().toISOString() });
+    });
+
+  return () => {
+    void channel.untrack();
+    supabase.removeChannel(channel);
+  };
+}
+
+/**
+ * When the peer was last active in this conversation — their most recent
+ * message. Used for the "Last seen …" line when they aren't currently online.
+ */
+export async function fetchPeerLastSeen(conversationId: string, selfId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('messages')
+    .select('created_at')
+    .eq('conversation_id', conversationId)
+    .neq('sender_id', selfId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  return data?.[0]?.created_at ?? null;
+}
+
 export function subscribeToMessages(conversationId: string, onInsert: (msg: MessageRow) => void) {
   const channel = supabase
     .channel(`messages:${conversationId}`)

@@ -107,8 +107,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* Chat: a focused full-screen conversation surface. The composer is the last
    flex child and the root reserves bottom space for the floating nav dock, so
    the input panel floats just ABOVE the dock instead of being hidden by it. */
-.agx-chat-root { padding-bottom: 116px; }
-@media (max-width:640px){ .agx-chat-root { padding-bottom: 84px; } }
+.agx-chat-root { padding-bottom: calc(116px + env(safe-area-inset-bottom)); }
+@media (max-width:640px){ .agx-chat-root { padding-bottom: calc(78px + env(safe-area-inset-bottom)); } }
+/* Composer gutter. On phones the bar goes edge-to-edge so the field gets the
+   full width; the attach button is dropped below 380px, where three controls
+   plus a usable text field no longer fit on one line. */
+.agx-chat-composer { flex: none; padding: 8px 12px 6px; }
+.agx-chat-attach { display: flex; }
+@media (max-width:640px){ .agx-chat-composer { padding: 6px 8px 4px; } }
+@media (max-width:379px){ .agx-chat-attach { display: none !important; } }
 @keyframes agx-pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(47,163,107,.55);} 70%{ box-shadow:0 0 0 5px rgba(47,163,107,0);} }
 .agx-online-dot { animation: agx-pulse 1.8s ease-in-out infinite; }
 /* Seller bill receipt: "Print / Save" hides nav/action chrome, keeping only the bill itself. */
@@ -135,6 +142,74 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .agx-res-sortbar { display: none !important; }
   .agx-mob-actionbar { display: flex !important; }
 }
+
+/* ---------- header search ---------- */
+.agx-search-desktop { width: 280px; flex: none; }
+.agx-search-mobile { display: block; width: 100%; }
+
+/* ---------- wishlist heart ----------
+   The app loads Material *Symbols*, where fill is the variable `FILL` axis —
+   not a separate `favorite_border` ligature (that belongs to the older Material
+   Icons set and renders nothing here). Saved state = FILL 1 + solid red. */
+.agx-heart {
+  font-family: 'Material Symbols Outlined';
+  line-height: 1;
+  font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  transition: color .18s ease, font-variation-settings .18s ease;
+}
+.agx-heart-on {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  animation: agx-pop .32s cubic-bezier(.2,.7,.2,1);
+}
+
+/* ---------- product imagery ----------
+   One card ratio for the whole catalogue. Every product thumbnail — home rails,
+   results, wishlist, boutique profile, recommendations — uses this so a grid
+   never mixes 3/4 and 4/5 crops in the same row. */
+.agx-prod-media {
+  display: block;
+  position: relative;
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 20px;
+  box-shadow: 0 16px 34px -22px rgba(107,20,54,.6);
+}
+/* The photo fills the box; overlays (heart, rating, badges) position themselves. */
+.agx-prod-fill { position: absolute; inset: 0; }
+.agx-prod-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* The save-for-later heart sits in the same corner on every card. */
+.agx-card-wish { position: absolute; right: 9px; top: 9px; z-index: 2; }
+/* Order/bag lines list the photo beside text, so they use a smaller fixed box. */
+.agx-thumb-media { display: block; position: relative; flex: none; aspect-ratio: 3 / 4; overflow: hidden; border-radius: 13px; }
+
+/* ---------- home: "What shoppers say" ----------
+   Three testimonials in the 5-column product grid left two dead cells and
+   squeezed the quotes. They get their own centred, equal-height track. */
+.agx-testimonials {
+  display: grid;
+  gap: clamp(14px, 1.8vw, 22px);
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+@media (min-width: 760px)  { .agx-testimonials { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1060px) { .agx-testimonials { grid-template-columns: repeat(3, 1fr); } }
+
+/* ---------- policy pages ---------- */
+.agx-policy-grid { grid-template-columns: 1fr; }
+.agx-policy-aside { display: none; }
+@media (min-width: 940px) {
+  .agx-policy-grid { grid-template-columns: minmax(0,1fr) 280px; }
+  .agx-policy-aside { display: block; position: sticky; top: 84px; }
+}
+
+/* ---------- product gallery zoom ----------
+   The zoom viewport is a plain overflow container; the transform lives on the
+   image so panning is a scroll, which works with touch and trackpads alike. */
+.agx-zoomview { touch-action: pan-x pan-y; }
+.agx-zoomview img { transform-origin: center center; transition: transform .25s cubic-bezier(.2,.7,.2,1); }
+.agx-zoomview.agx-zoomed { cursor: zoom-out; overflow: auto; }
+.agx-zoomview.agx-zoomed img { cursor: grab; }
 
 /* Material Symbols helper — the design sets font-family inline per <span>. */
 .msymbol {

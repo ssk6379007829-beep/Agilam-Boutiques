@@ -1,18 +1,24 @@
-import { type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { ImageSlot } from '@/components/ui/ImageSlot';
-import { useShop } from '@/state/ShopContext';
+import { WishButton } from '@/components/buyer/WishButton';
+import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { COLORS, OCCASIONS, SIZES, SORTS, TONES, fmt, productSizes } from '@/data/demo';
 
 const FILTER_CATS = ['Sarees', 'Lehengas', 'Gowns', 'Kurtis', 'Bridal'];
 const reviewsF = (n: number) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
 
+/** Fields a header search term is matched against. */
+const searchable = (p: { title: string; cat: string; occasion: string; fabric: string; color: string; boutique: string }) =>
+  [p.title, p.cat, p.occasion, p.fabric, p.color, p.boutique];
+
 export function Results() {
   const navigate = useNavigate();
-  const { filters, setFilters, toggleFilter, setSort, setMaxPrice, resetFilters, wishlist, toggleWish } = useShop();
+  const { filters, setFilters, toggleFilter, setSort, setMaxPrice, wishlist, toggleWish, query, setQuery } = useShop();
   const { products: PRODUCTS } = useCatalog();
+
+  const q = query.trim().toLowerCase();
 
   let results = PRODUCTS.filter(
     (p) =>
@@ -20,13 +26,47 @@ export function Results() {
       (filters.cats.length === 0 || filters.cats.includes(p.cat)) &&
       (filters.colors.length === 0 || filters.colors.includes(p.color)) &&
       (filters.occasions.length === 0 || filters.occasions.includes(p.occasion)) &&
-      (filters.sizes.length === 0 || productSizes(p).some((s) => filters.sizes.includes(s))),
+      (filters.sizes.length === 0 || productSizes(p).some((s) => filters.sizes.includes(s))) &&
+      // The header search narrows the same grid rather than opening a separate
+      // screen, so a term and a filter compose instead of fighting.
+      (q === '' || searchable(p).some((f) => f?.toLowerCase().includes(q))),
   );
   if (filters.sort === 'Price: Low to High') results = [...results].sort((a, b) => a.price - b.price);
   else if (filters.sort === 'Price: High to Low') results = [...results].sort((a, b) => b.price - a.price);
   else if (filters.sort === 'Popularity') results = [...results].sort((a, b) => b.reviews - a.reviews);
 
+  /**
+   * What this page is actually showing, derived from the live state rather than
+   * the hardcoded "Ethnic Wear" it used to claim regardless of the filters.
+   * The same value titles the page and terminates the breadcrumb, so the two can
+   * never disagree.
+   */
+  const filterCount =
+    filters.cats.length + filters.colors.length + filters.occasions.length + filters.sizes.length +
+    (filters.maxPrice < DEFAULT_FILTERS.maxPrice ? 1 : 0);
+
+  const isBaseCollection = !query.trim() && filterCount === 0;
+  const collectionTitle = query.trim()
+    ? `“${query.trim()}”`
+    : filters.cats.length === 1 && filters.occasions.length === 0
+      ? filters.cats[0]
+      : filters.occasions.length === 1 && filters.cats.length === 0
+        ? `${filters.occasions[0]} wear`
+        : filters.cats.length > 1
+          ? 'Selected categories'
+          : filterCount > 0
+            ? 'Filtered edit'
+            : 'All collections';
+  const eyebrow = query.trim() ? 'Search results' : isBaseCollection ? 'Every piece on Agilam' : 'The edit';
+
+  /** Back to the unfiltered grid — the "Collections" breadcrumb and empty state. */
+  const resetCollection = () => {
+    setQuery('');
+    setFilters(DEFAULT_FILTERS);
+  };
+
   const activeChips: { key: string; label: string; remove: () => void }[] = [];
+  if (query.trim()) activeChips.push({ key: 'q', label: `“${query.trim()}”`, remove: () => setQuery('') });
   if (filters.maxPrice < 10000) activeChips.push({ key: 'price', label: 'Under ' + fmt(filters.maxPrice), remove: () => setFilters({ ...filters, maxPrice: 10000 }) });
   filters.cats.forEach((c) => activeChips.push({ key: 'cat:' + c, label: c, remove: () => toggleFilter('cats', c) }));
   filters.colors.forEach((c) => activeChips.push({ key: 'color:' + c, label: c, remove: () => toggleFilter('colors', c) }));
@@ -42,18 +82,32 @@ export function Results() {
     <div className="agx-results-root" style={css('width:100vw;margin-left:calc(50% - 50vw);min-height:100%;background:#fff;')}>
       <div className="agx-results-inner" style={css('max-width:1480px;margin:0 auto;padding:14px clamp(16px,4vw,44px) 140px;')}>
         <div style={css('flex:none;')}>
-          <div style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:#8A7078;')}>
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/buyer/home'); }} style={css('color:#8A7078;')}>Home</a>
+          {/* Breadcrumb: Home / Collections / <what you're looking at>. The last
+              crumb is dropped on the unfiltered grid, where "Collections" is
+              already the page you're on. */}
+          <nav aria-label="Breadcrumb" style={css('display:flex;align-items:center;gap:8px;font-size:12.5px;color:#8A7078;flex-wrap:wrap;')}>
+            <a href="/buyer/home" onClick={(e) => { e.preventDefault(); navigate('/buyer/home'); }} style={css('color:#8A7078;')}>Home</a>
             <span>/</span>
-            <span style={css('color:#241019;font-weight:700;')}>Ethnic Wear</span>
-          </div>
+            {isBaseCollection ? (
+              <span style={css('color:#241019;font-weight:700;')}>Collections</span>
+            ) : (
+              <>
+                <a href="/buyer/results" onClick={(e) => { e.preventDefault(); resetCollection(); }} style={css('color:#8A7078;')}>Collections</a>
+                <span>/</span>
+                <span style={css('color:#241019;font-weight:700;')}>{collectionTitle}</span>
+              </>
+            )}
+          </nav>
 
           <div style={css('display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:12px;')}>
             <div>
-              <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>The edit</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.2vw,42px);line-height:1.06;letter-spacing:-.01em;margin-top:6px;")}>
-                Ethnic Wear <span style={css("font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:#8A7078;letter-spacing:0;")}>· {results.length} pieces</span>
-              </div>
+              <div className="agx-eyebrow" style={css('font-size:10.5px;color:#B02454;')}>{eyebrow}</div>
+              <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.2vw,42px);line-height:1.06;letter-spacing:-.01em;margin:6px 0 0;")}>
+                {collectionTitle}{' '}
+                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:#8A7078;letter-spacing:0;")}>
+                  · {results.length} {results.length === 1 ? 'piece' : 'pieces'}
+                </span>
+              </h1>
             </div>
             {/* Desktop sort chips — hidden on mobile in favour of the action bar. */}
             <div className="agx-res-sortbar" style={css('display:flex;align-items:center;gap:10px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:14px;padding:6px 8px 6px 14px;')}>
@@ -79,7 +133,7 @@ export function Results() {
                   {c.label}<span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>close</span>
                 </button>
               ))}
-              <button onClick={resetFilters} style={css('border:none;background:none;color:#8A7078;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;')}>Clear all</button>
+              <button onClick={resetCollection} style={css('border:none;background:none;color:#8A7078;font-weight:700;font-size:12px;cursor:pointer;text-decoration:underline;')}>Clear all</button>
             </div>
           )}
         </div>
@@ -88,7 +142,7 @@ export function Results() {
           <aside className="agx-filters agx-res-aside" style={css('width:266px;flex:none;position:sticky;top:78px;max-height:calc(100vh - 104px);overflow-y:auto;padding:20px;background:#FBF6F2;border:1px solid #F0E2E9;border-radius:20px;')}>
             <div style={css('flex:none;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #EFE3E9;padding-bottom:14px;')}>
               <div className="agx-eyebrow" style={css('font-size:11px;color:#241019;')}>Filters</div>
-              <button onClick={resetFilters} style={css('border:none;background:none;color:#D6336C;font-weight:700;font-size:12px;cursor:pointer;')}>Clear all</button>
+              <button onClick={resetCollection} style={css('border:none;background:none;color:#D6336C;font-weight:700;font-size:12px;cursor:pointer;')}>Clear all</button>
             </div>
 
             <div className="agx-res-aside-scroll agx-scroll">
@@ -162,11 +216,14 @@ export function Results() {
             <div className="agx-rgrid">
               {results.map((p) => (
                 <div key={p.id} onClick={() => navigate(`/buyer/product/${p.id}`)} className="agx-lift" style={css('cursor:pointer;')}>
-                  <div className="agx-zoom" style={css(`position:relative;aspect-ratio:3/4;border-radius:20px;overflow:hidden;background:${TONES[p.tone]};box-shadow:0 16px 34px -22px rgba(107,20,54,.6);`)}>
-                    <ImageSlot src={p.image} placeholder={p.title} style={css('position:absolute;inset:0;')} />
-                    <button onClick={(e: MouseEvent) => { e.stopPropagation(); toggleWish(p.id); }} style={css('position:absolute;right:9px;top:9px;width:36px;height:36px;border-radius:12px;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(0,0,0,.3);')}>
-                      <span style={css(`font-family:'Material Symbols Outlined';font-size:19px;color:${wishlist[p.id] ? '#D6336C' : '#B79AA6'};`)}>{wishlist[p.id] ? 'favorite' : 'favorite_border'}</span>
-                    </button>
+                  <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
+                    <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
+                    <WishButton
+                      wished={!!wishlist[p.id]}
+                      title={p.title}
+                      onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
+                      className="agx-card-wish"
+                    />
                     <div style={css('position:absolute;left:10px;bottom:10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.96);border-radius:9px;padding:3px 9px;font-size:11.5px;font-weight:800;color:#241019;box-shadow:0 4px 12px rgba(0,0,0,.16);')}>
                       <span style={css("font-family:'Material Symbols Outlined';font-size:14px;color:#2FA36B;")}>star</span>{p.rating}
                       <span style={css('width:1px;height:11px;background:#D9C4CE;')} />
@@ -191,8 +248,14 @@ export function Results() {
                   <span style={css("font-family:'Material Symbols Outlined';font-size:38px;color:#D6336C;")}>search_off</span>
                 </div>
                 <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:16px;")}>No matches found</div>
-                <div style={css('color:#8A7078;font-size:14px;margin-top:6px;')}>Try widening your price range or clearing a filter.</div>
-                <button onClick={resetFilters} style={css('margin-top:16px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:11px 20px;font-weight:700;cursor:pointer;')}>Reset filters</button>
+                <div style={css('color:#8A7078;font-size:14px;margin-top:6px;max-width:320px;line-height:1.55;')}>
+                  {query.trim()
+                    ? `Nothing matched “${query.trim()}”. Try a different spelling, or browse the full collection.`
+                    : 'Try widening your price range or clearing a filter.'}
+                </div>
+                <button onClick={resetCollection} style={css('margin-top:16px;background:#B02454;color:#fff;border:none;border-radius:12px;padding:11px 20px;font-weight:700;cursor:pointer;')}>
+                  {query.trim() ? 'Browse all collections' : 'Reset filters'}
+                </button>
               </div>
             )}
           </div>
