@@ -33,6 +33,7 @@ import {
 } from '@/data/adminUsers';
 import { useAsync } from '@/hooks/useAsync';
 import { useDebounced } from '@/hooks/useDebounced';
+import { LivePresence } from '@/pages/admin/LivePresence';
 import { css } from '@/lib/css';
 import { fmtInr } from '@/lib/tokens';
 import { useShop } from '@/state/ShopContext';
@@ -272,6 +273,8 @@ export function Users() {
 
   return (
     <div>
+      <LivePresence />
+
       <div className="agx-adm-toolbar" style={css('display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;')}>
         <SearchInput
           value={rawSearch}
