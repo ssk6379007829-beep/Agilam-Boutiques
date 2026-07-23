@@ -65,8 +65,6 @@ export async function createProduct(input: {
   wash_care?: string;
   image_url?: string;
   images?: string[];
-  music_url?: string | null;
-  music_title?: string | null;
 }) {
   const { error } = await supabase.from('products').insert(input);
   if (error) throw error;
@@ -88,8 +86,6 @@ export async function updateProduct(
     wash_care: string;
     image_url: string;
     images: string[];
-    music_url: string | null;
-    music_title: string | null;
   }>,
 ) {
   const { error } = await supabase.from('products').update(patch).eq('id', id);

@@ -29,9 +29,6 @@ export interface ProductWithBoutique {
   sizes?: string[] | null;
   wash_care?: string | null;
   images?: string[] | null;
-  /** Optional 15-second Inspire-feed song and its on-card credit (migration 0032). */
-  music_url?: string | null;
-  music_title?: string | null;
   boutique: { name: string; city: string; tone: number } | null;
 }
 

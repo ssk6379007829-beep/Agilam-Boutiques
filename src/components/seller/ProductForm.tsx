@@ -4,7 +4,6 @@ import { useShop } from '@/state/ShopContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { uploadProductImage } from '@/data/products';
 import { TaxonomySelect } from '@/components/seller/TaxonomySelect';
-import { SongPicker } from '@/components/seller/SongPicker';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
 
 export type ProductFormValues = {
@@ -21,14 +20,11 @@ export type ProductFormValues = {
   washCare: string;
   imageUrl: string;
   images: string[];
-  musicUrl: string;
-  musicTitle: string;
 };
 
 export const EMPTY_PRODUCT_FORM: ProductFormValues = {
   title: '', category: '', color: '', occasion: '', fabric: '', price: '', stock: '',
   description: '', mrp: '', sizes: [], washCare: '', imageUrl: '', images: [],
-  musicUrl: '', musicTitle: '',
 };
 
 const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid #F0D8E2;background:#fff;border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
@@ -253,21 +249,6 @@ export function ProductForm({
         Wash care — optional
         <textarea value={form.washCare} onChange={(e) => set('washCare', e.target.value)} placeholder="Dry clean only" style={css(textAreaStyle)} />
       </label>
-
-      {/* ── Inspire song — optional ──
-          Search a track and attach it; its first 15 seconds play on this piece's
-          card in the buyer feed, the way a reel carries a song. */}
-      <div>
-        <div style={css(labelStyle)}>
-          <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#B02454;vertical-align:-3px;margin-right:4px;")}>music_note</span>
-          Feed song — optional
-        </div>
-        <SongPicker
-          url={form.musicUrl}
-          title={form.musicTitle}
-          onChange={({ url, title }) => setForm((f) => ({ ...f, musicUrl: url, musicTitle: title }))}
-        />
-      </div>
 
       <button
         onClick={submit}

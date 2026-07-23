@@ -35,8 +35,6 @@ export function AddProduct() {
         wash_care: form.washCare.trim(),
         image_url: form.imageUrl,
         images: form.images,
-        music_url: form.musicUrl || null,
-        music_title: form.musicUrl ? form.musicTitle.trim() || 'Original audio' : null,
       });
       showToast('Product published');
       navigate('/seller/products');

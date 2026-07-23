@@ -138,10 +138,6 @@ export interface Database {
           sizes: string[];
           wash_care: string;
           images: string[];
-          /** Optional 15-second Inspire-feed song — a track the seller picked
-           *  from online music search — and its on-card credit (migration 0032). */
-          music_url: string | null;
-          music_title: string | null;
           /** Public hearts on the Inspire feed card (migration 0020). */
           likes_count: number;
           /** Buyer-side engagement counters (migration 0031) — RPC/trigger
