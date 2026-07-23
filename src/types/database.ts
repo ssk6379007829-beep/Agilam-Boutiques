@@ -365,6 +365,33 @@ export interface Database {
           review_note: string | null;
         }[];
       };
+      /**
+       * Settle a boutique's outstanding balance (migration 0025). SECURITY
+       * DEFINER; recomputes the amount from the boutique's unsettled orders,
+       * stamps them, and returns the inserted `payouts` row.
+       */
+      settle_boutique_payout: {
+        Args: { p_boutique_id: string; p_note?: string | null };
+        Returns: {
+          id: string;
+          boutique_id: string;
+          amount: number;
+          orders_count: number;
+          gross: number;
+          commission: number;
+          fees: number;
+          cod_adjustment: number;
+          note: string | null;
+          created_by: string | null;
+          created_by_name: string;
+          created_at: string;
+          status: string;
+          provider: string;
+          method: string | null;
+          utr: string | null;
+          failure_reason: string | null;
+        };
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
