@@ -333,6 +333,15 @@ export interface Database {
         Args: { pid: string; do_like: boolean };
         Returns: number;
       };
+      /** Record a buyer view / share of a product (migration 0031). */
+      record_product_view: {
+        Args: { pid: string };
+        Returns: undefined;
+      };
+      record_product_share: {
+        Args: { pid: string };
+        Returns: undefined;
+      };
       create_offline_sale: {
         Args: {
           p_boutique_id: string;
