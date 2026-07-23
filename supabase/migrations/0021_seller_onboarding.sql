@@ -190,7 +190,12 @@ end $$;
 -- Owner and admin read the withheld columns through this function. SECURITY
 -- DEFINER runs it as the table owner, so the column grants above do not apply
 -- inside it; the WHERE clause is the access check.
-create or replace function boutique_private(bid uuid)
+--
+-- Drop first: a later migration (0027) widens the OUT columns, and CREATE OR
+-- REPLACE cannot change a function's return type (SQLSTATE 42P13). Dropping
+-- makes this block re-runnable in any order.
+drop function if exists boutique_private(uuid);
+create function boutique_private(bid uuid)
 returns table (
   gst_number text,
   business_reg_number text,
