@@ -101,6 +101,12 @@ export function LivePresence() {
                         <Icon name={PAGE_ICON[u.page] ?? 'travel_explore'} size={14} color="#B79AA6" />
                         <span style={css('overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{u.page}</span>
                       </div>
+                      {u.location && (
+                        <div style={css(`display:flex;align-items:center;gap:5px;font-size:11.5px;color:${T.muted};margin-top:2px;`)}>
+                          <Icon name="location_on" size={14} color="#B79AA6" />
+                          <span style={css('overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{u.location}</span>
+                        </div>
+                      )}
                       <div style={css('font-size:11px;color:#2FA36B;font-weight:700;margin-top:2px;')}>{relative(u.at, now)}</div>
                     </div>
                   </div>

@@ -30,6 +30,7 @@ export interface PresenceMeta {
   page: string; // friendly activity label, e.g. "Viewing a product"
   section: PresenceSection;
   path: string; // raw pathname (for reference)
+  location?: string; // approximate IP-based location, e.g. "Chennai, TN, IN" ('' when unknown)
   at: string; // ISO timestamp of last activity (navigation / heartbeat)
 }
 

@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { useShop } from '@/state/ShopContext';
+import { useAsync } from '@/hooks/useAsync';
+import { fetchMyBoutique } from '@/data/boutiques';
 import { joinPresence, presenceId, describePage, type PresenceHandle, type PresenceMeta, type PresenceRole } from '@/lib/presence';
 
 /**
@@ -13,7 +15,20 @@ export function PresenceTracker() {
   const location = useLocation();
   const { profile } = useAuth();
   const { guest } = useShop();
+
+  // A seller should appear in the admin's live roster by their *boutique* name,
+  // not their personal owner name. Their own tab is the only one that can read
+  // their boutique, so resolve it here and broadcast it as the presence name.
+  // Non-sellers never hit the query.
+  const isSeller = profile?.role === 'seller';
+  const { data: boutique } = useAsync(
+    () => (isSeller && profile ? fetchMyBoutique(profile.id) : Promise.resolve(null)),
+    [isSeller, profile?.id],
+  );
+
   const handle = useRef<PresenceHandle | null>(null);
+  // Approximate, IP-based location (city-level), resolved once from /api/geo.
+  const locationRef = useRef<string>('');
   const metaRef = useRef<PresenceMeta>({
     id: presenceId(),
     name: 'Guest',
@@ -30,11 +45,14 @@ export function PresenceTracker() {
   metaRef.current = {
     ...metaRef.current,
     id: presenceId(),
-    name: (profile?.full_name?.trim() || guest.name?.trim() || 'Guest'),
+    name: isSeller
+      ? (boutique?.name?.trim() || profile?.full_name?.trim() || 'Boutique')
+      : (profile?.full_name?.trim() || guest.name?.trim() || 'Guest'),
     role: (profile?.role as PresenceRole) ?? 'guest',
     page,
     section,
     path: location.pathname,
+    location: locationRef.current || undefined,
   };
 
   // Join once; leave on unmount (tab close also clears presence server-side).
@@ -43,11 +61,31 @@ export function PresenceTracker() {
     return () => handle.current?.leave();
   }, []);
 
+  // Resolve this tab's approximate location once, then re-announce it. Best
+  // effort: a failure (offline, endpoint down, local dev) just leaves it unset.
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/geo')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { label?: string } | null) => {
+        if (cancelled || !data?.label) return;
+        locationRef.current = data.label;
+        metaRef.current.location = data.label;
+        handle.current?.update();
+      })
+      .catch(() => {
+        /* location is optional — ignore */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Re-track whenever the page or the signed-in identity changes.
   useEffect(() => {
     metaRef.current.at = new Date().toISOString();
     handle.current?.update();
-  }, [location.pathname, profile?.id, profile?.full_name, guest.name]);
+  }, [location.pathname, profile?.id, profile?.full_name, guest.name, boutique?.name]);
 
   // Heartbeat: keep "last active" fresh while a tab sits on one page, and
   // re-announce the moment the tab is refocused.
