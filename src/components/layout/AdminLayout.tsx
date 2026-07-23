@@ -1,6 +1,7 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useAuth } from '@/auth/AuthContext';
+import { useShop } from '@/state/ShopContext';
 import { initial } from '@/lib/tokens';
 import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary';
 
@@ -21,6 +22,10 @@ export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
+  // The buyer AppShell renders the global toast, but admin pages live outside it,
+  // so every showToast() on the console (create user, block, delete, errors…) was
+  // silently discarded. Render it here too so admin actions give feedback.
+  const { toast } = useShop();
   const active = NAV.find((n) => location.pathname.startsWith(n.to)) ?? NAV[0];
 
   const logout = async () => {
@@ -115,6 +120,13 @@ export function AdminLayout() {
           <span style={css('font-size:10px;font-weight:700;white-space:nowrap;')}>Log out</span>
         </button>
       </nav>
+
+      {toast && (
+        <div style={css('position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#2A1A20;color:#fff;padding:13px 22px;border-radius:14px;font-weight:600;font-size:14px;box-shadow:0 16px 40px -14px rgba(0,0,0,.6);z-index:1200;display:flex;align-items:center;gap:10px;animation:agx-fade .2s ease;max-width:calc(100vw - 32px);text-align:center;')}>
+          <span style={css("font-family:'Material Symbols Outlined';color:#F7B7CF;font-size:20px;")}>info</span>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
