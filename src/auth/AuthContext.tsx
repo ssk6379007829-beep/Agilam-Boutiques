@@ -10,7 +10,18 @@ type Profile = {
   phone: string | null;
   email: string | null;
   city: string | null;
+  status: 'active' | 'blocked';
+  deleted_at: string | null;
 };
+
+/**
+ * An account an admin has blocked or deleted must not be able to use the site,
+ * even if its Supabase Auth login still exists (a soft-deleted/archived user, or
+ * one whose hard delete fell back to archival because they have orders/chat).
+ */
+function isDisabled(p: Pick<Profile, 'status' | 'deleted_at'> | null): boolean {
+  return !!p && (p.deleted_at != null || p.status === 'blocked');
+}
 
 export type PendingSignup = {
   full_name: string;
@@ -43,7 +54,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // of which sign-in page was used.
   async function loadProfile(userId: string) {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-    setProfile(data ? (data as Profile) : null);
+    const prof = data ? (data as Profile) : null;
+    // A blocked/deleted account is signed out on the spot — it can't be used to
+    // browse, order, sell or reach the admin console.
+    if (isDisabled(prof)) {
+      await supabase.auth.signOut();
+      setSession(null);
+      setProfile(null);
+      return;
+    }
+    setProfile(prof);
   }
 
   /**
@@ -100,7 +120,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // (RLS/replication lag right after creation).
     const prof: Profile = data
       ? (data as Profile)
-      : { id: user.id, role: ensuredRole, full_name: user.email ?? 'New user', phone: null, email: user.email ?? null, city: null };
+      : { id: user.id, role: ensuredRole, full_name: user.email ?? 'New user', phone: null, email: user.email ?? null, city: null, status: 'active', deleted_at: null };
+    // Refuse sign-in for a blocked/deleted account: end the session and surface a
+    // clear error the login screens can show.
+    if (isDisabled(prof)) {
+      await supabase.auth.signOut();
+      setSession(null);
+      setProfile(null);
+      throw new Error('This account has been disabled. Please contact support.');
+    }
     setSession(newSession);
     setProfile(prof);
     return prof.role;
