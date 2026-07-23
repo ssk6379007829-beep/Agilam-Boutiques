@@ -67,6 +67,7 @@ export function Users() {
   });
   const [editUser, setEditUser] = useState<AdminUserRow | null>(null);
   const [editData, setEditData] = useState<UpdateUserInput>({ fullName: '', phone: '', city: '', address: '', role: 'buyer' });
+  const [credentials, setCredentials] = useState<{ email: string; password: string } | null>(null);
 
   const openEdit = (user: AdminUserRow) => {
     setEditData({
@@ -181,6 +182,12 @@ export function Users() {
       const result = await createUser(createData);
       await log('user.create', result.userId, { name: createData.fullName, role: createData.role });
       showToast(result.message);
+      // If the welcome email didn't go out, the temp password would otherwise be
+      // lost — surface it so the admin can hand it over. Only then do we hold the
+      // drawer; on a clean send we reset and close as before.
+      if (!result.emailSent && result.tempPassword) {
+        setCredentials({ email: createData.email.trim().toLowerCase(), password: result.tempPassword });
+      }
       setCreateOpen(false);
       setCreateData({ email: '', fullName: '', phone: '', city: '', role: 'buyer' });
       reload();
@@ -327,6 +334,41 @@ export function Users() {
         onConfirm={doDelete}
         onCancel={() => setConfirm(null)}
       />
+
+      {credentials && (
+        <div
+          style={css('position:fixed;inset:0;z-index:1000;background:rgba(36,22,29,0.55);display:flex;align-items:center;justify-content:center;padding:20px;')}
+          onClick={() => setCredentials(null)}
+        >
+          <div
+            style={css('background:#fff;border-radius:18px;padding:24px;max-width:420px;width:100%;box-shadow:0 28px 80px -40px rgba(83,24,43,0.55);')}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={css('font-weight:800;font-size:16px;margin-bottom:6px;')}>Share these credentials</div>
+            <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.6;margin-bottom:16px;`)}>
+              The welcome email could not be sent, so give the new user their sign-in details directly. They should change the password on first login.
+            </div>
+            <div style={css('background:#FFF7FA;border:1px solid #F0D8E2;border-radius:12px;padding:14px;margin-bottom:16px;')}>
+              <div style={css(`font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${T.muted};margin-bottom:4px;`)}>Email</div>
+              <div style={css('font-size:14px;font-weight:600;word-break:break-word;margin-bottom:12px;')}>{credentials.email}</div>
+              <div style={css(`font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${T.muted};margin-bottom:4px;`)}>Temporary password</div>
+              <div style={css("font-family:'Courier New',monospace;font-size:16px;font-weight:700;letter-spacing:0.08em;color:#651B36;")}>{credentials.password}</div>
+            </div>
+            <div style={css('display:flex;gap:10px;justify-content:flex-end;')}>
+              <GhostButton
+                icon="content_copy"
+                onClick={() => {
+                  navigator.clipboard?.writeText(`Email: ${credentials.email}\nTemporary password: ${credentials.password}`);
+                  showToast('Credentials copied');
+                }}
+              >
+                Copy
+              </GhostButton>
+              <GhostButton tone="primary" onClick={() => setCredentials(null)}>Done</GhostButton>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Drawer
         open={createOpen}

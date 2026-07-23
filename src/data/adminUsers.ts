@@ -169,7 +169,14 @@ export interface CreateUserInput {
   role: Role;
 }
 
-export async function createUser(input: CreateUserInput): Promise<{ userId: string; message: string }> {
+export interface CreateUserResult {
+  userId: string;
+  message: string;
+  emailSent: boolean;
+  tempPassword: string;
+}
+
+export async function createUser(input: CreateUserInput): Promise<CreateUserResult> {
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
 
@@ -191,7 +198,12 @@ export async function createUser(input: CreateUserInput): Promise<{ userId: stri
     throw new Error(data.error || 'Failed to create user');
   }
 
-  return { userId: data.userId, message: data.message };
+  return {
+    userId: data.userId,
+    message: data.message,
+    emailSent: data.emailSent ?? true,
+    tempPassword: data.tempPassword ?? '',
+  };
 }
 
 export async function changeUserRole(userId: string, newRole: Role): Promise<void> {

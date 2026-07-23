@@ -46,6 +46,13 @@ function devApi(env: Record<string, string>): Plugin {
       // place-order writes with the Supabase service role (bypasses RLS).
       pass('SUPABASE_URL', env.SUPABASE_URL || env.VITE_SUPABASE_URL);
       pass('SUPABASE_SERVICE_ROLE_KEY', env.SUPABASE_SERVICE_ROLE_KEY);
+      // admin-create-user verifies the caller's admin session with the anon key
+      // and (optionally) emails the welcome/credentials via Resend. Without these
+      // forwarded, admin user creation fails in `npm run dev` with a 500.
+      pass('SUPABASE_ANON_KEY', env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY);
+      pass('RESEND_API_KEY', env.RESEND_API_KEY || env.VITE_RESEND_API_KEY);
+      pass('EMAIL_FROM', env.EMAIL_FROM || env.VITE_EMAIL_FROM);
+      pass('APP_URL', env.APP_URL || env.VITE_APP_URL);
 
       // Fail loudly at startup rather than at the worst possible moment —
       // mid-checkout, after the buyer's card has already been charged.

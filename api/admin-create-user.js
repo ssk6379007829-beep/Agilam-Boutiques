@@ -328,17 +328,24 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to create user profile' });
     }
 
+    // The account already exists in auth + profiles at this point. The welcome
+    // email is a convenience (it carries the temp password), NOT a precondition
+    // for the user existing — so a missing/failing email provider must not roll
+    // back a good account. We report whether the mail went out and always return
+    // the temp password so the admin can relay the credentials by hand.
     const emailResult = await sendEmail(emailData);
     if (!emailResult.success) {
       console.error('[EMAIL_ERROR]', emailResult.error);
-      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
-      return res.status(502).json({ error: 'User was not created because the welcome email could not be delivered' });
     }
 
     return res.status(201).json({
       success: true,
       userId: authUser.user.id,
-      message: `User created and welcome email sent to ${normalizedEmail}`,
+      emailSent: emailResult.success,
+      tempPassword,
+      message: emailResult.success
+        ? `User created and welcome email sent to ${normalizedEmail}`
+        : `User created, but the welcome email could not be sent. Share the temporary password manually.`,
     });
   } catch (error) {
     console.error('[API_ERROR]', error);
