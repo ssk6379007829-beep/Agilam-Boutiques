@@ -100,10 +100,19 @@ export function Users() {
     }
   };
 
+  // Bumped after a create/promote to force a foreground refetch. A new user
+  // sorts to the top of page 0; reload()'s background refresh can miss it if the
+  // admin isn't on a freshly-loaded page 0, so we reset to page 0 and hard-reload.
+  const [refreshKey, setRefreshKey] = useState(0);
   const q = useMemo(() => ({ page, pageSize: PAGE_SIZE, search, role, status }), [page, search, role, status]);
-  const { data, loading, reload } = useAsync(() => fetchUsers(q), [q]);
+  const { data, loading, reload } = useAsync(() => fetchUsers(q), [q, refreshKey]);
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
+
+  const showFreshest = () => {
+    setPage(0);
+    setRefreshKey((k) => k + 1);
+  };
 
   const changeFilter = (fn: () => void) => {
     fn();
@@ -190,7 +199,7 @@ export function Users() {
       }
       setCreateOpen(false);
       setCreateData({ email: '', fullName: '', phone: '', city: '', role: 'buyer' });
-      reload();
+      showFreshest();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Creation failed');
     } finally {
