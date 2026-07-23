@@ -35,10 +35,14 @@ export async function fetchUsers(q: UsersQuery): Promise<Paged<AdminUserRow>> {
     .select('id, full_name, email, phone, city, address, role, status, deleted_at, created_at', { count: 'exact' });
 
   if (q.role && q.role !== 'all') query = query.eq('role', q.role);
-  if (q.status === 'deleted') query = query.not('deleted_at', 'is', null);
-  else {
-    query = query.is('deleted_at', null);
-    if (q.status === 'active' || q.status === 'blocked') query = query.eq('status', q.status);
+  // "All statuses" must mean EVERYONE — active, blocked AND soft-deleted (the
+  // table badges deleted rows and offers Restore). Previously 'all' still
+  // filtered out soft-deleted users, so a console with N deleted accounts showed
+  // fewer users than exist in the database. Only the explicit filters narrow it.
+  if (q.status === 'deleted') {
+    query = query.not('deleted_at', 'is', null);
+  } else if (q.status === 'active' || q.status === 'blocked') {
+    query = query.is('deleted_at', null).eq('status', q.status);
   }
   if (q.search?.trim()) {
     const s = `%${q.search.trim()}%`;
