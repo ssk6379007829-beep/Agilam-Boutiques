@@ -105,7 +105,7 @@ export function Users() {
   // admin isn't on a freshly-loaded page 0, so we reset to page 0 and hard-reload.
   const [refreshKey, setRefreshKey] = useState(0);
   const q = useMemo(() => ({ page, pageSize: PAGE_SIZE, search, role, status }), [page, search, role, status]);
-  const { data, loading, reload } = useAsync(() => fetchUsers(q), [q, refreshKey]);
+  const { data, loading, reload, error } = useAsync(() => fetchUsers(q), [q, refreshKey]);
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
 
@@ -276,13 +276,18 @@ export function Users() {
             <>
               <IconButton icon="visibility" title="View" onClick={() => setDetailId(user.id)} />
               <IconButton icon="edit" title="Edit" onClick={() => openEdit(user)} />
-              <IconButton
-                icon={user.status === 'blocked' ? 'lock_open' : 'block'}
-                tone={user.status === 'blocked' ? 'success' : 'warn'}
-                title={user.status === 'blocked' ? 'Unblock' : 'Block'}
-                onClick={() => toggleBlock(user)}
-              />
-              {user.id !== profile?.id && (
+              {/* Never let an active admin be blocked (that would lock them out of
+                  the console); unblocking one is still allowed. */}
+              {(user.status === 'blocked' || user.role !== 'admin') && (
+                <IconButton
+                  icon={user.status === 'blocked' ? 'lock_open' : 'block'}
+                  tone={user.status === 'blocked' ? 'success' : 'warn'}
+                  title={user.status === 'blocked' ? 'Unblock' : 'Block'}
+                  onClick={() => toggleBlock(user)}
+                />
+              )}
+              {/* Admins can't be deleted (change their role first); can't delete self. */}
+              {user.id !== profile?.id && user.role !== 'admin' && (
                 <IconButton icon="delete" tone="danger" title="Delete" onClick={() => setConfirm({ user })} />
               )}
             </>
@@ -325,6 +330,13 @@ export function Users() {
         <GhostButton icon="download" onClick={exportCsv}>Export</GhostButton>
         <GhostButton icon="person_add" tone="primary" onClick={() => setCreateOpen(true)}>Create User</GhostButton>
       </div>
+
+      {error && (
+        <div style={css('background:#FDE7EC;border:1px solid #F3B9C8;color:#8A1F3D;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;')}>
+          <Icon name="error" size={18} color="#B02454" />
+          Couldn&apos;t load users: {error}
+        </div>
+      )}
 
       <DataTable
         columns={columns}

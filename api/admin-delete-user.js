@@ -55,6 +55,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'You cannot delete your own admin account' });
     }
 
+    // Never delete an admin account — that risks locking the business out of the
+    // console. To remove one, change their role first, then delete.
+    const { data: target } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (target?.role === 'admin') {
+      return res.status(400).json({ error: 'Admin accounts cannot be deleted. Change their role first, then delete.' });
+    }
+
     // Attempt a permanent delete. Deleting the auth user cascades to the profile
     // and all owned rows that reference it with ON DELETE CASCADE (wishlist,
     // cart, reviews, conversations, inspire posts, a seller's boutique). It is

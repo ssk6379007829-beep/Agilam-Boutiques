@@ -29,54 +29,32 @@ export interface Paged<T> {
   total: number;
 }
 
+/**
+ * Load users through the service-role endpoint (bypasses RLS), so the admin list
+ * always reflects the whole `profiles` table — never a subset because of a
+ * session/is_admin() quirk. A blocked/deleted admin gets a clear error instead
+ * of a silent empty list.
+ */
 export async function fetchUsers(q: UsersQuery): Promise<Paged<AdminUserRow>> {
-  let query = supabase
-    .from('profiles')
-    .select('id, full_name, email, phone, city, address, role, status, deleted_at, created_at', { count: 'exact' });
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) throw new Error('Admin session expired. Please sign in again.');
 
-  if (q.role && q.role !== 'all') query = query.eq('role', q.role);
-  // "All statuses" must mean EVERYONE — active, blocked AND soft-deleted (the
-  // table badges deleted rows and offers Restore). Previously 'all' still
-  // filtered out soft-deleted users, so a console with N deleted accounts showed
-  // fewer users than exist in the database. Only the explicit filters narrow it.
-  if (q.status === 'deleted') {
-    query = query.not('deleted_at', 'is', null);
-  } else if (q.status === 'active' || q.status === 'blocked') {
-    query = query.is('deleted_at', null).eq('status', q.status);
-  }
-  if (q.search?.trim()) {
-    const s = `%${q.search.trim()}%`;
-    query = query.or(`full_name.ilike.${s},email.ilike.${s},phone.ilike.${s},city.ilike.${s}`);
-  }
+  const response = await fetch('/api/admin-list-users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({
+      page: q.page,
+      pageSize: q.pageSize,
+      search: q.search ?? '',
+      role: q.role ?? 'all',
+      status: q.status ?? 'all',
+    }),
+  });
 
-  const from = q.page * q.pageSize;
-  query = query.order('created_at', { ascending: false }).range(from, from + q.pageSize - 1);
-
-  const { data, error, count } = await query;
-  if (error) throw error;
-  const rows = (data ?? []) as Omit<AdminUserRow, 'orders' | 'spent'>[];
-
-  const ids = rows.map((r) => r.id);
-  const totals = new Map<string, { orders: number; spent: number }>();
-  if (ids.length) {
-    const { data: ord } = await supabase.from('orders').select('buyer_id, total').in('buyer_id', ids);
-    (ord ?? []).forEach((o: { buyer_id: string | null; total: number }) => {
-      if (!o.buyer_id) return;
-      const current = totals.get(o.buyer_id) ?? { orders: 0, spent: 0 };
-      current.orders += 1;
-      current.spent += Number(o.total);
-      totals.set(o.buyer_id, current);
-    });
-  }
-
-  return {
-    total: count ?? 0,
-    rows: rows.map((r) => ({
-      ...r,
-      orders: totals.get(r.id)?.orders ?? 0,
-      spent: totals.get(r.id)?.spent ?? 0,
-    })),
-  };
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Failed to load users');
+  return { rows: (data.rows ?? []) as AdminUserRow[], total: data.total ?? 0 };
 }
 
 export async function setUserStatus(id: string, status: 'active' | 'blocked') {
