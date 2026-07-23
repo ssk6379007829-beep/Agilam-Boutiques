@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { useShop } from '@/state/ShopContext';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchMyBoutique } from '@/data/boutiques';
+import { resolveLocation } from '@/lib/geolocate';
 import { joinPresence, presenceId, describePage, type PresenceHandle, type PresenceMeta, type PresenceRole } from '@/lib/presence';
 
 /**
@@ -61,21 +62,17 @@ export function PresenceTracker() {
     return () => handle.current?.leave();
   }, []);
 
-  // Resolve this tab's approximate location once, then re-announce it. Best
-  // effort: a failure (offline, endpoint down, local dev) just leaves it unset.
+  // Resolve this tab's location once, then re-announce it. Tries GPS for the
+  // real area and falls back to IP; either way it's best-effort, so a failure
+  // (denied, offline, local dev) just leaves the location unset.
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/geo')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { label?: string } | null) => {
-        if (cancelled || !data?.label) return;
-        locationRef.current = data.label;
-        metaRef.current.location = data.label;
-        handle.current?.update();
-      })
-      .catch(() => {
-        /* location is optional — ignore */
-      });
+    void resolveLocation().then((label) => {
+      if (cancelled || !label) return;
+      locationRef.current = label;
+      metaRef.current.location = label;
+      handle.current?.update();
+    });
     return () => {
       cancelled = true;
     };
