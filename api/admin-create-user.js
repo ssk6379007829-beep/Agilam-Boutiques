@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
 const fromEmail = process.env.EMAIL_FROM || process.env.VITE_EMAIL_FROM || 'noreply@agilam.in';
@@ -12,7 +11,6 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-const supabaseAuth = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -208,8 +206,6 @@ async function sendEmail({ to, subject, html, text }) {
 }
 
 async function authenticateAdmin(req) {
-  if (!supabaseAuth) return { ok: false, status: 500, error: 'Missing Supabase anon key for admin verification' };
-
   const authHeader = req.headers?.authorization || req.headers?.Authorization;
   const token = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
     ? authHeader.slice(7).trim()
@@ -219,8 +215,13 @@ async function authenticateAdmin(req) {
     return { ok: false, status: 401, error: 'Missing admin session' };
   }
 
-  const { data: authData, error: authError } = await supabaseAuth.auth.getUser(token);
-  if (authError || !authData.user) {
+  // Validate the caller's access token with the SAME service-role client that
+  // reads the profile below, so the token check and the admin lookup always hit
+  // one project. (Using a separate anon-key client made this fail with "Invalid
+  // admin session" whenever the anon key / URL resolved to a different project
+  // than the service role — the frontend's token then didn't validate.)
+  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+  if (authError || !authData?.user) {
     return { ok: false, status: 401, error: 'Invalid admin session' };
   }
 
