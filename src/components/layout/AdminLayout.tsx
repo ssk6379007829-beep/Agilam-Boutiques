@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useAuth } from '@/auth/AuthContext';
 import { initial } from '@/lib/tokens';
+import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary';
 
 const NAV = [
   { label: 'Overview', icon: 'dashboard', to: '/admin/overview', title: 'Overview', sub: 'Marketplace health at a glance' },
@@ -82,7 +83,9 @@ export function AdminLayout() {
           {/* `agx-scroll-main` marks this as the page's scroller, so ScrollManager
               resets it on navigation — the window never scrolls in the console. */}
           <div className="agx-scroll agx-scroll-main agx-admin-main" style={css('flex:1;overflow-y:auto;padding:26px 30px;background:#FBF6F2;')}>
-            <Outlet />
+            <RouteErrorBoundary>
+              <Outlet />
+            </RouteErrorBoundary>
           </div>
         </div>
       </div>

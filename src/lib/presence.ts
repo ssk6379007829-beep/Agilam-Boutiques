@@ -1,17 +1,21 @@
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
 /**
  * Live "who's on the site right now" presence.
  *
- * Every open tab — signed-in or an anonymous guest — joins one shared Realtime
+ * Every open tab — signed-in or an anonymous guest — joins ONE shared Realtime
  * presence channel and broadcasts a small state blob (who they are, what page
- * they're on, when they were last active). The admin console subscribes to the
- * same channel read-only and renders the roster live. Presence is ephemeral: it
- * lives in the channel, not the database, so a closed tab or dropped connection
- * clears itself automatically — no cron, no stale "online" rows.
+ * they're on, when they were last active). The admin console reads the same
+ * channel and renders the roster live. Presence is ephemeral: it lives in the
+ * channel, not the database, so a closed tab or dropped connection clears itself
+ * automatically — no cron, no stale "online" rows.
  *
- * Mirrors the per-conversation presence already used in chat.ts, scaled to one
- * site-wide channel.
+ * IMPORTANT: there is exactly one channel object per tab (a module singleton).
+ * On the admin's own browser both the publisher (PresenceTracker) and the reader
+ * (LivePresence) run; giving each its own `supabase.channel('presence:site')`
+ * means two channels on the same topic, which supabase-js does not support and
+ * which blanked the Users page. They share this single channel instead.
  */
 
 const SITE_CHANNEL = 'presence:site';
@@ -76,66 +80,96 @@ export function describePage(path: string): { page: string; section: PresenceSec
   return { page: 'Browsing', section: 'buyer' };
 }
 
+// ── One shared channel per tab ──────────────────────────────────────────────
+
+let channel: RealtimeChannel | null = null;
+let metaProvider: (() => PresenceMeta) | null = null;
+const readers = new Set<(users: OnlineUser[]) => void>();
+
+function computeUsers(): OnlineUser[] {
+  if (!channel) return [];
+  try {
+    const state = channel.presenceState<PresenceMeta>();
+    return Object.values(state)
+      .map((metas) => {
+        const list = [...metas].filter((m) => m && typeof m.at === 'string');
+        if (list.length === 0) return null;
+        const sorted = list.sort((a, b) => a.at.localeCompare(b.at));
+        return { ...sorted[sorted.length - 1], onlineSince: sorted[0].at } as OnlineUser;
+      })
+      .filter((u): u is OnlineUser => u !== null)
+      .sort((a, b) => b.at.localeCompare(a.at));
+  } catch {
+    return [];
+  }
+}
+
+function broadcast() {
+  const users = computeUsers();
+  readers.forEach((r) => r(users));
+}
+
+function ensureChannel(): RealtimeChannel {
+  if (channel) return channel;
+  const key = metaProvider ? metaProvider().id : `viewer-${presenceId()}`;
+  const ch = supabase.channel(SITE_CHANNEL, { config: { presence: { key } } });
+  ch.on('presence', { event: 'sync' }, broadcast)
+    .on('presence', { event: 'join' }, broadcast)
+    .on('presence', { event: 'leave' }, broadcast)
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED' && metaProvider) {
+        void ch.track(metaProvider());
+      }
+    });
+  channel = ch;
+  return ch;
+}
+
+function teardownIfIdle() {
+  if (channel && readers.size === 0 && !metaProvider) {
+    supabase.removeChannel(channel);
+    channel = null;
+  }
+}
+
 export interface PresenceHandle {
   update: () => void;
   leave: () => void;
 }
 
 /**
- * Publisher — join the site channel and keep this session's state fresh.
- * `getMeta` is read on every (re)track so callers can always hand back the
- * latest page/name without re-joining.
+ * Publisher — announce this tab on the shared channel and keep its state fresh.
+ * `getMeta` is read on every track so callers always hand back the latest
+ * page/name without re-joining.
  */
 export function joinPresence(getMeta: () => PresenceMeta): PresenceHandle {
-  const channel = supabase.channel(SITE_CHANNEL, {
-    config: { presence: { key: getMeta().id } },
-  });
-
-  channel.subscribe((status) => {
-    if (status === 'SUBSCRIBED') void channel.track(getMeta());
-  });
+  metaProvider = getMeta;
+  const ch = ensureChannel();
+  // If the channel was already subscribed (a reader opened it first), track now.
+  if (ch.state === 'joined') void ch.track(getMeta());
 
   return {
     update: () => {
-      void channel.track(getMeta());
+      if (channel && channel.state === 'joined') void channel.track(getMeta());
     },
     leave: () => {
-      void channel.untrack();
-      supabase.removeChannel(channel);
+      if (channel && channel.state === 'joined') void channel.untrack();
+      metaProvider = null;
+      teardownIfIdle();
     },
   };
 }
 
 /**
- * Subscriber (admin) — read the live roster. Deliberately does NOT track, so
- * opening the admin panel doesn't add a phantom session to the list.
+ * Reader (admin) — subscribe to the live roster. Attaches to the same shared
+ * channel; never opens a second one.
  */
 export function subscribeToOnlineUsers(onChange: (users: OnlineUser[]) => void) {
-  const channel = supabase.channel(SITE_CHANNEL, {
-    config: { presence: { key: `admin-viewer-${presenceId()}` } },
-  });
-
-  const report = () => {
-    const state = channel.presenceState<PresenceMeta>();
-    const users: OnlineUser[] = Object.values(state)
-      .map((metas) => {
-        // One session can have several presence refs (tabs); collapse to the
-        // most recent activity, and keep the earliest as "online since".
-        const sorted = [...metas].sort((a, b) => a.at.localeCompare(b.at));
-        const latest = sorted[sorted.length - 1];
-        return { ...latest, onlineSince: sorted[0].at };
-      })
-      .sort((a, b) => b.at.localeCompare(a.at));
-    onChange(users);
-  };
-
-  channel
-    .on('presence', { event: 'sync' }, report)
-    .on('presence', { event: 'join' }, report)
-    .on('presence', { event: 'leave' }, report)
-    .subscribe();
-
+  readers.add(onChange);
+  ensureChannel();
+  onChange(computeUsers()); // hand back whatever we already know immediately
   return () => {
-    supabase.removeChannel(channel);
+    readers.delete(onChange);
+    teardownIfIdle();
   };
 }
