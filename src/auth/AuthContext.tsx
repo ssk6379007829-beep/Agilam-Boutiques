@@ -23,6 +23,10 @@ function isDisabled(p: Pick<Profile, 'status' | 'deleted_at'> | null): boolean {
   return !!p && (p.deleted_at != null || p.status === 'blocked');
 }
 
+/** Shown when a blocked/deleted account tries to sign in. */
+const DISABLED_MESSAGE =
+  'Your Agilam account has been disabled. Please contact Agilam support at support@agilam.in for assistance.';
+
 export type PendingSignup = {
   full_name: string;
   role: Role;
@@ -56,13 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
     const prof = data ? (data as Profile) : null;
     // A blocked/deleted account is signed out on the spot — it can't be used to
-    // browse, order, sell or reach the admin console.
+    // browse, order, sell or reach the admin console. Leave a one-time notice so
+    // the page they land on (incl. the Google OAuth callback) can explain why.
     if (isDisabled(prof)) {
+      try { sessionStorage.setItem('agx-auth-notice', DISABLED_MESSAGE); } catch { /* storage unavailable */ }
       await supabase.auth.signOut();
       setSession(null);
       setProfile(null);
       return;
     }
+    try { sessionStorage.removeItem('agx-auth-notice'); } catch { /* storage unavailable */ }
     setProfile(prof);
   }
 
@@ -127,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
       setSession(null);
       setProfile(null);
-      throw new Error('This account has been disabled. Please contact support.');
+      throw new Error(DISABLED_MESSAGE);
     }
     setSession(newSession);
     setProfile(prof);

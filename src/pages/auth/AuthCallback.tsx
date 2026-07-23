@@ -4,6 +4,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { FullscreenLoader } from '@/auth/RequireRole';
 import { fetchMyBoutique } from '@/data/boutiques';
 import { readPendingOAuthRole, clearPendingOAuthRole } from '@/lib/authMethods';
+import { useToast } from '@/components/ui/Toast';
 
 /**
  * Landing route for Google OAuth. Supabase exchanges the code for a session on
@@ -14,12 +15,21 @@ import { readPendingOAuthRole, clearPendingOAuthRole } from '@/lib/authMethods';
 export function AuthCallback() {
   const navigate = useNavigate();
   const { session, loading, claimRole } = useAuth();
+  const toast = useToast();
   const ran = useRef(false);
 
   useEffect(() => {
     if (loading || ran.current) return;
-    // Session should be set by now; if the exchange failed, go home.
+    // Session should be set by now; if there is none, the exchange either failed
+    // or the account was blocked/deleted (signed out by AuthContext) — surface
+    // that reason if one was left.
     if (!session) {
+      let notice = '';
+      try {
+        notice = sessionStorage.getItem('agx-auth-notice') || '';
+        sessionStorage.removeItem('agx-auth-notice');
+      } catch { /* storage unavailable */ }
+      if (notice) toast(notice);
       navigate('/', { replace: true });
       return;
     }
@@ -38,7 +48,7 @@ export function AuthCallback() {
         navigate('/buyer/profile', { replace: true });
       }
     })();
-  }, [session, loading, claimRole, navigate]);
+  }, [session, loading, claimRole, navigate, toast]);
 
   return <FullscreenLoader />;
 }
