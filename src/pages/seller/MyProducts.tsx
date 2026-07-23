@@ -49,6 +49,8 @@ export function MyProducts() {
         wash_care: form.washCare.trim(),
         image_url: form.imageUrl,
         images: form.images,
+        music_url: form.musicUrl || null,
+        music_title: form.musicUrl ? form.musicTitle.trim() || 'Original audio' : null,
       });
       showToast('Product updated');
       setEditing(null);
@@ -176,6 +178,8 @@ export function MyProducts() {
                   washCare: editing.wash_care ?? '',
                   imageUrl: editing.image_url ?? '',
                   images: editing.images ?? [],
+                  musicUrl: editing.music_url ?? '',
+                  musicTitle: editing.music_title ?? '',
                 }}
               />
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
@@ -6,6 +6,13 @@ import { ImageSlot } from '@/components/ui/ImageSlot';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useShop } from '@/state/ShopContext';
 import { shareProduct } from '@/lib/shareProduct';
+import {
+  getCurrentAudioId,
+  isFeedSoundOn,
+  setCurrentAudioId,
+  subscribeFeedAudio,
+  toggleFeedAudio,
+} from '@/lib/feedAudio';
 import { TONES, fmt } from '@/data/demo';
 import type { FeedProduct } from '@/data/feed';
 
@@ -161,6 +168,19 @@ export function FeedPostCard({
   const stripRef = useRef<HTMLDivElement>(null);
   const lastTapRef = useRef(0);
 
+  // ── Feed song ──
+  // The optional 15-second clip the boutique pinned to this piece. It plays only
+  // when the buyer has turned the feed's sound on and this is the card in view —
+  // coordinated across every card by the feedAudio singleton, so just one is ever
+  // audible. See src/lib/feedAudio.ts.
+  const hasMusic = !!product.music_url;
+  const soundOn = useSyncExternalStore(subscribeFeedAudio, isFeedSoundOn);
+  const currentAudioId = useSyncExternalStore(subscribeFeedAudio, getCurrentAudioId);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  const isPlaying = hasMusic && soundOn && currentAudioId === product.id && inView;
+
   const boutique = product.boutique;
   // The listing's own gallery: the cover first, then the rest, de-duped.
   const images = [...new Set([product.image_url, ...(product.images ?? [])].filter(Boolean))] as string[];
@@ -254,6 +274,38 @@ export function FeedPostCard({
     cartQty(product.id, 1);
   };
 
+  // Which card is "in view" drives the one-at-a-time song. Once sound is on,
+  // scrolling a musical card into frame hands it the current slot, so each piece
+  // plays its own clip as the buyer scrolls — like moving between reels.
+  useEffect(() => {
+    if (!hasMusic) return;
+    const el = mediaRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        const ratio = entry.intersectionRatio;
+        setInView(ratio >= 0.5);
+        if (ratio >= 0.6 && isFeedSoundOn()) setCurrentAudioId(product.id);
+      },
+      { threshold: [0, 0.5, 0.6, 1] },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMusic, product.id]);
+
+  // Drive the element from the shared state: audible only when it's this card's
+  // turn and it's on screen; muted/paused otherwise.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (isPlaying) {
+      a.muted = false;
+      void a.play().catch(() => { /* autoplay blocked until a gesture — the pill tap provides it */ });
+    } else {
+      a.pause();
+    }
+  }, [isPlaying]);
+
   return (
     <article style={css('background:#fff;border:1px solid #F2E4EA;border-radius:22px;overflow:hidden;box-shadow:0 18px 40px -32px rgba(107,20,54,.55);')}>
       {/* ── Boutique identity ── */}
@@ -288,7 +340,7 @@ export function FeedPostCard({
       </div>
 
       {/* ── Photos. Double-tap likes; the photo doesn't navigate. ── */}
-      <div style={css('position:relative;')}>
+      <div ref={mediaRef} style={css('position:relative;')}>
         <div
           ref={stripRef}
           onScroll={onStripScroll}
@@ -347,6 +399,41 @@ export function FeedPostCard({
           <div style={css('position:absolute;inset:0;background:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;pointer-events:none;')}>
             <span style={css('background:#241019;color:#fff;font-size:12.5px;font-weight:800;padding:8px 16px;border-radius:999px;')}>Sold out</span>
           </div>
+        )}
+
+        {/* ── The song ──
+            The boutique's 15-second clip, played the way a reel carries a track.
+            The pill turns the feed's sound on/off; the element loops the first 15s
+            (clips are capped at upload, this just guards a longer file). */}
+        {hasMusic && (
+          <>
+            <audio
+              ref={audioRef}
+              src={product.music_url ?? undefined}
+              loop
+              preload="none"
+              onTimeUpdate={(e) => { if (e.currentTarget.currentTime >= 15) e.currentTarget.currentTime = 0; }}
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleFeedAudio(product.id); }}
+              aria-label={isPlaying ? 'Turn feed sound off' : 'Play this song'}
+              style={css("position:absolute;left:12px;bottom:12px;display:flex;align-items:center;gap:7px;max-width:64%;height:30px;padding:0 11px;border:none;border-radius:999px;background:rgba(36,16,25,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;cursor:pointer;")}
+            >
+              {isPlaying ? (
+                <span aria-hidden="true" className="agx-eq" style={css('display:flex;align-items:flex-end;gap:2px;height:13px;')}>
+                  <i /><i /><i />
+                </span>
+              ) : (
+                <span style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>music_note</span>
+              )}
+              <span style={css('min-width:0;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11.5px;font-weight:700;')}>
+                {product.music_title || 'Original audio'}
+              </span>
+              <span style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;opacity:.9;")}>
+                {isPlaying ? 'volume_up' : 'volume_off'}
+              </span>
+            </button>
+          </>
         )}
       </div>
 
