@@ -378,8 +378,8 @@ export function Users() {
           <div style={css('display:flex;gap:10px;')}>
             <GhostButton onClick={() => setCreateOpen(false)}>Cancel</GhostButton>
             <button
-              type="submit"
-              form="admin-create-user-form"
+              type="button"
+              onClick={() => void doCreate()}
               disabled={busy}
               style={css(`height:42px;border:none;border-radius:12px;padding:0 14px;font-weight:700;font-size:13px;cursor:${busy ? 'not-allowed' : 'pointer'};display:flex;align-items:center;gap:6px;font-family:inherit;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;opacity:${busy ? 0.7 : 1};`)}
             >
@@ -460,8 +460,8 @@ export function Users() {
           <div style={css('display:flex;gap:10px;')}>
             <GhostButton onClick={() => setEditUser(null)}>Cancel</GhostButton>
             <button
-              type="submit"
-              form="admin-edit-user-form"
+              type="button"
+              onClick={() => void doUpdate()}
               disabled={busy}
               style={css(`height:42px;border:none;border-radius:12px;padding:0 14px;font-weight:700;font-size:13px;cursor:${busy ? 'not-allowed' : 'pointer'};display:flex;align-items:center;gap:6px;font-family:inherit;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;opacity:${busy ? 0.7 : 1};`)}
             >
