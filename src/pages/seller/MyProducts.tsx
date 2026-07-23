@@ -83,6 +83,16 @@ export function MyProducts() {
         ? { label: `Low · ${stock} left`, bg: '#FBF0DA', fg: '#C99A3F' }
         : { label: 'In stock', bg: '#E5F3EC', fg: '#2FA36B' };
 
+  const compact = (n: number) => (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : String(n));
+  const metricsOf = (p: ProductWithBoutique) => [
+    { icon: 'visibility', label: 'Views', value: compact(p.views_count ?? 0), ic: '#3A6EA5' },
+    { icon: 'favorite', label: 'Likes', value: compact(p.likes_count ?? 0), ic: '#D6336C' },
+    { icon: 'ios_share', label: 'Shares', value: compact(p.shares_count ?? 0), ic: '#9B7FC7' },
+    { icon: 'bookmark', label: 'Saved', value: compact(p.wishlist_count ?? 0), ic: '#C99A3F' },
+    { icon: 'shopping_bag', label: 'Sold', value: compact(p.sold_count ?? 0), ic: '#2FA36B' },
+    { icon: 'inventory_2', label: 'Stock', value: String(p.stock), ic: p.stock === 0 ? '#D6455A' : '#6B5560' },
+  ];
+
   return (
     <div style={css('min-height:100%;background:#FBF6F2;padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;justify-content:space-between;')}>
@@ -99,18 +109,38 @@ export function MyProducts() {
         {products.map((p) => {
           const st = stockOf(p.stock);
           return (
-            <div key={p.id} style={css('background:#fff;border-radius:16px;padding:10px;display:flex;gap:11px;align-items:center;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
-              <div style={css(`width:56px;height:56px;flex:none;border-radius:13px;background:${TONES[p.tone]};position:relative;overflow:hidden;`)}>
-                <ImageSlot src={p.image_url ?? undefined} placeholder={p.title} style={css('position:absolute;inset:0;')} />
+            <div key={p.id} style={css('background:#fff;border-radius:16px;padding:10px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
+              <div
+                onClick={() => navigate(`/seller/products/${p.id}`)}
+                className="agx-lift"
+                style={css('display:flex;gap:11px;align-items:center;cursor:pointer;')}
+              >
+                <div style={css(`width:56px;height:56px;flex:none;border-radius:13px;background:${TONES[p.tone]};position:relative;overflow:hidden;`)}>
+                  <ImageSlot src={p.image_url ?? undefined} placeholder={p.title} style={css('position:absolute;inset:0;')} />
+                </div>
+                <div style={css('flex:1;min-width:0;')}>
+                  <div style={css('font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
+                  <div style={css('font-size:12px;color:#8A7078;')}>{p.category} · {fmt(Number(p.price))}</div>
+                  <span style={css(`display:inline-block;margin-top:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:7px;background:${st.bg};color:${st.fg};`)}>{st.label}</span>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                  aria-label={`Edit ${p.title}`}
+                  style={css('width:36px;height:36px;flex:none;border-radius:11px;border:1.5px solid #F0D8E2;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+                >
+                  <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#B02454;")}>edit</span>
+                </button>
               </div>
-              <div style={css('flex:1;min-width:0;')}>
-                <div style={css('font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
-                <div style={css('font-size:12px;color:#8A7078;')}>{p.category} · {fmt(Number(p.price))}</div>
-                <span style={css(`display:inline-block;margin-top:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:7px;background:${st.bg};color:${st.fg};`)}>{st.label}</span>
+
+              {/* Performance at a glance — the buyer-side signals for this piece. */}
+              <div style={css('display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #F5E4EC;')}>
+                {metricsOf(p).map((m) => (
+                  <span key={m.label} title={m.label} style={css('display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;color:#5C4650;')}>
+                    <span style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${m.ic};`)}>{m.icon}</span>
+                    {m.value}
+                  </span>
+                ))}
               </div>
-              <button onClick={() => openEdit(p)} style={css('width:36px;height:36px;border-radius:11px;border:1.5px solid #F0D8E2;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-                <span style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#B02454;")}>edit</span>
-              </button>
             </div>
           );
         })}

@@ -50,6 +50,7 @@ export function ChatView({
   pending,
   onProductClick,
   onOrderClick,
+  quickReplies,
 }: {
   name: string;
   backTo: string;
@@ -58,6 +59,9 @@ export function ChatView({
   pending?: boolean;
   onProductClick?: (productId: string) => void;
   onOrderClick?: (orderId: string) => void;
+  /** Seller-only canned openers, shown as tappable chips while the draft is
+   *  empty. Tapping one loads it into the composer to edit or send. */
+  quickReplies?: string[];
 }) {
   const navigate = useNavigate();
   const { showToast } = useShop();
@@ -260,6 +264,19 @@ export function ChatView({
           field is a textarea so a long message wraps instead of scrolling
           sideways inside a one-line input; Enter sends, Shift+Enter breaks. */}
       <div className="agx-chat-composer">
+        {live && !draft.trim() && quickReplies && quickReplies.length > 0 && (
+          <div className="agx-scroll" style={css('display:flex;gap:7px;overflow-x:auto;padding:0 2px 8px;')}>
+            {quickReplies.map((qr) => (
+              <button
+                key={qr}
+                onClick={() => { setDraft(qr); inputRef.current?.focus(); }}
+                style={css('flex:none;padding:7px 13px;border:1px solid #F0D8E2;background:rgba(255,255,255,.92);border-radius:999px;font-family:inherit;font-size:12.5px;font-weight:700;color:#B02454;cursor:pointer;white-space:nowrap;')}
+              >
+                {qr}
+              </button>
+            ))}
+          </div>
+        )}
         <div style={css('display:flex;gap:8px;align-items:flex-end;background:rgba(255,255,255,.92);backdrop-filter:blur(18px) saturate(1.3);border:1px solid #F1DEE7;border-radius:22px;padding:7px;box-shadow:0 2px 0 rgba(255,255,255,.6) inset,0 22px 44px -22px rgba(107,20,54,.5);')}>
           <button
             onClick={() => showToast('Photo sharing is coming soon')}

@@ -99,12 +99,16 @@ export function AppShell({
   searchable,
   /** Console-wide notice pinned above every page (seller verification status). */
   banner,
+  /** Optional AppBar element (the seller notification bell) shown before the
+   *  profile avatar. Kept off the buyer shell. */
+  headerAction,
 }: {
   tabs: TabDef[];
   profileTo: string;
   homeTo: string;
   searchable?: boolean;
   banner?: ReactNode;
+  headerAction?: ReactNode;
 }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -139,6 +143,8 @@ export function AppShell({
             <div style={css('flex:1;min-width:8px;')} />
 
             {searchable && <GlobalSearch className="agx-only-desktop agx-search-desktop" />}
+
+            {headerAction}
 
             <ProfileAvatar initials={initials} onClick={() => navigate(profileTo)} className="agx-only-desktop" />
 

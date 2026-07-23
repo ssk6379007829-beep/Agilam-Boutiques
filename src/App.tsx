@@ -53,6 +53,8 @@ const SellerLayout = lazyNamed(() => import('@/components/layout/SellerLayout'),
 const Dashboard = lazyNamed(() => import('@/pages/seller/Dashboard'), 'Dashboard');
 const AddProduct = lazyNamed(() => import('@/pages/seller/AddProduct'), 'AddProduct');
 const MyProducts = lazyNamed(() => import('@/pages/seller/MyProducts'), 'MyProducts');
+const ProductAnalytics = lazyNamed(() => import('@/pages/seller/ProductAnalytics'), 'ProductAnalytics');
+const SellerSearch = lazyNamed(() => import('@/pages/seller/Search'), 'Search');
 const Orders = lazyNamed(() => import('@/pages/seller/Orders'), 'Orders');
 const OrderDetail = lazyNamed(() => import('@/pages/seller/OrderDetail'), 'OrderDetail');
 const Customers = lazyNamed(() => import('@/pages/seller/Customers'), 'Customers');
@@ -176,6 +178,8 @@ export default function App() {
         {/* Products are also the Inspire feed — listing a piece publishes it to
             followers, so there is no separate composer route. */}
         <Route path="products" element={<MyProducts />} />
+        <Route path="products/:id" element={<ProductAnalytics />} />
+        <Route path="search" element={<SellerSearch />} />
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
         <Route path="customers" element={<Customers />} />

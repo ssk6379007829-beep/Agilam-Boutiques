@@ -9,6 +9,7 @@ import { ImageZoom } from '@/components/buyer/ImageZoom';
 import { WishButton } from '@/components/buyer/WishButton';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { shareProduct } from '@/lib/shareProduct';
+import { recordProductView, recordProductShare } from '@/data/products';
 import { TONES, fmt } from '@/data/demo';
 
 const RATING_BARS = [
@@ -53,6 +54,12 @@ export function ProductDetail() {
     setPickedSize(null);
     setZoomOpen(false);
     galleryRef.current?.scrollTo({ left: 0 });
+  }, [id]);
+
+  // Tell the seller their piece was viewed. Fire-and-forget and throttled once
+  // per session inside recordProductView, so a re-render never double-counts.
+  useEffect(() => {
+    if (id) void recordProductView(id);
   }, [id]);
 
   const goToImage = (i: number) => {
@@ -149,6 +156,9 @@ export function ProductDetail() {
     });
     if (result === 'copied') showToast('Product details copied — paste to share');
     else if (result === 'failed') showToast("Couldn't share this product");
+    // Count everything except an outright failure — a native share or a copy
+    // both mean the buyer sent the piece on. Best-effort.
+    if (result !== 'failed') void recordProductShare(ap.id);
   };
 
   // Once the piece is in the bag the "Add to Bag" button becomes a quantity

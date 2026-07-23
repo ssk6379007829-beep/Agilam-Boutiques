@@ -17,6 +17,13 @@ export interface ProductWithBoutique {
   /** Units sold on accepted/shipped/delivered orders — maintained by the
    *  triggers in migration 0023, never written by the app. */
   sold_count?: number;
+  /** Public Inspire-feed hearts (migration 0020). */
+  likes_count?: number;
+  /** Buyer-side engagement, all trigger/RPC-maintained (migration 0031). */
+  views_count?: number;
+  shares_count?: number;
+  wishlist_count?: number;
+  last_viewed_at?: string | null;
   description?: string | null;
   mrp?: number | null;
   sizes?: string[] | null;

@@ -102,3 +102,28 @@ export async function deleteProduct(id: string) {
 export async function uploadProductImage(boutiqueId: string, file: File): Promise<string> {
   return uploadImage('product-images', boutiqueId, file, '0017');
 }
+
+/**
+ * Record that a buyer opened this product page. The seller reads the resulting
+ * `views_count`/`last_viewed_at` off their own catalogue row. Best-effort — a
+ * failed view must never break browsing — and throttled once per product per
+ * browser session so a re-render or a back-and-forth doesn't inflate it.
+ * (RPC + counter columns land in migration 0031.)
+ */
+const VIEWED_KEY = 'agx.viewed';
+export async function recordProductView(productId: string): Promise<void> {
+  try {
+    const seen = new Set<string>(JSON.parse(sessionStorage.getItem(VIEWED_KEY) ?? '[]'));
+    if (seen.has(productId)) return;
+    seen.add(productId);
+    sessionStorage.setItem(VIEWED_KEY, JSON.stringify([...seen]));
+  } catch {
+    /* private mode / no sessionStorage — fall through and still record once */
+  }
+  await supabase.rpc('record_product_view', { pid: productId });
+}
+
+/** Record that a buyer shared this product. Best-effort. */
+export async function recordProductShare(productId: string): Promise<void> {
+  await supabase.rpc('record_product_share', { pid: productId });
+}

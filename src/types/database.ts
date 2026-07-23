@@ -140,6 +140,12 @@ export interface Database {
           images: string[];
           /** Public hearts on the Inspire feed card (migration 0020). */
           likes_count: number;
+          /** Buyer-side engagement counters (migration 0031) — RPC/trigger
+           *  maintained, never app-writable. */
+          views_count: number;
+          shares_count: number;
+          wishlist_count: number;
+          last_viewed_at: string | null;
           created_at: string;
         };
         Insert: Partial<Database['public']['Tables']['products']['Row']> & { boutique_id: string; title: string };

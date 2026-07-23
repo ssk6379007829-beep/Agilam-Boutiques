@@ -80,6 +80,21 @@ export function Dashboard() {
   const initial = boutiqueName.trim().charAt(0).toUpperCase() || 'B';
   const approved = boutique?.status === 'approved';
 
+  // "Since {year}" — the boutique's own established year, else derived from the
+  // years-in-business the seller gave during onboarding.
+  const sinceYear =
+    boutique?.established_year ??
+    (boutique?.years_in_business ? new Date().getFullYear() - boutique.years_in_business : null);
+  const rating = boutique?.rating ?? 0;
+  const followers = boutique?.followers_count ?? 0;
+  // Small facts shown as chips under the boutique name.
+  const facts: { icon: string; text: string }[] = [
+    ...(boutique?.verified ? [{ icon: 'verified', text: 'Verified seller' }] : []),
+    ...(sinceYear ? [{ icon: 'calendar_today', text: `Since ${sinceYear}` }] : []),
+    ...(rating > 0 ? [{ icon: 'star', text: `${rating.toFixed(1)} rating` }] : []),
+    ...(followers > 0 ? [{ icon: 'group', text: `${followers} follower${followers === 1 ? '' : 's'}` }] : []),
+  ];
+
   const STATS = [
     { label: 'Total Products', value: String(products.length), icon: 'inventory_2', tint: '#FCE0EC', ic: '#D6336C', to: '/seller/products' },
     { label: 'Total Orders', value: String(orders.length), icon: 'receipt_long', tint: '#E6F0FA', ic: '#3A6EA5', to: '/seller/orders' },
@@ -121,6 +136,16 @@ export function Dashboard() {
           <span style={css('display:block;font-size:12.5px;color:#8A7078;font-weight:600;margin-top:2px;')}>
             {[boutique?.category, boutique?.area || boutique?.city].filter(Boolean).join(' · ') || 'Complete your boutique profile'}
           </span>
+          {facts.length > 0 && (
+            <span style={css('display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;')}>
+              {facts.map((f) => (
+                <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;background:#FBF0F5;border:1px solid #F3DCE7;font-size:10.5px;font-weight:800;color:#8A5A72;')}>
+                  <span style={css(`font-family:'Material Symbols Outlined';font-size:13px;color:${f.icon === 'verified' ? '#3A6EA5' : f.icon === 'star' ? '#E0B84B' : '#B02454'};`)}>{f.icon}</span>
+                  {f.text}
+                </span>
+              ))}
+            </span>
+          )}
           <span style={css(`display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;background:${approved ? '#E5F3EC' : '#FBF0DA'};color:${approved ? '#218456' : '#B8860B'};`)}>
             <span style={css(`width:6px;height:6px;border-radius:50%;background:${approved ? '#2FA36B' : '#C99A3F'};`)} />
             {approved ? 'Active seller' : 'Awaiting verification'}
