@@ -21,7 +21,7 @@ import { logAdminAction } from '@/data/activityLog';
 import {
   fetchUsers,
   setUserStatus,
-  softDeleteUser,
+  deleteUserEverywhere,
   restoreUser,
   fetchUserDetail,
   usersToCsv,
@@ -145,11 +145,14 @@ export function Users() {
     if (!confirm) return;
     setBusy(true);
     try {
-      await softDeleteUser(confirm.user.id);
-      await log('user.delete', confirm.user.id, { name: confirm.user.full_name });
-      showToast(`${confirm.user.full_name} removed`);
+      const result = await deleteUserEverywhere(confirm.user.id);
+      await log(result.mode === 'archived' ? 'user.archive' : 'user.delete', confirm.user.id, {
+        name: confirm.user.full_name,
+        mode: result.mode,
+      });
+      showToast(result.message);
       setConfirm(null);
-      reload();
+      showFreshest();
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Delete failed');
     } finally {
@@ -279,7 +282,9 @@ export function Users() {
                 title={user.status === 'blocked' ? 'Unblock' : 'Block'}
                 onClick={() => toggleBlock(user)}
               />
-              <IconButton icon="delete" tone="danger" title="Delete" onClick={() => setConfirm({ user })} />
+              {user.id !== profile?.id && (
+                <IconButton icon="delete" tone="danger" title="Delete" onClick={() => setConfirm({ user })} />
+              )}
             </>
           )}
         </div>
@@ -335,8 +340,8 @@ export function Users() {
 
       <ConfirmDialog
         open={!!confirm}
-        title="Remove user?"
-        message={`${confirm?.user.full_name} will be soft-deleted. Their orders are kept and the account can be restored later.`}
+        title="Delete user permanently?"
+        message={`${confirm?.user.full_name} will be permanently deleted from the database, including their login. If they have orders or chat history, those records are kept and the account is archived instead. This can't be undone.`}
         confirmLabel="Delete"
         danger
         busy={busy}

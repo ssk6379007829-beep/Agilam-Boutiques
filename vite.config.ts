@@ -20,6 +20,7 @@ function devApi(env: Record<string, string>): Plugin {
     '/api/verify-payment': './api/verify-payment.js',
     '/api/place-order': './api/place-order.js',
     '/api/admin-create-user': './api/admin-create-user.js',
+    '/api/admin-delete-user': './api/admin-delete-user.js',
     '/api/razorpay-webhook': './api/razorpay-webhook.js',
   };
   // Variable specifier + @vite-ignore: resolved by Node at request time, not
