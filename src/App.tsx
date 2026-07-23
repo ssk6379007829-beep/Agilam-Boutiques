@@ -5,6 +5,7 @@ import { RequireRole, FullscreenLoader } from '@/auth/RequireRole';
 import { ScrollManager } from '@/components/layout/ScrollManager';
 import { LiveRefreshGate } from '@/components/layout/LiveRefreshGate';
 import { PresenceTracker } from '@/components/layout/PresenceTracker';
+import { LaunchNotice } from '@/components/layout/LaunchNotice';
 
 import { Loading } from '@/pages/Loading';
 import { SignIn } from '@/pages/auth/SignIn';
@@ -94,6 +95,8 @@ export default function App() {
       <LiveRefreshGate />
       {/* Broadcasts this tab's live presence so the admin console can see who's on the site. */}
       <PresenceTracker />
+      {/* "Launching soon" preview notice for public visitors (hidden in the consoles). */}
+      <LaunchNotice />
       <Routes>
       <Route path="/" element={<Loading />} />
       <Route path="/auth/signin/:role" element={<SignIn />} />
