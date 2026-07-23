@@ -95,7 +95,7 @@ export function OrdersAdmin() {
 
   return (
     <div>
-      <div style={css('display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;')}>
+      <div className="agx-adm-toolbar" style={css('display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;')}>
         <SearchInput value={rawSearch} onChange={(v) => changeFilter(() => setRawSearch(v))} placeholder="Search order #, guest name or phone…" />
         <Select value={status} onChange={(v) => changeFilter(() => setStatus(v as typeof status))} options={[
           { value: 'all', label: 'All orders' }, { value: 'pending', label: 'Pending' }, { value: 'shipped', label: 'Shipped' },

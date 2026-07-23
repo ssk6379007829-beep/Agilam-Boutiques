@@ -202,6 +202,30 @@ export async function changeUserRole(userId: string, newRole: Role): Promise<voi
   if (error) throw error;
 }
 
+export interface UpdateUserInput {
+  fullName: string;
+  phone?: string | null;
+  city?: string | null;
+  address?: string | null;
+  role: Role;
+}
+
+/** Admin edit of an existing profile — name, contact, city, address and role. */
+export async function updateUser(userId: string, input: UpdateUserInput): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      full_name: input.fullName.trim(),
+      phone: input.phone?.trim() || null,
+      city: input.city?.trim() || null,
+      address: input.address?.trim() || null,
+      role: input.role,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+  if (error) throw error;
+}
+
 export function storeAdoptedRole(role: Role): void {
   try {
     sessionStorage.setItem('agx-adopted-role', role);

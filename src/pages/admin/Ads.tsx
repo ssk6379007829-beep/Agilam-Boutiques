@@ -87,7 +87,7 @@ export function Ads() {
       {!loading && ADS.length === 0 && (
         <div style={css('color:#8A7078;font-size:13.5px;')}>No campaigns yet. Create one to get started.</div>
       )}
-      <div style={css('display:grid;grid-template-columns:repeat(2,1fr);gap:16px;')}>
+      <div className="agx-adm-g2">
         {ADS.map((ad) => {
           const st = STATUS_STYLE[ad.status] ?? STATUS_STYLE.draft;
           return (

@@ -178,44 +178,50 @@ export function DataTable<T>({
 
   return (
     <div style={css(T.card + 'overflow:hidden;')}>
-      <div style={css(`display:grid;grid-template-columns:${grid};padding:13px 20px;background:${T.head};font-size:11.5px;font-weight:800;color:${T.muted};letter-spacing:.04em;position:sticky;top:0;z-index:2;`)}>
-        {selectable && (
-          <span onClick={onToggleAll} style={css('display:flex;align-items:center;cursor:pointer;')}>
-            <Checkbox checked={!!allChecked} />
-          </span>
-        )}
-        {columns.map((c) => <span key={c.key} style={css(`text-align:${c.align ?? 'left'};`)}>{c.header}</span>)}
-      </div>
-
-      {loading &&
-        Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} style={css(`display:grid;grid-template-columns:${grid};padding:15px 20px;border-top:1px solid ${T.border};align-items:center;`)}>
-            {(selectable ? [null, ...columns] : columns).map((_c, j) => (
-              <div key={j} style={css('height:12px;border-radius:6px;background:linear-gradient(90deg,#F3E6ED,#FBF3F7,#F3E6ED);width:70%;')} />
-            ))}
+      {/* On phones the columns would crush to unreadable slivers, so the whole
+          grid keeps a min-width and scrolls sideways inside this wrapper. */}
+      <div className="agx-adm-tablewrap">
+        <div className="agx-adm-tablegrid">
+          <div style={css(`display:grid;grid-template-columns:${grid};padding:13px 20px;background:${T.head};font-size:11.5px;font-weight:800;color:${T.muted};letter-spacing:.04em;`)}>
+            {selectable && (
+              <span onClick={onToggleAll} style={css('display:flex;align-items:center;cursor:pointer;')}>
+                <Checkbox checked={!!allChecked} />
+              </span>
+            )}
+            {columns.map((c) => <span key={c.key} style={css(`text-align:${c.align ?? 'left'};`)}>{c.header}</span>)}
           </div>
-        ))}
 
-      {!loading && rows.length === 0 && (empty ?? <EmptyState icon="inbox" title="Nothing here yet" />)}
+          {loading &&
+            Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} style={css(`display:grid;grid-template-columns:${grid};padding:15px 20px;border-top:1px solid ${T.border};align-items:center;`)}>
+                {(selectable ? [null, ...columns] : columns).map((_c, j) => (
+                  <div key={j} style={css('height:12px;border-radius:6px;background:linear-gradient(90deg,#F3E6ED,#FBF3F7,#F3E6ED);width:70%;')} />
+                ))}
+              </div>
+            ))}
 
-      {!loading &&
-        rows.map((r) => {
-          const id = getId(r);
-          return (
-            <div
-              key={id}
-              onClick={onRowClick ? () => onRowClick(r) : undefined}
-              style={css(`display:grid;grid-template-columns:${grid};padding:13px 20px;border-top:1px solid ${T.border};align-items:center;${onRowClick ? 'cursor:pointer;' : ''}`)}
-            >
-              {selectable && (
-                <span onClick={(e) => { e.stopPropagation(); onToggle?.(id); }} style={css('display:flex;align-items:center;cursor:pointer;')}>
-                  <Checkbox checked={!!selectedIds?.has(id)} />
-                </span>
-              )}
-              {columns.map((c) => <div key={c.key} style={css(`text-align:${c.align ?? 'left'};min-width:0;`)}>{c.render(r)}</div>)}
-            </div>
-          );
-        })}
+          {!loading && rows.length === 0 && (empty ?? <EmptyState icon="inbox" title="Nothing here yet" />)}
+
+          {!loading &&
+            rows.map((r) => {
+              const id = getId(r);
+              return (
+                <div
+                  key={id}
+                  onClick={onRowClick ? () => onRowClick(r) : undefined}
+                  style={css(`display:grid;grid-template-columns:${grid};padding:13px 20px;border-top:1px solid ${T.border};align-items:center;${onRowClick ? 'cursor:pointer;' : ''}`)}
+                >
+                  {selectable && (
+                    <span onClick={(e) => { e.stopPropagation(); onToggle?.(id); }} style={css('display:flex;align-items:center;cursor:pointer;')}>
+                      <Checkbox checked={!!selectedIds?.has(id)} />
+                    </span>
+                  )}
+                  {columns.map((c) => <div key={c.key} style={css(`text-align:${c.align ?? 'left'};min-width:0;`)}>{c.render(r)}</div>)}
+                </div>
+              );
+            })}
+        </div>
+      </div>
     </div>
   );
 }

@@ -81,3 +81,26 @@ export async function restoreProduct(id: string) {
   const { error } = await supabase.from('products').update({ deleted_at: null }).eq('id', id);
   if (error) throw error;
 }
+
+export interface UpdateProductInput {
+  title: string;
+  category: string;
+  price: number;
+  stock: number;
+  status: ProductStatus;
+}
+
+/** Admin edit of the core merchandising fields on an existing product. */
+export async function updateProduct(id: string, input: UpdateProductInput) {
+  const { error } = await supabase
+    .from('products')
+    .update({
+      title: input.title.trim(),
+      category: input.category.trim(),
+      price: input.price,
+      stock: input.stock,
+      status: input.status,
+    })
+    .eq('id', id);
+  if (error) throw error;
+}

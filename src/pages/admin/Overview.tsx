@@ -56,7 +56,7 @@ export function Overview() {
       {loading && !d && <div style={css(`color:${T.muted};font-size:13.5px;`)}>Loading live metrics…</div>}
 
       {/* Top KPI row — real time-window revenue with sparklines */}
-      <div style={css('display:grid;grid-template-columns:repeat(4,1fr);gap:16px;')}>
+      <div className="agx-adm-g4">
         <StatCard label="Today's sales" value={compactInr(win.today.revenue)} icon="payments" tint="#FCE0EC" ic="#D6336C" sub={delta(win.today.revenue, win.yesterday.revenue)} bars={ordBars} />
         <StatCard label="This month" value={compactInr(win.month.revenue)} icon="calendar_month" tint="#E6F0FA" ic="#3A6EA5" sub={`${win.month.orders} orders`} bars={revBars} />
         <StatCard label="GMV (all time)" value={compactInr(d?.gmv ?? 0)} icon="trending_up" tint="#F3EAF5" ic="#9B7FC7" sub="gross" />
@@ -64,7 +64,7 @@ export function Overview() {
       </div>
 
       {/* Counters row */}
-      <div style={css('display:grid;grid-template-columns:repeat(5,1fr);gap:16px;')}>
+      <div className="agx-adm-g5">
         {[
           { label: 'Buyers', value: d?.counts.buyers ?? 0, icon: 'group', to: '/admin/users' },
           { label: 'Sellers', value: d?.counts.sellers ?? 0, icon: 'storefront', to: '/admin/users' },
@@ -85,7 +85,7 @@ export function Overview() {
       </div>
 
       {/* Revenue chart + payment split */}
-      <div style={css('display:grid;grid-template-columns:1.7fr 1fr;gap:16px;')}>
+      <div className="agx-adm-split">
         <SectionCard title="Revenue" action={<span style={css(`font-size:12px;color:${T.muted};font-weight:700;`)}>Last 14 days</span>}>
           <div style={css('display:flex;align-items:flex-end;gap:6px;height:190px;')}>
             {revBars.map((b, i) => (
@@ -111,7 +111,7 @@ export function Overview() {
       </div>
 
       {/* Recent orders + top boutiques */}
-      <div style={css('display:grid;grid-template-columns:1.5fr 1fr;gap:16px;')}>
+      <div className="agx-adm-split2">
         <SectionCard title="Recent orders" action={<button onClick={() => navigate('/admin/orders')} style={css(`border:none;background:none;color:${T.accent};font-weight:700;font-size:12.5px;cursor:pointer;`)}>View all</button>}>
           {(d?.recentOrders ?? []).length === 0 ? (
             <EmptyState icon="receipt_long" title="No orders yet" />
@@ -155,7 +155,7 @@ export function Overview() {
       </div>
 
       {/* Top products + low stock + activity */}
-      <div style={css('display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;')}>
+      <div className="agx-adm-g3">
         <SectionCard title="Top products">
           {(d?.topProducts ?? []).length === 0 ? <EmptyState icon="local_mall" title="No sales yet" /> : (
             <div style={css('display:flex;flex-direction:column;gap:11px;')}>

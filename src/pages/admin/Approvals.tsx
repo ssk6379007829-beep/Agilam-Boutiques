@@ -75,6 +75,8 @@ export function Approvals() {
       </div>
 
       <div style={css('background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
+        <div className="agx-adm-tablewrap">
+        <div className="agx-adm-tablegrid">
         <div style={css(`${GRID}padding:14px 20px;background:#F7EAF0;font-size:12px;font-weight:800;color:#8A7078;letter-spacing:.04em;`)}>
           <span>BOUTIQUE</span><span>CITY</span><span>OWNER</span><span>SUBMITTED</span><span style={css('text-align:right;')}>ACTION</span>
         </div>
@@ -107,6 +109,8 @@ export function Approvals() {
             </div>
           </div>
         ))}
+        </div>
+        </div>
       </div>
 
       {selected && <ReviewDrawer boutique={selected} onClose={() => setSelected(null)} onDecide={decide} />}

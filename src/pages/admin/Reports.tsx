@@ -9,7 +9,7 @@ export function Reports() {
   const CITY_BARS = cityBars ?? [];
 
   return (
-    <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:16px;')}>
+    <div className="agx-adm-g2">
       <div style={css('background:#fff;border-radius:18px;padding:20px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
         <div style={css('font-weight:800;font-size:15px;')}>Orders by category</div>
         <div style={css('display:flex;flex-direction:column;gap:12px;margin-top:18px;')}>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '@/auth/AuthContext';
 import {
   DataTable,
@@ -26,8 +26,10 @@ import {
   fetchUserDetail,
   usersToCsv,
   createUser,
+  updateUser,
   type AdminUserRow,
   type CreateUserInput,
+  type UpdateUserInput,
 } from '@/data/adminUsers';
 import { useAsync } from '@/hooks/useAsync';
 import { useDebounced } from '@/hooks/useDebounced';
@@ -62,6 +64,39 @@ export function Users() {
     city: '',
     role: 'buyer',
   });
+  const [editUser, setEditUser] = useState<AdminUserRow | null>(null);
+  const [editData, setEditData] = useState<UpdateUserInput>({ fullName: '', phone: '', city: '', address: '', role: 'buyer' });
+
+  const openEdit = (user: AdminUserRow) => {
+    setEditData({
+      fullName: user.full_name,
+      phone: user.phone ?? '',
+      city: user.city ?? '',
+      address: user.address ?? '',
+      role: user.role,
+    });
+    setEditUser(user);
+  };
+
+  const doUpdate = async () => {
+    if (!editUser) return;
+    if (!editData.fullName.trim()) {
+      showToast('Name is required');
+      return;
+    }
+    setBusy(true);
+    try {
+      await updateUser(editUser.id, editData);
+      await log('user.update', editUser.id, { name: editData.fullName, role: editData.role });
+      showToast(`${editData.fullName} updated`);
+      setEditUser(null);
+      reload();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Update failed');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const q = useMemo(() => ({ page, pageSize: PAGE_SIZE, search, role, status }), [page, search, role, status]);
   const { data, loading, reload } = useAsync(() => fetchUsers(q), [q]);
@@ -211,7 +246,7 @@ export function Users() {
     {
       key: 'actions',
       header: 'ACTIONS',
-      width: '1.2fr',
+      width: '1.5fr',
       align: 'right',
       render: (user) => (
         <div style={css('display:flex;gap:8px;justify-content:flex-end;')} onClick={(e) => e.stopPropagation()}>
@@ -220,6 +255,7 @@ export function Users() {
           ) : (
             <>
               <IconButton icon="visibility" title="View" onClick={() => setDetailId(user.id)} />
+              <IconButton icon="edit" title="Edit" onClick={() => openEdit(user)} />
               <IconButton
                 icon={user.status === 'blocked' ? 'lock_open' : 'block'}
                 tone={user.status === 'blocked' ? 'success' : 'warn'}
@@ -236,7 +272,7 @@ export function Users() {
 
   return (
     <div>
-      <div style={css('display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;')}>
+      <div className="agx-adm-toolbar" style={css('display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;')}>
         <SearchInput
           value={rawSearch}
           onChange={(value) => changeFilter(() => setRawSearch(value))}
@@ -370,6 +406,72 @@ export function Users() {
           </div>
         </form>
       </Drawer>
+
+      <Drawer
+        open={!!editUser}
+        onClose={() => setEditUser(null)}
+        title="Edit User"
+        footer={(
+          <div style={css('display:flex;gap:10px;')}>
+            <GhostButton onClick={() => setEditUser(null)}>Cancel</GhostButton>
+            <button
+              type="submit"
+              form="admin-edit-user-form"
+              disabled={busy}
+              style={css(`height:42px;border:none;border-radius:12px;padding:0 14px;font-weight:700;font-size:13px;cursor:${busy ? 'not-allowed' : 'pointer'};display:flex;align-items:center;gap:6px;font-family:inherit;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;opacity:${busy ? 0.7 : 1};`)}
+            >
+              <Icon name="save" size={18} />
+              {busy ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+      >
+        <form
+          id="admin-edit-user-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void doUpdate();
+          }}
+          style={css('display:flex;flex-direction:column;gap:14px;')}
+        >
+          {editUser?.email && (
+            <div style={css(`font-size:12.5px;color:${T.muted};background:#fff;border-radius:12px;padding:12px 14px;`)}>
+              <Icon name="mail" size={16} color="#B79AA6" /> {editUser.email}
+              <div style={css('font-size:11px;margin-top:4px;')}>Email is the login identity and can't be changed here.</div>
+            </div>
+          )}
+          <FormField label="Full Name *">
+            <input value={editData.fullName} onChange={(e) => setEditData({ ...editData, fullName: e.target.value })} placeholder="John Doe" style={css(EDIT_FIELD)} />
+          </FormField>
+          <FormField label="Phone">
+            <input value={editData.phone ?? ''} onChange={(e) => setEditData({ ...editData, phone: e.target.value })} placeholder="+91 98765 43210" style={css(EDIT_FIELD)} />
+          </FormField>
+          <FormField label="City">
+            <input value={editData.city ?? ''} onChange={(e) => setEditData({ ...editData, city: e.target.value })} placeholder="Chennai" style={css(EDIT_FIELD)} />
+          </FormField>
+          <FormField label="Address">
+            <textarea value={editData.address ?? ''} onChange={(e) => setEditData({ ...editData, address: e.target.value })} placeholder="Full delivery address" rows={3} style={css(EDIT_FIELD + 'resize:vertical;')} />
+          </FormField>
+          <FormField label="Role *">
+            <select value={editData.role} onChange={(e) => setEditData({ ...editData, role: e.target.value as Role })} style={css(EDIT_FIELD + 'cursor:pointer;')}>
+              <option value="buyer">Buyer</option>
+              <option value="seller">Seller</option>
+              <option value="admin">Admin</option>
+            </select>
+          </FormField>
+        </form>
+      </Drawer>
+    </div>
+  );
+}
+
+const EDIT_FIELD = 'width:100%;border:1.5px solid #F0D8E2;background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;';
+
+function FormField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:#6B5560;')}>{label}</label>
+      {children}
     </div>
   );
 }

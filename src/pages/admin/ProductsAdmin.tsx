@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { css } from '@/lib/css';
 import { fmtInr } from '@/lib/tokens';
 import { useShop } from '@/state/ShopContext';
@@ -8,12 +8,12 @@ import { useDebounced } from '@/hooks/useDebounced';
 import { logAdminAction } from '@/data/activityLog';
 import {
   fetchProductsAdmin, setProductStatus, bulkSetProductStatus, setProductFeatured,
-  softDeleteProduct, bulkSoftDeleteProducts, restoreProduct,
-  type AdminProductRow, type ProductStatus,
+  softDeleteProduct, bulkSoftDeleteProducts, restoreProduct, updateProduct,
+  type AdminProductRow, type ProductStatus, type UpdateProductInput,
 } from '@/data/adminProducts';
 import {
   DataTable, SearchInput, Select, IconButton, StatusPill, Avatar, Pagination,
-  BulkBar, GhostButton, ConfirmDialog, EmptyState, T, type Column,
+  BulkBar, GhostButton, ConfirmDialog, Drawer, Icon, EmptyState, T, type Column,
 } from '@/components/admin/kit';
 
 const PAGE_SIZE = 12;
@@ -32,6 +32,27 @@ export function ProductsAdmin() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<AdminProductRow | 'bulk' | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editProduct, setEditProduct] = useState<AdminProductRow | null>(null);
+  const [editData, setEditData] = useState<UpdateProductInput>({ title: '', category: '', price: 0, stock: 0, status: 'active' });
+
+  const openEdit = (p: AdminProductRow) => {
+    setEditData({ title: p.title, category: p.category, price: p.price, stock: p.stock, status: p.status });
+    setEditProduct(p);
+  };
+
+  const doUpdate = async () => {
+    if (!editProduct) return;
+    if (!editData.title.trim()) { showToast('Title is required'); return; }
+    setBusy(true);
+    try {
+      await updateProduct(editProduct.id, { ...editData, price: Number(editData.price) || 0, stock: Number(editData.stock) || 0 });
+      await log('product.update', editProduct.id, { title: editData.title });
+      showToast(`${editData.title} updated`);
+      setEditProduct(null);
+      reload();
+    } catch (e) { showToast(e instanceof Error ? e.message : 'Update failed'); }
+    finally { setBusy(false); }
+  };
 
   const q = useMemo(() => ({ page, pageSize: PAGE_SIZE, search, status, lowStock }), [page, search, status, lowStock]);
   const { data, loading, reload } = useAsync(() => fetchProductsAdmin(q), [q]);
@@ -125,7 +146,7 @@ export function ProductsAdmin() {
     },
     { key: 'status', header: 'STATUS', width: '1fr', render: (p) => <StatusPill status={p.deleted_at ? 'rejected' : p.status} label={p.deleted_at ? 'Deleted' : undefined} /> },
     {
-      key: 'actions', header: 'ACTIONS', width: '1.9fr', align: 'right',
+      key: 'actions', header: 'ACTIONS', width: '2.3fr', align: 'right',
       render: (p) => (
         <div style={css('display:flex;gap:8px;justify-content:flex-end;align-items:center;')} onClick={(e) => e.stopPropagation()}>
           {p.deleted_at ? (
@@ -135,6 +156,7 @@ export function ProductsAdmin() {
               <select value={p.status} onChange={(e) => changeStatus(p, e.target.value as ProductStatus)} style={css(`height:34px;border:1.5px solid ${T.field};border-radius:10px;background:#FBF6F2;font-size:12px;font-weight:700;color:#6B5560;padding:0 6px;cursor:pointer;font-family:inherit;`)}>
                 {STATUS_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
+              <IconButton icon="edit" title="Edit" onClick={() => openEdit(p)} />
               <IconButton icon={p.featured ? 'star' : 'star_outline'} tone="warn" title={p.featured ? 'Unfeature' : 'Feature'} onClick={() => toggleFeatured(p)} />
               <IconButton icon="delete" tone="danger" title="Delete" onClick={() => setConfirmDelete(p)} />
             </>
@@ -146,7 +168,7 @@ export function ProductsAdmin() {
 
   return (
     <div>
-      <div style={css('display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;')}>
+      <div className="agx-adm-toolbar" style={css('display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;')}>
         <SearchInput value={rawSearch} onChange={(v) => changeFilter(() => setRawSearch(v))} placeholder="Search products, categories…" />
         <Select value={status} onChange={(v) => changeFilter(() => setStatus(v as typeof status))} options={[
           { value: 'all', label: 'All statuses' }, ...STATUS_OPTS, { value: 'deleted', label: 'Deleted' },
@@ -180,6 +202,77 @@ export function ProductsAdmin() {
         confirmLabel="Delete" danger busy={busy}
         onConfirm={doDelete} onCancel={() => setConfirmDelete(null)}
       />
+
+      <Drawer
+        open={!!editProduct}
+        onClose={() => setEditProduct(null)}
+        title="Edit Product"
+        footer={(
+          <div style={css('display:flex;gap:10px;')}>
+            <GhostButton onClick={() => setEditProduct(null)}>Cancel</GhostButton>
+            <button
+              type="submit"
+              form="admin-edit-product-form"
+              disabled={busy}
+              style={css(`height:42px;border:none;border-radius:12px;padding:0 14px;font-weight:700;font-size:13px;cursor:${busy ? 'not-allowed' : 'pointer'};display:flex;align-items:center;gap:6px;font-family:inherit;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;opacity:${busy ? 0.7 : 1};`)}
+            >
+              <Icon name="save" size={18} />
+              {busy ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+      >
+        {editProduct && (
+          <form
+            id="admin-edit-product-form"
+            onSubmit={(e) => { e.preventDefault(); void doUpdate(); }}
+            style={css('display:flex;flex-direction:column;gap:14px;')}
+          >
+            <div style={css(`display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:12px 14px;`)}>
+              {editProduct.image_url
+                ? <img src={editProduct.image_url} alt="" style={css('width:48px;height:48px;border-radius:12px;object-fit:cover;flex:none;')} />
+                : <Avatar name={editProduct.title} tone={editProduct.tone} />}
+              <div style={css('min-width:0;')}>
+                <div style={css('font-weight:800;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{editProduct.title}</div>
+                <div style={css(`font-size:11.5px;color:${T.muted};`)}>{editProduct.boutique?.name ?? '—'}</div>
+              </div>
+            </div>
+            <PField label="Title *">
+              <input value={editData.title} onChange={(e) => setEditData({ ...editData, title: e.target.value })} placeholder="Product title" style={css(PROD_FIELD)} />
+            </PField>
+            <PField label="Category">
+              <input value={editData.category} onChange={(e) => setEditData({ ...editData, category: e.target.value })} placeholder="e.g. Sarees" style={css(PROD_FIELD)} />
+            </PField>
+            <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:12px;')}>
+              <PField label="Price (₹)">
+                <input type="number" min={0} value={editData.price} onChange={(e) => setEditData({ ...editData, price: e.target.value === '' ? 0 : Number(e.target.value) })} style={css(PROD_FIELD)} />
+              </PField>
+              <PField label="Stock">
+                <input type="number" min={0} value={editData.stock} onChange={(e) => setEditData({ ...editData, stock: e.target.value === '' ? 0 : Number(e.target.value) })} style={css(PROD_FIELD)} />
+              </PField>
+            </div>
+            <PField label="Status">
+              <select value={editData.status} onChange={(e) => setEditData({ ...editData, status: e.target.value as ProductStatus })} style={css(PROD_FIELD + 'cursor:pointer;')}>
+                {STATUS_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </PField>
+            <div style={css(`font-size:12px;color:${T.muted};background:#FCE0EC;border-left:4px solid #B02454;padding:12px;border-radius:8px;line-height:1.5;`)}>
+              Photos, sizes and full description are managed by the boutique in the seller studio. Admin edits here cover pricing, stock, category and visibility.
+            </div>
+          </form>
+        )}
+      </Drawer>
+    </div>
+  );
+}
+
+const PROD_FIELD = 'width:100%;border:1.5px solid #F0D8E2;background:#fff;border-radius:12px;padding:10px 14px;font-size:14px;font-family:inherit;';
+
+function PField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <label style={css('display:block;font-weight:700;font-size:12.5px;margin-bottom:6px;color:#6B5560;')}>{label}</label>
+      {children}
     </div>
   );
 }
