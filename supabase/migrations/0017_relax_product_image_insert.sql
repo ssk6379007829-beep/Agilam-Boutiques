@@ -23,6 +23,11 @@ drop policy if exists "product-images: public read"  on storage.objects;
 drop policy if exists "product-images: owner upload"  on storage.objects;
 drop policy if exists "product-images: owner update"  on storage.objects;
 drop policy if exists "product-images: owner delete"  on storage.objects;
+-- Also drop the new names so a re-run doesn't hit "policy already exists"
+-- (42710): the creates below use these names, so they must be cleared first.
+drop policy if exists "product-images: authed upload" on storage.objects;
+drop policy if exists "product-images: authed update" on storage.objects;
+drop policy if exists "product-images: authed delete" on storage.objects;
 
 -- Public read (buyer PDP / public URL).
 create policy "product-images: public read" on storage.objects for select
