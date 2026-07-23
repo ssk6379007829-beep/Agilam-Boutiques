@@ -273,12 +273,38 @@ export default async function handler(req, res) {
 
     const { data: existing } = await supabaseAdmin
       .from('profiles')
-      .select('id')
+      .select('id, role, full_name, phone, city')
       .eq('email', normalizedEmail)
       .maybeSingle();
 
+    // If the account already exists, don't error — assign the requested role to
+    // it (so an admin can promote an existing user, e.g. to admin). We only set
+    // the role and fill in any profile fields that were blank; we never reset
+    // their password, email them, or clobber details they already have.
     if (existing) {
-      return res.status(409).json({ error: 'User already exists with this email' });
+      const patch = { role, updated_at: new Date().toISOString() };
+      if (!existing.full_name && normalizedName) patch.full_name = normalizedName;
+      if (!existing.phone && normalizedPhone) patch.phone = normalizedPhone;
+      if (!existing.city && normalizedCity) patch.city = normalizedCity;
+
+      const { error: updateError } = await supabaseAdmin
+        .from('profiles')
+        .update(patch)
+        .eq('id', existing.id);
+
+      if (updateError) {
+        console.error('[PROFILE_UPDATE_ERROR]', updateError);
+        return res.status(500).json({ error: 'Failed to update the existing user' });
+      }
+
+      return res.status(200).json({
+        success: true,
+        userId: existing.id,
+        updated: true,
+        message: existing.role === role
+          ? `${normalizedEmail} already exists with the ${role} role — no change needed.`
+          : `${normalizedEmail} already exists — role changed from ${existing.role} to ${role}.`,
+      });
     }
 
     const tempPassword = generateTempPassword();
