@@ -154,6 +154,42 @@ export async function ensureFundAccount(supabase, boutique) {
 }
 
 /**
+ * Start a penny-drop on a bank fund account: RazorpayX deposits a tiny amount
+ * (default ₹1) and reports whether the account is real + the registered name.
+ * Asynchronous — the result arrives via `getFundAccountValidation` polling or
+ * the `fund_account.validation.completed` webhook.
+ */
+export async function createFundAccountValidation({ fundAccountId, amountPaise = 100, referenceId }) {
+  return rx('/fund_accounts/validations', {
+    body: {
+      account_number: accountNumber,
+      fund_account: { id: fundAccountId },
+      amount: amountPaise,
+      currency: 'INR',
+      notes: referenceId ? { reference_id: referenceId } : undefined,
+    },
+  });
+}
+
+export async function getFundAccountValidation(id) {
+  return rx(`/fund_accounts/validations/${id}`, { method: 'GET' });
+}
+
+/**
+ * Reduce a validation entity to one of three states. A completed penny-drop
+ * whose account came back `active` (bank) / `valid` (vpa) is verified; a
+ * `failed` status or an `invalid` account is a hard fail; anything else is
+ * still in flight.
+ */
+export function validationOutcome(entity) {
+  const status = entity?.status; // created | completed | failed
+  const acct = entity?.results?.account_status; // active | invalid | valid
+  if (status === 'completed' && (acct === 'active' || acct === 'valid')) return 'verified';
+  if (status === 'failed' || acct === 'invalid') return 'failed';
+  return 'pending';
+}
+
+/**
  * Create the payout. `amountPaise` is the net already computed by the DB.
  * `idempotencyKey` is the payout row id, so a retry of the same settlement is a
  * no-op at RazorpayX rather than a second transfer.

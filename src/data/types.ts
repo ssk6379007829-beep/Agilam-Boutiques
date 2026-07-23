@@ -120,6 +120,9 @@ export interface BoutiquePrivate {
   bank_ifsc: string | null;
   upi_id: string | null;
   review_note: string | null;
+  /** Penny-drop state of the payout account (migration 0027). */
+  payout_verification_status?: 'unverified' | 'pending' | 'verified' | 'failed' | null;
+  payout_verification_note?: string | null;
 }
 
 export interface OrderWithDetails {

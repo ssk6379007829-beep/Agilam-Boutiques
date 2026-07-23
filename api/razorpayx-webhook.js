@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
+import { validationOutcome } from './_razorpayx.js';
 
 /**
  * Vercel serverless function: RazorpayX payout webhook.
@@ -65,17 +66,41 @@ export default async function handler(req, res) {
   }
 
   const type = event?.event;
-  const payout = event?.payload?.payout?.entity;
-  const payoutId = payout?.id ?? null;
-
-  if (!payoutId || typeof type !== 'string' || !type.startsWith('payout.')) {
-    return res.status(200).json({ ok: true, ignored: type ?? 'unknown' });
+  if (typeof type !== 'string') {
+    return res.status(200).json({ ok: true, ignored: 'unknown' });
   }
 
   const supabase = serviceClient(supabaseUrl, serviceRoleKey);
   if (!supabase) {
-    console.error('razorpayx-webhook: Supabase not configured; cannot reconcile', payoutId);
+    console.error('razorpayx-webhook: Supabase not configured; cannot reconcile', type);
     return res.status(200).json({ ok: true, reconciled: false });
+  }
+
+  // ── Penny-drop result: flip the boutique's verification state ─────────────
+  if (type.startsWith('fund_account.validation')) {
+    const entity = event?.payload?.fund_account?.validation?.entity;
+    const validationId = entity?.id ?? null;
+    if (!validationId) return res.status(200).json({ ok: true, ignored: type });
+    const outcome = validationOutcome(entity);
+    if (outcome === 'pending') return res.status(200).json({ ok: true, ignored: type });
+    try {
+      const update =
+        outcome === 'verified'
+          ? { payout_details_verified: true, payout_verification_status: 'verified', payout_verification_note: entity?.results?.registered_name ?? null }
+          : { payout_verification_status: 'failed', payout_verification_note: `penny-drop: ${entity?.results?.account_status ?? 'invalid account'}` };
+      await supabase.from('boutiques').update(update).eq('razorpayx_validation_id', validationId);
+      return res.status(200).json({ ok: true, reconciled: true, verification: outcome });
+    } catch (err) {
+      console.error('razorpayx-webhook: verification update failed', err?.message ?? err);
+      return res.status(200).json({ ok: true, reconciled: false });
+    }
+  }
+
+  const payout = event?.payload?.payout?.entity;
+  const payoutId = payout?.id ?? null;
+
+  if (!payoutId || !type.startsWith('payout.')) {
+    return res.status(200).json({ ok: true, ignored: type });
   }
 
   try {

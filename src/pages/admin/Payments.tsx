@@ -190,7 +190,18 @@ export function Payments() {
             </div>
 
             <div>
-              <div style={css('font-weight:800;font-size:13.5px;margin-bottom:8px;')}>Bank / UPI details</div>
+              <div style={css('display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;')}>
+                <div style={css('font-weight:800;font-size:13.5px;')}>Bank / UPI details</div>
+                {bank && (() => {
+                  const v = bank.payout_verification_status ?? 'unverified';
+                  const meta =
+                    v === 'verified' ? { status: 'approved', label: 'Verified' }
+                    : v === 'pending' ? { status: 'pending', label: 'Verifying…' }
+                    : v === 'failed' ? { status: 'failed', label: 'Verification failed' }
+                    : { status: 'draft', label: 'Not verified' };
+                  return <StatusPill status={meta.status} label={meta.label} />;
+                })()}
+              </div>
               <div style={css('background:#fff;border-radius:16px;padding:6px 16px;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);')}>
                 {!bank && <div style={css(`padding:14px 0;color:${T.muted};font-size:13px;`)}>Loading payout details…</div>}
                 {bank && !bank.bank_account_number && !bank.upi_id && (

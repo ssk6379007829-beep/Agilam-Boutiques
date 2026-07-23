@@ -1,6 +1,9 @@
 import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
-import { rxConfigured, ensureFundAccount, createPayout, RazorpayXError } from './_razorpayx.js';
+import {
+  rxConfigured, ensureFundAccount, createPayout, RazorpayXError,
+  createFundAccountValidation, getFundAccountValidation, validationOutcome,
+} from './_razorpayx.js';
 
 /**
  * Vercel serverless function: the daily seller-payout run.
@@ -52,6 +55,74 @@ function safeEqual(a, b) {
   const x = Buffer.from(String(a));
   const y = Buffer.from(String(b));
   return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+
+/**
+ * Gate a boutique on penny-drop verification before any money is opened.
+ *
+ * Returns true only when the payout destination is confirmed:
+ *   • already verified          → true, pay now;
+ *   • bank, not yet started     → kick off the penny-drop, return false (wait);
+ *   • bank, in progress         → poll; verify/fail/keep-waiting accordingly;
+ *   • UPI                       → validated at payout time, so verified on file.
+ *
+ * Returning false is not an error — it means "hold the money until the account
+ * is proven", and the next run (or the validation webhook) will let it through.
+ */
+async function ensurePayoutVerified(supabase, boutique, account, result) {
+  if (boutique.payout_details_verified || boutique.payout_verification_status === 'verified') return true;
+
+  if (account.method === 'upi') {
+    await supabase
+      .from('boutiques')
+      .update({ payout_details_verified: true, payout_verification_status: 'verified', payout_verification_note: 'UPI — validated at payout' })
+      .eq('id', boutique.id);
+    return true;
+  }
+
+  // Bank penny-drop already running → check where it got to.
+  if (present(boutique.razorpayx_validation_id)) {
+    let entity;
+    try {
+      entity = await getFundAccountValidation(boutique.razorpayx_validation_id);
+    } catch (e) {
+      console.error('run-payouts: validation poll failed for', boutique.id, e.message);
+      result.verifyPending += 1;
+      return false;
+    }
+    const outcome = validationOutcome(entity);
+    if (outcome === 'verified') {
+      await supabase
+        .from('boutiques')
+        .update({ payout_details_verified: true, payout_verification_status: 'verified', payout_verification_note: entity?.results?.registered_name ?? null })
+        .eq('id', boutique.id);
+      return true;
+    }
+    if (outcome === 'failed') {
+      await supabase
+        .from('boutiques')
+        .update({ payout_verification_status: 'failed', payout_verification_note: `penny-drop: ${entity?.results?.account_status ?? 'invalid account'}` })
+        .eq('id', boutique.id);
+      result.verifyFailed += 1;
+      return false;
+    }
+    result.verifyPending += 1;
+    return false;
+  }
+
+  // Not started → begin the penny-drop and wait for it to complete.
+  try {
+    const v = await createFundAccountValidation({ fundAccountId: account.fundAccountId, referenceId: `verify_${boutique.id}` });
+    await supabase
+      .from('boutiques')
+      .update({ razorpayx_validation_id: v.id, payout_verification_status: 'pending' })
+      .eq('id', boutique.id);
+    result.verifyStarted += 1;
+  } catch (e) {
+    console.error('run-payouts: penny-drop init failed for', boutique.id, e.message);
+    result.verifyFailed += 1;
+  }
+  return false;
 }
 
 /**
@@ -123,7 +194,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Payout service is not configured' });
   }
 
-  const result = { boutiques: 0, opened: 0, paid: 0, processing: 0, failed: 0, noDetails: 0, skippedZero: 0, recovered: 0 };
+  const result = {
+    boutiques: 0, opened: 0, paid: 0, processing: 0, failed: 0, noDetails: 0, skippedZero: 0, recovered: 0,
+    verifyStarted: 0, verifyPending: 0, verifyFailed: 0,
+  };
   const cutoff = new Date(Date.now() - HOLD_DAYS * 86400000).toISOString();
 
   try {
@@ -188,6 +262,10 @@ export default async function handler(req, res) {
         result.noDetails += 1;
         continue;
       }
+
+      // Do not open a payout until the destination account is proven.
+      const verified = await ensurePayoutVerified(supabase, boutique, account, result);
+      if (!verified) continue;
 
       const { data: payout, error: openErr } = await supabase.rpc('open_auto_payout', {
         p_boutique_id: boutiqueId,
