@@ -110,6 +110,9 @@ export function AdminLayout() {
             return (
               <button
                 key={a.to}
+                className="agx-adm-nav"
+                data-on={String(on)}
+                aria-current={on ? 'page' : undefined}
                 onClick={() => navigate(a.to)}
                 style={css(`width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:${on ? 700 : 600};text-align:left;margin-top:3px;background:${on ? 'var(--ag-surface)' : 'transparent'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-label)'};box-shadow:${on ? '0 6px 16px -10px var(--ag-shadow)' : 'none'};font-family:inherit;`)}
               >
@@ -125,7 +128,7 @@ export function AdminLayout() {
               spacer keeps the final row clear of the viewport edge and of the
               non-production ribbon. */}
           <div style={css('flex:none;height:10px;')} />
-          <button onClick={logout} style={css('margin-top:auto;width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:600;text-align:left;background:transparent;color:var(--ag-danger-text);font-family:inherit;margin-bottom:6px;')}>
+          <button onClick={logout} className="agx-adm-btn" data-tone="danger" style={css('margin-top:auto;width:100%;display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;border-radius:11px;cursor:pointer;font-size:13.5px;font-weight:600;text-align:left;background:transparent;color:var(--ag-danger-text);font-family:inherit;margin-bottom:6px;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>logout</span>
             <span>Log out</span>
           </button>
@@ -170,6 +173,7 @@ export function AdminLayout() {
               />
               <button
                 onClick={toggleTheme}
+                className="agx-adm-hbtn"
                 title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
                 aria-label="Toggle theme"
                 style={css('width:40px;height:40px;border-radius:12px;background:var(--ag-surface-2);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;')}
@@ -184,6 +188,8 @@ export function AdminLayout() {
                   mobile tab bar keep their own Log out buttons. */}
               <button
                 onClick={() => navigate(adminPath('profile'))}
+                className="agx-adm-hbtn"
+                data-fill="true"
                 title="My profile"
                 aria-label="My profile"
                 style={css('width:40px;height:40px;border-radius:12px;background:#B02454;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;')}
@@ -197,10 +203,14 @@ export function AdminLayout() {
               resets it on navigation — the window never scrolls in the console. */}
           <div className="agx-scroll agx-scroll-main agx-admin-main" style={css('flex:1;overflow-y:auto;padding:26px 30px;background:var(--ag-bg);')}>
             {/* Keyed on the route so navigating away from a crashed page
-                recovers — React never clears a boundary by itself. */}
-            <RouteErrorBoundary key={location.pathname} surface="Admin page">
-              <Outlet />
-            </RouteErrorBoundary>
+                recovers — React never clears a boundary by itself. The key sits
+                on the wrapper now, which remounts the boundary underneath it
+                exactly as before and restarts the fade on every navigation. */}
+            <div key={location.pathname} className="agx-adm-route">
+              <RouteErrorBoundary surface="Admin page">
+                <Outlet />
+              </RouteErrorBoundary>
+            </div>
           </div>
         </div>
       </div>
@@ -212,6 +222,9 @@ export function AdminLayout() {
           return (
             <button
               key={a.to}
+              className="agx-adm-nav"
+              data-on={String(on)}
+              aria-current={on ? 'page' : undefined}
               onClick={() => navigate(a.to)}
               aria-label={a.label}
               style={css(`flex:none;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 8px;border:none;border-radius:14px;cursor:pointer;font-family:inherit;background:${on ? 'var(--ag-surface-2)' : 'transparent'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-muted)'};`)}
@@ -223,6 +236,8 @@ export function AdminLayout() {
         })}
         <button
           onClick={logout}
+          className="agx-adm-btn"
+          data-tone="danger"
           aria-label="Log out"
           style={css("flex:none;min-width:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 8px;border:none;border-radius:14px;cursor:pointer;font-family:inherit;background:transparent;color:var(--ag-danger-text);")}
         >

@@ -7,18 +7,16 @@ import {
   CtaPair,
   Display,
   Eyebrow,
-  LedgerRow,
   Lede,
-  LABEL_LG,
-  LABEL_SM,
+  LedgerRow,
   Point,
   PointList,
   Rule,
-  SERIF,
   Step,
   Text,
   Wrap,
 } from './parts';
+import { FACE, HEADING_SM, LABEL } from './type';
 import { START_SELLING } from './sellContent';
 import { useSellerTerms } from './useSellerTerms';
 
@@ -84,7 +82,10 @@ export function SellDelivery() {
 
           <div
             className="agx-sell-table-scroll"
-            style={css('margin-top:40px;border:1px solid var(--ag-border);border-radius:0.75rem;background:var(--ag-surface);overflow:hidden;')}
+            style={css(
+              'margin-top:40px;border:1px solid var(--ag-border);' +
+                'border-radius:var(--sell-r-panel);background:var(--ag-surface);overflow:hidden;',
+            )}
           >
             <table className="agx-sell-table">
               <thead>
@@ -205,10 +206,11 @@ export function SellDelivery() {
 
             <div
               style={css(
-                'background:var(--ag-surface);border:1px solid var(--ag-border);border-radius:22px;padding:clamp(22px,3vw,28px);height:fit-content;',
+                'background:var(--ag-surface);border:1px solid var(--ag-border);' +
+                  'border-radius:var(--sell-r-panel);padding:clamp(22px,3vw,28px);height:fit-content;',
               )}
             >
-              <div style={css(`${LABEL_SM}color:var(--ag-muted);padding-bottom:16px;border-bottom:1px solid var(--ag-border);`)}>
+              <div style={css(`${LABEL}color:var(--ag-muted);padding-bottom:16px;border-bottom:1px solid var(--ag-ink);`)}>
                 A delivered order, in full
               </div>
               <LedgerRow label="Two pieces, sold at" value={fmtInr(3200)} />
@@ -271,11 +273,11 @@ export function SellDelivery() {
 function ZoneRow({ band, covers, free }: { band: string; covers: string; free?: boolean }) {
   return (
     <tr>
-      <td style={css(`font-family:${SERIF};font-size:16px;font-weight:700;color:var(--ag-ink);white-space:nowrap;`)}>{band}</td>
+      <td style={css(`font-family:${FACE};${HEADING_SM}color:var(--ag-ink);white-space:nowrap;`)}>{band}</td>
       <td style={css('color:var(--ag-ink-2);')}>{covers}</td>
       <td
         style={css(
-          `${LABEL_LG}white-space:nowrap;` +
+          `${HEADING_SM}white-space:nowrap;` +
             `color:${free ? 'var(--ag-good-text)' : 'var(--ag-muted)'};`,
         )}
       >

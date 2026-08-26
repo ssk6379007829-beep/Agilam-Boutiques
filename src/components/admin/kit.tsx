@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { css } from '@/lib/css';
 import { Skeleton } from '@/components/ui/Skeleton';
 
@@ -18,6 +18,44 @@ export const T = {
   accent: 'var(--ag-crimson)',
   accent2: '#D6336C',
 };
+
+/** Must match `--adm-t-out` in index.css — the exit these overlays animate. */
+const EXIT_MS = 150;
+
+/**
+ * Keeps an overlay mounted for the length of its exit animation.
+ *
+ * Drawer, ConfirmDialog and BulkBar each used to `return null` the instant they
+ * closed, so they vanished on the same frame and there was nothing to animate
+ * out. This holds the element in the tree for EXIT_MS after `open` goes false,
+ * and reports the flag the CSS keys off (`data-open`). Behaviour while open is
+ * unchanged.
+ *
+ * `shown` trails `mounted` by two frames on the way in: the element has to be
+ * committed at its closed position and painted there before it transitions to
+ * the open one, or the browser has no start value to interpolate from and the
+ * entry snaps.
+ */
+function useDismiss(open: boolean) {
+  const [mounted, setMounted] = useState(open);
+  const [shown, setShown] = useState(open);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      let inner = 0;
+      const outer = requestAnimationFrame(() => {
+        inner = requestAnimationFrame(() => setShown(true));
+      });
+      return () => { cancelAnimationFrame(outer); cancelAnimationFrame(inner); };
+    }
+    setShown(false);
+    const t = setTimeout(() => setMounted(false), EXIT_MS);
+    return () => clearTimeout(t);
+  }, [open]);
+
+  return { mounted, shown };
+}
 
 export function Icon({ name, size = 20, color }: { name: string; size?: number; color?: string }) {
   return (
@@ -86,7 +124,7 @@ export function StatCard({
       {bars && bars.length > 0 && (
         <div style={css('display:flex;align-items:flex-end;gap:3px;height:34px;margin-top:12px;')}>
           {bars.map((b, i) => (
-            <div key={i} style={css(`flex:1;border-radius:3px 3px 1px 1px;background:linear-gradient(180deg,#E7719F,#D6336C);height:${Math.max(6, Math.round((b / max) * 100))}%;`)} />
+            <div key={i} className="agx-adm-bar" style={css(`flex:1;border-radius:3px 3px 1px 1px;background:linear-gradient(180deg,#E7719F,#D6336C);height:${Math.max(6, Math.round((b / max) * 100))}%;animation-delay:${i * 30}ms;`)} />
           ))}
         </div>
       )}
@@ -121,6 +159,8 @@ export function GhostButton({ icon, children, onClick, tone = 'default', title, 
   return (
     <button
       type="button"
+      className="agx-adm-btn"
+      data-tone={tone}
       title={title}
       onClick={onClick}
       disabled={disabled}
@@ -140,7 +180,7 @@ export function IconButton({ icon, onClick, tone = 'default', title }: { icon: s
     warn: 'border:none;background:var(--ag-warn-bg);color:var(--ag-warn-text);',
   }[tone];
   return (
-    <button type="button" title={title} aria-label={title ?? icon} onClick={onClick} style={css(`width:34px;height:34px;flex:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;${styles}`)}>
+    <button type="button" className="agx-adm-ibtn" data-tone={tone} title={title} aria-label={title ?? icon} onClick={onClick} style={css(`width:34px;height:34px;flex:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;${styles}`)}>
       <Icon name={icon} size={18} />
     </button>
   );
@@ -184,6 +224,8 @@ export function TabBar<K extends string>({
           <button
             key={t.key}
             type="button"
+            className="agx-adm-tab"
+            data-on={String(on)}
             onClick={() => onChange(t.key)}
             style={css(`height:38px;padding:0 15px;border-radius:11px;border:1.5px solid ${on ? T.accent2 : T.field};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? T.accent : T.muted};font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;`)}
           >
@@ -263,6 +305,16 @@ export function DataTable<T>({
               return (
                 <div
                   key={id}
+                  className="agx-adm-row"
+                  data-clickable={String(!!onRowClick)}
+                  /* Deliberately NOT role="button" + tabIndex. Several of these
+                     tables (Users, Expenses, Deliveries) put real IconButtons in
+                     their last column, and a role="button" wrapping focusable
+                     children is invalid ARIA — it can swallow those actions for
+                     screen readers. The row click stays a pointer convenience;
+                     making it keyboard-reachable means promoting a cell to a
+                     real control per page, which is a change to those pages
+                     rather than to this kit. */
                   onClick={onRowClick ? () => onRowClick(r) : undefined}
                   style={css(`display:grid;grid-template-columns:${grid};padding:13px 20px;border-top:1px solid ${T.border};align-items:center;${onRowClick ? 'cursor:pointer;' : ''}`)}
                 >
@@ -298,24 +350,25 @@ export function Pagination({ page, pageSize, total, onPage }: { page: number; pa
     <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:14px;')}>
       <div style={css(`font-size:12.5px;color:${T.muted};font-weight:600;`)}>{from}–{to} of {total}</div>
       <div style={css('display:flex;gap:8px;')}>
-        <button type="button" disabled={page <= 0} onClick={() => onPage(page - 1)} style={btn(page <= 0)}><Icon name="chevron_left" size={18} /></button>
-        <button type="button" disabled={page >= last} onClick={() => onPage(page + 1)} style={btn(page >= last)}><Icon name="chevron_right" size={18} /></button>
+        <button type="button" className="agx-adm-pager" disabled={page <= 0} onClick={() => onPage(page - 1)} style={btn(page <= 0)}><Icon name="chevron_left" size={18} /></button>
+        <button type="button" className="agx-adm-pager" disabled={page >= last} onClick={() => onPage(page + 1)} style={btn(page >= last)}><Icon name="chevron_right" size={18} /></button>
       </div>
     </div>
   );
 }
 
 export function Drawer({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode }) {
+  const { mounted, shown } = useDismiss(open);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
-  if (!open) return null;
+  if (!mounted) return null;
   return (
-    <div onClick={onClose} style={css('position:fixed;inset:0;background:rgba(42,26,32,.45);z-index:50;display:flex;justify-content:flex-end;')}>
-      <div onClick={(e) => e.stopPropagation()} className="agx-scroll" style={css('width:460px;max-width:100%;height:100%;background:var(--ag-bg);display:flex;flex-direction:column;box-shadow:-30px 0 70px -30px rgba(107,20,54,.6);')}>
+    <div onClick={onClose} className="agx-adm-scrim" data-open={String(shown)} style={css('position:fixed;inset:0;background:rgba(42,26,32,.45);z-index:50;display:flex;justify-content:flex-end;')}>
+      <div onClick={(e) => e.stopPropagation()} className="agx-scroll agx-adm-drawer" data-open={String(shown)} style={css('width:460px;max-width:100%;height:100%;background:var(--ag-bg);display:flex;flex-direction:column;box-shadow:-30px 0 70px -30px rgba(107,20,54,.6);')}>
         <div style={css(`flex:none;padding:20px 22px;background:var(--ag-surface);border-bottom:1px solid ${T.border};display:flex;align-items:center;justify-content:space-between;`)}>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>{title}</div>
           <button type="button" onClick={onClose} style={css(`width:36px;height:36px;border-radius:10px;border:1.5px solid ${T.field};background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ag-label);`)}><Icon name="close" size={18} /></button>
@@ -335,10 +388,11 @@ export function Drawer({ open, onClose, title, children, footer }: { open: boole
 export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger, onConfirm, onCancel, busy, children }: {
   open: boolean; title: string; message: string; confirmLabel?: string; danger?: boolean; onConfirm: () => void; onCancel: () => void; busy?: boolean; children?: ReactNode;
 }) {
-  if (!open) return null;
+  const { mounted, shown } = useDismiss(open);
+  if (!mounted) return null;
   return (
-    <div onClick={onCancel} style={css('position:fixed;inset:0;background:rgba(42,26,32,.45);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;')}>
-      <div onClick={(e) => e.stopPropagation()} style={css('width:400px;max-width:100%;background:var(--ag-surface);border-radius:20px;padding:24px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
+    <div onClick={onCancel} className="agx-adm-scrim" data-open={String(shown)} style={css('position:fixed;inset:0;background:rgba(42,26,32,.45);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;')}>
+      <div onClick={(e) => e.stopPropagation()} className="agx-adm-dialog" data-open={String(shown)} style={css('width:400px;max-width:100%;background:var(--ag-surface);border-radius:20px;padding:24px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
         <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;")}>{title}</div>
         <div style={css(`color:${T.muted};font-size:13.5px;margin-top:8px;line-height:1.5;`)}>{message}</div>
         {children}
@@ -352,10 +406,15 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', 
 }
 
 export function BulkBar({ count, children }: { count: number; children: ReactNode }) {
-  if (count === 0) return null;
+  const { mounted, shown } = useDismiss(count > 0);
+  // Hold the last real count so the bar does not flash "0 selected" on its way
+  // out, now that it survives the selection being cleared.
+  const last = useRef(count);
+  if (count > 0) last.current = count;
+  if (!mounted) return null;
   return (
-    <div style={css('display:flex;align-items:center;gap:12px;background:#2A1A20;color:#fff;border-radius:14px;padding:10px 16px;margin-bottom:14px;box-shadow:0 16px 34px -20px rgba(42,26,32,.7);')}>
-      <span style={css('font-weight:800;font-size:13px;')}>{count} selected</span>
+    <div className="agx-adm-bulk" data-open={String(shown)} style={css('display:flex;align-items:center;gap:12px;background:#2A1A20;color:#fff;border-radius:14px;padding:10px 16px;margin-bottom:14px;box-shadow:0 16px 34px -20px rgba(42,26,32,.7);')}>
+      <span style={css('font-weight:800;font-size:13px;')}>{last.current} selected</span>
       <div style={css('flex:1;')} />
       <div style={css('display:flex;gap:8px;')}>{children}</div>
     </div>
@@ -403,9 +462,11 @@ export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boo
         aria-checked={on}
         aria-label={label}
         onClick={() => onChange(!on)}
-        style={css(`width:50px;height:29px;border-radius:99px;border:none;cursor:pointer;flex:none;padding:3px;display:flex;justify-content:${on ? 'flex-end' : 'flex-start'};background:${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};transition:.15s;`)}
+        className="agx-adm-knob"
+        data-on={String(on)}
+        style={css(`width:50px;height:29px;border-radius:99px;border:none;cursor:pointer;flex:none;padding:3px;display:flex;background:${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};`)}
       >
-        <span style={css('width:23px;height:23px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.25);')} />
+        <span style={css('width:23px;height:23px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.25);flex:none;')} />
       </button>
     </div>
   );

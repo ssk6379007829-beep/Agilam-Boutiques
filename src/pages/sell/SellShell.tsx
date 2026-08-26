@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { Icon } from '@/components/ui/Icon';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
-import { LABEL_LG, LABEL_SM, SERIF } from './parts';
+import { CONTROL, FACE, HEADING_SM, LABEL } from './type';
 import { SELL_NAV, SELLER_SIGNIN, START_SELLING } from './sellContent';
 
 /**
@@ -74,15 +74,15 @@ function useLightOnly() {
   }, []);
 }
 
-/** `--ag-bg` in the light palette. Mirrors index.css and ThemeContext. */
-const LIGHT_BG = '#FBF6F2';
+/** `--ag-bg` on `.agx-sell-light` — the paper. Mirrors index.css. */
+const LIGHT_BG = '#F5F2EB';
 
 function SellHeader({ pathname }: { pathname: string }) {
   return (
     <header
       style={css(
         'position:sticky;top:0;z-index:40;background:var(--ag-surface);' +
-          'border-bottom:1px solid var(--ag-border);',
+          'border-bottom:1px solid var(--ag-ink);',
       )}
     >
       <div
@@ -104,8 +104,10 @@ function SellHeader({ pathname }: { pathname: string }) {
           />
           <span
             style={css(
-              `${LABEL_SM}font-size:10px;` +
-                'color:var(--ag-crimson);border-left:1px solid var(--ag-border);padding-left:11px;white-space:nowrap;',
+              `${LABEL}font-size:10px;` +
+                // Ink, not crimson. Crimson is money; a tag beside the wordmark
+                // is not money, and the whole palette rests on that holding.
+                'color:var(--ag-muted);border-left:1px solid var(--ag-border);padding-left:11px;white-space:nowrap;',
             )}
           >
             for sellers
@@ -118,11 +120,16 @@ function SellHeader({ pathname }: { pathname: string }) {
               key={item.to}
               to={item.to}
               end={item.to === '/sell'}
+              // The label is 14px on a 4px underline gap — about 23px tall,
+              // just under WCAG 2.2 SC 2.5.8. `.agx-sell-navlink` grows the
+              // hit area with a pseudo-element instead of padding, so the
+              // underline stays where the design puts it.
+              className="agx-sell-navlink"
               style={({ isActive }) =>
                 css(
-                  `${LABEL_LG}text-decoration:none;white-space:nowrap;padding-bottom:4px;` +
+                  `${CONTROL}text-decoration:none;white-space:nowrap;padding:12px 0 10px;` +
                     (isActive
-                      ? 'color:var(--ag-deep);border-bottom:2px solid var(--ag-deep);'
+                      ? 'color:var(--ag-ink);border-bottom:2px solid var(--ag-ink);'
                       : 'color:var(--ag-muted);border-bottom:2px solid transparent;'),
                 )
               }
@@ -136,18 +143,16 @@ function SellHeader({ pathname }: { pathname: string }) {
           <Link
             to={SELLER_SIGNIN}
             className="agx-hide-sm"
-            style={css(`${LABEL_LG}color:var(--ag-muted);text-decoration:none;padding:8px 6px;`)}
+            style={css(
+              `${CONTROL}color:var(--ag-muted);text-decoration:none;` +
+                // 44px of touch target, reached with padding rather than by
+                // growing the type — WCAG 2.5.5.
+                'display:inline-flex;align-items:center;min-height:44px;padding:0 8px;',
+            )}
           >
             Sign in
           </Link>
-          <Link
-            to={START_SELLING}
-            style={css(
-              'display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:0.5rem;' +
-                `background:var(--ag-deep);color:#fff;${LABEL_LG}` +
-                'text-decoration:none;white-space:nowrap;',
-            )}
-          >
+          <Link to={START_SELLING} className="agx-sell-btn" style={css(CONTROL)}>
             Start selling
           </Link>
         </div>
@@ -170,9 +175,11 @@ function SellHeader({ pathname }: { pathname: string }) {
               key={item.to}
               to={item.to}
               style={css(
-                'font-size:13.5px;font-weight:600;text-decoration:none;white-space:nowrap;padding:11px 0;' +
+                // 44px tall on a phone, where this rail IS the navigation.
+                `${CONTROL}text-decoration:none;white-space:nowrap;` +
+                  'display:inline-flex;align-items:center;min-height:44px;' +
                   (active
-                    ? 'color:var(--ag-deep);box-shadow:inset 0 -2px 0 var(--ag-crimson);'
+                    ? 'color:var(--ag-ink);box-shadow:inset 0 -2px 0 var(--ag-ink);'
                     : 'color:var(--ag-muted);'),
               )}
             >
@@ -188,9 +195,13 @@ function SellHeader({ pathname }: { pathname: string }) {
 function SellFooter() {
   return (
     <footer
+      className="agx-ondeep"
+      // Flat ink, not the three-stop crimson gradient this used to be.
+      // Gradients are forbidden by the thesis, and a crimson field the width of
+      // the page is the loudest possible contradiction of "crimson is money".
       style={css(
         'width:100vw;margin-left:calc(50% - 50vw);margin-top:0;' +
-          'background:linear-gradient(140deg,#5C1330,#8E1C44 60%,#B02454);color:#fff;',
+          'background:var(--ag-ink);color:var(--ag-bg);',
       )}
     >
       <div style={css('max-width:1280px;margin:0 auto;padding:clamp(48px,6vw,80px) clamp(20px,3vw,24px) 32px;')}>
@@ -206,16 +217,14 @@ function SellFooter() {
               decoding="async"
               style={css('display:block;width:186px;height:75px;max-width:100%;object-fit:contain;object-position:left center;')}
             />
-            <p style={css('font-size:13.5px;line-height:1.65;opacity:.86;margin:10px 0 0;')}>
+            <p style={css('font-size:14px;line-height:1.65;color:rgba(245,242,235,.86);margin:10px 0 0;')}>
               A marketplace for India’s independent boutiques. You keep your shop, your name and your
               way of working — we bring the buyers, hold the money and settle it to you after delivery.
             </p>
             <Link
               to={START_SELLING}
-              style={css(
-                'display:inline-flex;align-items:center;gap:8px;margin-top:20px;height:46px;padding:0 20px;' +
-                  'border-radius:14px;background:#fff;color:#8E1C44;font-size:14px;font-weight:800;text-decoration:none;',
-              )}
+              className="agx-sell-btn on-ink"
+              style={css(`${CONTROL}margin-top:20px;`)}
             >
               Open your boutique
               <Icon name="arrow_forward" style={css('font-size:18px;')} />
@@ -224,34 +233,34 @@ function SellFooter() {
 
           <FooterCol title="For sellers">
             {SELL_NAV.map((item) => (
-              <Link key={item.to} to={item.to} style={footerLink}>
+              <Link key={item.to} to={item.to} className={FOOTLINK} style={footerLink}>
                 {item.label}
               </Link>
             ))}
-            <Link to={SELLER_SIGNIN} style={footerLink}>
+            <Link to={SELLER_SIGNIN} className={FOOTLINK} style={footerLink}>
               Seller sign in
             </Link>
           </FooterCol>
 
           <FooterCol title="MangaiMart">
             {SELL_FOOTER_COMPANY.map((item) => (
-              <Link key={item.to} to={item.to} style={footerLink}>
+              <Link key={item.to} to={item.to} className={FOOTLINK} style={footerLink}>
                 {item.label}
               </Link>
             ))}
           </FooterCol>
 
           <FooterCol title="Talk to a person">
-            <a href={CONTACT_LINKS.call} style={footerLink}>
+            <a href={CONTACT_LINKS.call} className={FOOTLINK} style={footerLink}>
               {COMPANY.phone}
             </a>
-            <a href={CONTACT_LINKS.mail} style={footerLink}>
+            <a href={CONTACT_LINKS.mail} className={FOOTLINK} style={footerLink}>
               {COMPANY.email}
             </a>
-            <a href={CONTACT_LINKS.whatsapp} style={footerLink} target="_blank" rel="noreferrer">
+            <a href={CONTACT_LINKS.whatsapp} className={FOOTLINK} style={footerLink} target="_blank" rel="noreferrer">
               WhatsApp us
             </a>
-            <span style={css('font-size:12.5px;line-height:1.6;opacity:.7;')}>
+            <span style={css('font-size:12.5px;line-height:1.6;color:rgba(245,242,235,.7);')}>
               Ask anything before you sign up. There is no sales call afterwards.
             </span>
           </FooterCol>
@@ -259,8 +268,9 @@ function SellFooter() {
 
         <div
           style={css(
-            'margin-top:34px;padding-top:18px;border-top:1px solid rgba(255,255,255,.2);' +
-              'display:flex;flex-wrap:wrap;gap:10px 22px;justify-content:space-between;font-size:12.5px;opacity:.78;',
+            'margin-top:34px;padding-top:18px;border-top:1px solid rgba(245,242,235,.2);' +
+              'display:flex;flex-wrap:wrap;gap:10px 22px;justify-content:space-between;' +
+              'font-size:12.5px;color:rgba(245,242,235,.78);',
           )}
         >
           <span>
@@ -273,14 +283,20 @@ function SellFooter() {
   );
 }
 
-const footerLink = css('color:#fff;font-size:13.5px;opacity:.86;text-decoration:none;');
+const footerLink = css(
+  'color:rgba(245,242,235,.86);font-size:14px;line-height:1.4;text-decoration:none;' +
+    // 44px of vertical target on a phone without visibly loosening the column.
+    'display:inline-flex;align-items:center;min-height:34px;',
+);
+/** Paired with `footerLink` at every use — carries its `:hover` (see index.css). */
+const FOOTLINK = 'agx-sell-footlink';
 
 function FooterCol({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
       <div
         style={css(
-          `font-family:${SERIF};font-size:15px;font-weight:700;color:#F4D9A6;letter-spacing:.01em;`,
+          `font-family:${FACE};${HEADING_SM}color:var(--ag-bg);`,
         )}
       >
         {title}

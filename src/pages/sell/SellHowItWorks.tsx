@@ -7,14 +7,13 @@ import {
   Display,
   Eyebrow,
   Lede,
-  LABEL_SM,
   Point,
   PointList,
-  SERIF,
   Step,
   Text,
   Wrap,
 } from './parts';
+import { FACE, HEADING_SM, LABEL } from './type';
 import { START_SELLING } from './sellContent';
 import { useSellerTerms } from './useSellerTerms';
 
@@ -227,10 +226,11 @@ export function SellHowItWorks() {
 
           <div
             style={css(
-              'margin-top:30px;padding:20px 22px;border-left:3px solid var(--ag-crimson);background:var(--ag-surface-2);border-radius:0 14px 14px 0;',
+              'margin-top:30px;padding:20px 22px;border-left:1px solid var(--ag-ink);' +
+                'background:var(--ag-surface-2);',
             )}
           >
-            <div style={css(`${LABEL_SM}color:var(--ag-deep);`)}>
+            <div style={css(`${LABEL}color:var(--ag-muted);`)}>
               Not promised
             </div>
             <p style={css('margin:9px 0 0;font-size:15px;line-height:1.68;color:var(--ag-ink-2);max-width:62ch;')}>
@@ -257,10 +257,11 @@ function ConsoleCard({ title, body }: { title: string; body: string }) {
   return (
     <div
       style={css(
-        'background:var(--ag-surface);border:1px solid var(--ag-border);border-radius:18px;padding:22px;',
+        'background:var(--ag-surface);border:1px solid var(--ag-border);' +
+          'border-radius:var(--sell-r-panel);padding:22px;',
       )}
     >
-      <h3 style={css(`font-family:${SERIF};font-weight:700;font-size:18px;margin:0;color:var(--ag-ink);`)}>{title}</h3>
+      <h3 style={css(`font-family:${FACE};${HEADING_SM}margin:0;color:var(--ag-ink);`)}>{title}</h3>
       <p style={css('margin:9px 0 0;font-size:14.5px;line-height:1.65;color:var(--ag-ink-2);')}>{body}</p>
     </div>
   );

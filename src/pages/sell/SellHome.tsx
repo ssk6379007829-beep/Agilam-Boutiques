@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
@@ -8,35 +8,29 @@ import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { Icon } from '@/components/ui/Icon';
 import { fmtInr } from '@/lib/tokens';
 import {
+  ArrowLink,
   Band,
   Card,
-  CARD_SHADOW,
   CtaPair,
   DeepPanel,
   Display,
   Eyebrow,
-  Figure,
   GhostCta,
   IconPoint,
-  LABEL_LG,
-  LedgerRow,
+  Ledger,
   Lede,
+  LedgerRow,
   Point,
   PointList,
   PrimaryCta,
   PullQuote,
   Rule,
-  SERIF,
   Text,
   Wrap,
 } from './parts';
+import { BODY, FACE, HEADING_SM, LABEL, SUBHEAD } from './type';
 import { SELLER_STORIES, START_SELLING, WHAT_YOU_NEED } from './sellContent';
 import { useSellerTerms } from './useSellerTerms';
-
-/** The "…and here is the next page" link that closes several sections. */
-const arrowLink = css(
-  `${LABEL_LG}color:var(--ag-deep);text-decoration:none;display:inline-flex;align-items:center;gap:8px;`,
-);
 
 /**
  * `/sell` — the page a boutique owner lands on.
@@ -84,8 +78,7 @@ export function SellHome() {
 
   return (
     <>
-      <Hero terms={terms} boutiques={boutiques} />
-      <Mechanics terms={terms} />
+      <Hero terms={terms} />
       <TheDeal terms={terms} />
       <WhatTheFeeCovers terms={terms} />
       <RealShops boutiques={boutiques} products={products} />
@@ -97,58 +90,58 @@ export function SellHome() {
   );
 }
 
-/* ── Hero ──────────────────────────────────────────────────────────────────── */
+/* -- Hero ------------------------------------------------------------------ */
 
 /**
- * The hero — a full-bleed berry field, the copy at half, an arched portrait at
- * the other, and the terms sitting along the bottom of it.
+ * The hero - a berry field with a white bill lying on it.
  *
- * ── Why it is full bleed and the closing panel is not ──────────────────────
- * `DeepPanel` keeps a margin of page around itself because the site footer is a
- * crimson gradient and two dark blocks meeting mid-page read as a rendering
- * fault (see the note on `DeepPanel` in parts.tsx). Nothing sits above the hero
- * but the cream header, so here the berry can run edge to edge — which is what
- * makes the first screen read as a cover rather than as a card on a page.
+ * -- Why this and not a headline over a row of statistics ------------------
+ * It used to end on four big figures with small labels under them, and
+ * `Mechanics` repeated that exact form one screen further down. Two dashboard
+ * rows on a page whose whole argument is that this is NOT a dashboard.
  *
- * ── Why the numbers moved into it ─────────────────────────────────────────
- * The four figures used to be a separate rule below the fold. A boutique owner
- * arriving from an ad that shouted "0% commission" decides in about four
- * seconds, so the terms are now IN the hero, and three of the four are zeros —
- * because three of them genuinely are. `Mechanics` below carries four different
- * facts; nothing is stated twice.
+ * More to the point, a statistic asserts, and a boutique owner arriving here
+ * has no reason yet to believe us. The single question she actually has is
+ * "what would I be left with" - and it is a question this business can answer
+ * in one line, because there is exactly one deduction. So the hero IS that
+ * line, and she can type her own prices into it. She arrives sceptical about a
+ * percentage and leaves having checked it herself on a saree she really sells.
  *
- * ── What is deliberately absent ───────────────────────────────────────────
+ * No competitor's landing page can run this, which is rather the point: they
+ * cannot show one deduction, because they do not have one.
+ *
+ * -- Why the photograph went ----------------------------------------------
+ * There was an arched portrait here reading `/sell-hero.png`. The file on disk
+ * is `public/sell-hero.png.png` - a double extension - so the request 404'd,
+ * `onError` fired and the column silently unmounted, every time. It has never
+ * once rendered. It was also a 2 MB PNG and a stock-photo gesture, and with the
+ * reckoning in the hero there is no room for a second focal point.
+ *
+ * -- What is deliberately absent ------------------------------------------
  * No seller count, no GMV, no "trusted by thousands". Rule 2 of sellContent.ts.
- * The proof on this page is the live catalogue, and the badge on the portrait
- * says so only once the catalogue is big enough to be proof — see `HeroBadge`.
+ * The proof on this page is the live catalogue in `RealShops`, and the
+ * arithmetic here, which she can check.
  */
-function Hero({
-  terms,
-  boutiques,
-}: {
-  terms: ReturnType<typeof useSellerTerms>;
-  boutiques: ReturnType<typeof useCatalog>['boutiques'];
-}) {
+function Hero({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
   return (
-    <Band
-      style={css(
-        'position:relative;overflow:hidden;background:var(--ag-deep);color:#fff;',
-      )}
-    >
-      <HeroFlourish />
+    // Ink, not crimson. This is the largest coloured field on the site, and
+    // crimson is money — a berry hero would be the loudest thing on the page
+    // and it would not be a number. Ink gives the same weight, none of the
+    // meaning, and lets the bill beside it be the only colour that counts.
+    <Band style={css('position:relative;overflow:hidden;background:var(--ag-ink);color:var(--ag-bg);')}>
       <Wrap
         wide
         style={css(
-          'position:relative;padding-top:clamp(44px,5.5vw,76px);padding-bottom:clamp(44px,5.5vw,72px);',
+          'position:relative;padding-top:clamp(40px,5vw,72px);padding-bottom:clamp(40px,5vw,64px);',
         )}
       >
         <div className="agx-sell-hero">
           <div>
             <Eyebrow onDeep>For boutique owners</Eyebrow>
 
-            {/* The one accent word, in Caslon italic and the pale gold. It falls
-                on the reach — the thing a shop owner cannot get on her own and
-                the entire reason she is reading this page. */}
+            {/* The one accent word, in the display italic and the pale gold. It
+                falls on the reach - the thing a shop owner cannot get on her
+                own, and the entire reason she is reading this page. */}
             <Display
               level={1}
               size="lg"
@@ -156,20 +149,27 @@ function Hero({
               style={css('margin-top:22px;font-size:clamp(38px,5.6vw,64px);')}
             >
               From your boutique to{' '}
-              <em style={css('font-style:italic;color:var(--ag-gold-border);')}>every corner</em> of
+              <em
+                style={css(
+                  "font-style:normal;font-variation-settings:'wdth' 118,'wght' 700;color:var(--ag-bg);",
+                )}
+              >
+                every corner
+              </em>{' '}
+              of
               India.
             </Display>
 
-            <Ornament />
-
-            <Lede onDeep style={css('margin-top:26px;max-width:48ch;')}>
+            <Lede onDeep style={css('margin-top:26px;max-width:46ch;')}>
               List your pieces, reach buyers across India, and keep running your shop exactly as you
-              run it now — we handle the rest. You create, we connect,{' '}
-              <strong style={css('color:#fff;font-weight:600;')}>India shops</strong>.
+              run it now &mdash; we handle the rest. You create, we connect,{' '}
+              <strong style={css("font-variation-settings:'wght' 600;color:var(--ag-bg);")}>
+                India shops
+              </strong>.
             </Lede>
 
             {/* Hand-rolled rather than `CtaPair`, only so the secondary can
-                carry the play glyph — its `secondaryLabel` is a plain string. */}
+                carry the play glyph - its `secondaryLabel` is a plain string. */}
             <div style={css('display:flex;flex-wrap:wrap;gap:16px;margin-top:36px;')}>
               <PrimaryCta to={START_SELLING} onDeep>
                 Start selling today
@@ -184,363 +184,264 @@ function Hero({
             </div>
           </div>
 
-          <HeroArt boutiques={boutiques} />
+          <Reckoning terms={terms} />
         </div>
 
-        <HeroTerms terms={terms} />
+        <HeroFooterLine terms={terms} />
       </Wrap>
     </Band>
   );
 }
 
-/**
- * The decoration behind the berry: a lit corner and an abstract reach motif.
- *
- * The motif is deliberately NOT a map of India. Depicting India's boundaries
- * incorrectly is a regulated matter here, and a hand-drawn outline on a
- * marketing page is not a risk worth carrying for a background graphic — so
- * this is arcs radiating from a point with lit nodes on them, which says
- * "orders travelling out from your shop" without asserting a border anywhere.
- * Purely decorative, `aria-hidden`, and it never intercepts a tap.
- */
-function HeroFlourish() {
-  return (
-    <div aria-hidden="true" style={css('position:absolute;inset:0;pointer-events:none;overflow:hidden;')}>
-      {/* The same soft radial lift `DeepPanel` uses, so the hero and the closing
-          panel are recognisably the same material. */}
-      <div
-        style={css(
-          'position:absolute;inset:0;opacity:.1;' +
-            'background-image:radial-gradient(circle at 100% 0%,#fff 0%,transparent 55%);',
-        )}
-      />
-      <svg
-        viewBox="0 0 400 400"
-        className="agx-sell-hero-motif"
-        fill="none"
-        stroke="var(--ag-gold-border)"
-        strokeWidth="1"
-      >
-        {[70, 118, 166, 214].map((r) => (
-          <circle key={r} cx="120" cy="230" r={r} opacity=".22" strokeDasharray="2 9" />
-        ))}
-        {/* Nodes on the arcs — a delivery landing somewhere, at four distances. */}
-        {[
-          [190, 230],
-          [238, 168],
-          [286, 258],
-          [154, 60],
-          [318, 118],
-        ].map(([cx, cy]) => (
-          <g key={`${cx}-${cy}`}>
-            <circle cx={cx} cy={cy} r="9" fill="var(--ag-gold-border)" stroke="none" opacity=".12" />
-            <circle cx={cx} cy={cy} r="2.5" fill="var(--ag-gold-border)" stroke="none" opacity=".75" />
-          </g>
-        ))}
-      </svg>
-    </div>
-  );
-}
+/* -- The reckoning --------------------------------------------------------- */
 
-/** The hairline-and-diamond rule under the headline. Type ornament, nothing more. */
-function Ornament() {
-  const line = (dir: number) =>
-    css(`height:1px;flex:1;opacity:.5;background:linear-gradient(${dir}deg,var(--ag-gold-border),transparent);`);
-  return (
-    <div aria-hidden="true" style={css('display:flex;align-items:center;gap:14px;margin-top:34px;max-width:400px;')}>
-      <span style={line(90)} />
-      <span
-        style={css('width:7px;height:7px;flex:none;transform:rotate(45deg);background:var(--ag-gold-border);opacity:.85;')}
-      />
-      <span style={line(270)} />
-    </div>
-  );
-}
+/** What the bill opens on. A mid-range saree - recognisable, not aspirational. */
+const DEFAULT_PRICE = 2400;
 
 /**
- * Where the hero photograph is expected to live.
+ * The bill, and the one interactive thing on the seller site.
  *
- * A plain path into `public/`, so dropping the file in and rebuilding is the
- * whole of it — no import, no code change. It wants a PORTRAIT crop, roughly
- * 4:5 and at least 1200px wide, with the subject centred: it is painted into an
- * arch with `object-fit:cover`, so anything at the edges is what gets cut. A
- * transparent PNG works and looks best — the arch's own gradient then becomes
- * the backdrop.
+ * She types a price; the fee and the take-home resolve under it as she types.
+ * Every figure comes from `useSellerTerms`, so this cannot drift from what
+ * `settle_boutique_payout` actually pays her - `netOf` is the same rounding the
+ * payout row uses.
+ *
+ * The input is deliberately not styled as a form field. No box, no chrome, just
+ * the rupee sign and a gold rule under the digits: a form field on a marketing
+ * page reads as a signup step, and this is meant to read as a number written on
+ * a bill. It is still a real `<input>` with a real `<label>`, so it focuses,
+ * tabs and reads out properly, and the result carries `aria-live` so a screen
+ * reader hears the new figure rather than silently missing it.
  */
-const HERO_PHOTO = '/sell-hero.png';
+function Reckoning({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
+  const [raw, setRaw] = useState(String(DEFAULT_PRICE));
 
-/**
- * The arched portrait.
- *
- * An arch rather than the square-on-a-tilt it replaced: a dome is the shape of
- * a shopfront and of a temple doorway, it costs nothing, and it stops the one
- * photograph on this site reading as a stock tile. The dashed outline sitting
- * just outside it is the same gold hairline as the ornament under the headline.
- *
- * The photo stays optional at runtime, exactly as before: if the file is not
- * there, `onError` fires, the whole column unmounts, `.agx-sell-hero` collapses
- * to one column and the copy takes the full width. That is a deliberate layout,
- * not a gap — the badge is decorative and goes with it.
- */
-function HeroArt({ boutiques }: { boutiques: ReturnType<typeof useCatalog>['boutiques'] }) {
-  const [hidden, setHidden] = useState(false);
-  if (hidden) return null;
+  // An empty field is 0 rather than NaN, so the bill stays readable while she
+  // has cleared it to type a new number. Six digits is the cap, which is a
+  // 9,99,999 saree - past any real one, and the point where the line wraps.
+  const price = Number(raw) || 0;
+  const fee = terms.cutOf(price);
+  const net = terms.netOf(price);
+
+  // The one animated moment on the site: the take-home counts up once on load
+  // and never again - see `useCountUp`. `settled` gates the live region below.
+  const [shownNet, settled] = useCountUp(net);
 
   return (
-    <div className="agx-sell-hero-art">
-      <div className="agx-sell-hero-arch" style={css('position:relative;')}>
-        {/* Offset dashed arch. Inset is negative, so it needs the parent to NOT
-            clip — which is why the frame below carries its own overflow. */}
-        <div
-          aria-hidden="true"
+    <div className="agx-sell-reckoning">
+      {/* One white bill, on the ink field. This wrapper is not decoration: the
+          price figure is `--ag-deep` and the label `--ag-ink-2`, which on ink
+          measure 2.06:1 and worse. On paper they are 7.8:1 and 8.8:1. Paper on
+          cloth is also the only real contrast the hero has, now that the field
+          behind it is a flat ink rather than a gradient. */}
+      <div className="agx-sell-bill">
+        <label className="agx-sell-price-row" htmlFor="sell-price">
+          <span style={css(`${LABEL}color:var(--ag-muted);`)}>What you&rsquo;d take home</span>
+          <div style={css(`margin-top:8px;${BODY}font-size:15px;color:var(--ag-ink-2);`)}>
+            A saree, priced by you at
+          </div>
+          <span
+            className="agx-sell-price"
+            style={css(
+              `font-family:${FACE};font-variation-settings:'wdth' 112,'wght' 600;` +
+                "font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;" +
+                'font-size:clamp(38px,5vw,50px);line-height:1.1;color:var(--ag-deep);',
+            )}
+          >
+            <span aria-hidden="true">&#8377;</span>
+            <input
+              id="sell-price"
+              value={raw}
+              onChange={(e) => setRaw(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              // `inputMode` rather than `type="number"`: this is read on a phone,
+              // where the numeric keypad is the whole benefit — while the spinners,
+              // and scroll-wheel-changes-the-value, are not.
+              inputMode="numeric"
+              autoComplete="off"
+              // No `aria-label`. One would override the `<label>` and leave the
+              // accessible name saying something different from the words on
+              // screen, which is the Label-in-Name failure exactly.
+              size={6}
+            />
+          </span>
+        </label>
+
+        {/* The live region is switched OFF until the intro count-up has finished.
+            A polite region announces every mutation, and the settle mutates this
+            figure on every frame for 520ms — armed through that, it would fire a
+            few dozen announcements before the page had settled. After it, it is
+            armed for the rest of the session, which is the part that matters: she
+            types a price and hears what she would be left with. */}
+        <div aria-live={settled ? 'polite' : 'off'}>
+          <Ledger style={css('margin-top:20px;')}>
+            <LedgerRow
+              label={`Platform fee (${terms.commissionPct}%)`}
+              value={`− ${fmtInr(fee)}`}
+              negative
+              note="The only deduction. Nothing else comes off."
+            />
+            <LedgerRow label="Into your bank" value={fmtInr(shownNet)} strong />
+          </Ledger>
+        </div>
+
+        <p
           style={css(
-            'position:absolute;inset:-14px;border:1px dashed var(--ag-gold-border);opacity:.35;' +
-              'border-radius:999px 999px 32px 32px;',
-          )}
-        />
-        <div
-          style={css(
-            'position:relative;width:100%;aspect-ratio:4/5;overflow:hidden;' +
-              'border-radius:999px 999px 20px 20px;border:1px solid rgba(255,255,255,.2);' +
-              'background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.02));' +
-              'box-shadow:0 34px 64px -34px rgba(0,0,0,.6);',
+            `margin:14px 0 0;${BODY}font-size:13px;color:var(--ag-muted);max-width:44ch;`,
           )}
         >
-          <img
-            src={HERO_PHOTO}
-            alt="A boutique owner in her shop"
-            width={720}
-            height={900}
-            decoding="async"
-            // The hero photograph is this page's LCP element and it is above the
-            // fold on every desktop, so it is never lazy and never low priority.
-            fetchPriority="high"
-            onError={() => setHidden(true)}
-            style={css('width:100%;height:100%;object-fit:cover;object-position:50% 42%;display:block;')}
-          />
-        </div>
-        <HeroBadge boutiques={boutiques} />
+          Sent {terms.holdDays} days after it is delivered, straight to the account you registered
+          &mdash; and your delivery charge sits on top of this, in full.
+        </p>
       </div>
     </div>
   );
 }
 
 /**
- * How many live shops it takes before a count is worth printing.
+ * Counts a figure up from zero, once, the first time it is worth showing.
  *
- * Under this the badge says what the verification queue does instead. Both
- * lines are true; the difference is that only one of them is PROOF, and a hero
- * that boasts "3 boutiques" argues against itself. What it never does is round
- * a small number up — see rule 2 in sellContent.ts.
+ * Only the FIRST non-zero value animates. Every value after that - every
+ * keystroke in the price field - lands immediately, because a number that
+ * tweens on each keystroke is unreadable while you type and reads as lag.
+ *
+ * Honours `prefers-reduced-motion`, in which case nothing ever tweens.
+ *
+ * Returns the figure and whether the intro has finished. The caller needs the
+ * second one to keep an `aria-live` region quiet while the number is mid-tween.
  */
-const BADGE_MIN_SHOPS = 6;
+function useCountUp(value: number, ms = 520): [number, boolean] {
+  const [shown, setShown] = useState(0);
+  const [settled, setSettled] = useState(false);
+  const done = useRef(false);
 
-function HeroBadge({ boutiques }: { boutiques: ReturnType<typeof useCatalog>['boutiques'] }) {
-  // Shops with something actually listed, matching `RealShops` further down the
-  // page — a directory of empty shops is not evidence of anything, and the two
-  // sections must not disagree about how many there are.
-  const live = boutiques.filter((b) => b.products > 0);
-  const cities = new Set(live.map((b) => b.city).filter(Boolean));
-  const proven = live.length >= BADGE_MIN_SHOPS;
+  useEffect(() => {
+    // Settings load a moment after mount, so the first value through here is
+    // usually the default-terms one; `done` is set on the first non-zero value
+    // and every later one is applied flat.
+    if (done.current || value === 0) {
+      setShown(value);
+      if (value !== 0) done.current = true;
+      return;
+    }
+    done.current = true;
 
-  return (
-    <div className="agx-sell-hero-badge">
-      <span
-        style={css(
-          'width:34px;height:34px;flex:none;border-radius:9999px;background:rgba(255,255,255,.16);' +
-            'display:flex;align-items:center;justify-content:center;',
-        )}
-      >
-        <Icon
-          name={proven ? 'storefront' : 'verified_user'}
-          style={css("font-size:18px;color:var(--ag-gold-border);font-variation-settings:'wght' 200;")}
-        />
-      </span>
-      <div>
-        <div style={css('font-size:13px;font-weight:700;line-height:1.35;color:#fff;')}>
-          {proven
-            ? `${live.length} boutiques, live right now`
-            : 'Every boutique checked by hand'}
-        </div>
-        <div style={css('margin-top:5px;font-size:12px;line-height:1.45;color:rgba(255,255,255,.8);')}>
-          {proven
-            ? `Across ${cities.size} cit${cities.size === 1 ? 'y' : 'ies'} — scroll down and open any of them.`
-            : 'We look over each shop before it can list, so buyers trust the ones that pass.'}
-        </div>
-      </div>
-    </div>
-  );
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setShown(value);
+      setSettled(true);
+      return;
+    }
+
+    let frame = 0;
+    const started = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - started) / ms, 1);
+      // easeOutCubic: quick off the mark, settles rather than stops.
+      setShown(Math.round(value * (1 - Math.pow(1 - t, 3))));
+      if (t < 1) frame = requestAnimationFrame(tick);
+      else setSettled(true);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value, ms]);
+
+  return [shown, settled];
 }
 
 /**
- * The terms, along the foot of the hero.
+ * The line along the foot of the hero - what the catch is, before she goes
+ * looking for it.
  *
- * Three zeros and the fee, in that order, and the order is the argument. The
- * marketplaces a boutique owner is comparing us against advertise "0%
- * commission" and then take their margin on the delivery, the payment charge or
- * a monthly plan. Ours are the lines where the zero is real: nothing to join,
- * nothing on an order that did not arrive, and not a rupee of the delivery
- * charge she sets herself (0076/0077).
+ * This replaced two separate four-up grids of big figures: the hero's own strip
+ * and the `Mechanics` band below it. Both were the same shape, a screen apart,
+ * and between them they said less than this sentence does.
  *
- * Then the fee, in the same row, at the same size, with what it does NOT touch
- * written under it. Burying it would be the one thing worse than the number —
- * a seller who finds it later feels tricked, and would be right to.
+ * Set as running text rather than as cards, on purpose. These are the answers
+ * to "what else are you going to charge me" - and a reader scanning for the
+ * catch reads a sentence, where a grid of figures is the thing she has learned
+ * to skip.
  *
- * Every figure is read live from `platform_settings`; none is typed in here.
+ * Every zero here is real: nothing to join (there are no plans), nothing on an
+ * order that did not arrive (the fee is charged on delivery), and not a rupee
+ * of the delivery charge she sets herself (0076/0077) - which is precisely the
+ * line the "0% commission" marketplaces take their own margin on.
  */
-function HeroTerms({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
-  return (
-    <div className="agx-sell-hero-stats">
-      <HeroTerm value="₹0" title="To join, to list, every month">
-        No plans, no tiers, nothing to pay to start.
-      </HeroTerm>
-      <HeroTerm value="₹0" title="On a cancelled or returned order">
-        You are never charged for a sale that did not happen.
-      </HeroTerm>
-      <HeroTerm value="100%" title="Paid online before you pack">
-        The money is collected up front. No cash to chase.
-      </HeroTerm>
-      <HeroTerm value={`${terms.commissionPct}%`} title="The only fee, once it is delivered">
-        Nothing else comes off. Your delivery charge stays yours.
-      </HeroTerm>
-    </div>
+function HeroFooterLine({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
+  // Paper-white rather than crimson: these are zeros on an ink field, and
+  // crimson is reserved for the amounts in the bill beside them. Emphasis here
+  // is weight and width, not colour.
+  const zero = css(
+    `font-family:${FACE};font-variation-settings:'wdth' 108,'wght' 600;` +
+      "font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;" +
+      'font-size:1.15em;color:var(--ag-bg);',
   );
-}
-
-function HeroTerm({
-  value,
-  title,
-  children,
-}: {
-  value: string;
-  title: string;
-  children: React.ReactNode;
-}) {
   return (
-    <div className="agx-sell-hero-stat">
-      <span
-        style={css(
-          'width:46px;height:46px;flex:none;border-radius:9999px;background:rgba(255,255,255,.94);' +
-            `color:var(--ag-deep);font-family:${SERIF};font-size:15px;font-weight:700;line-height:1;` +
-            'display:flex;align-items:center;justify-content:center;',
-        )}
-      >
-        {value}
-      </span>
-      <div>
-        <div style={css('font-size:14px;font-weight:700;line-height:1.35;color:#fff;')}>{title}</div>
-        <div style={css('margin-top:5px;font-size:12.5px;line-height:1.45;color:rgba(255,255,255,.76);')}>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── The four numbers ──────────────────────────────────────────────────────── */
-
-/**
- * The trust bar.
- *
- * On the page ground with a hairline under it, not in a tinted band: the
- * reference treats this as a rule across the paper rather than as a section,
- * which is what stops four numbers reading as a dashboard. Its padding is
- * deliberately tighter than `Wrap`'s section rhythm — it belongs to the hero
- * above it more than to the section below.
- *
- * These are FOUR DIFFERENT FACTS from the ones in the hero's own strip, and
- * they have to stay that way: the two rows are a screen apart, so repeating a
- * figure here reads as the page having very little to say. The hero carries
- * what it costs; this carries what happens — delivery, timing, and how long
- * opening a shop takes.
- */
-function Mechanics({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
-  return (
-    <Band>
-      <Wrap
-        wide
-        style={css(
-          'padding-top:clamp(24px,3vw,32px);padding-bottom:clamp(32px,4vw,48px);border-bottom:1px solid var(--ag-border);',
-        )}
-      >
-        <div className="agx-sell-four">
-          {/* The answer to every "0% commission" advertisement she has seen. The
-              seller sets four delivery rates by distance and keeps all four —
-              migrations 0076 and 0077 — which is exactly the line those
-              platforms take their margin on. */}
-          <Figure value="0%" label="Of your delivery charge is ours. You set the rates, you keep them" />
-          <Figure
-            value={`${terms.holdDays} days`}
-            label="After a delivery before your money is released — the buyer's window to say something is wrong"
-          />
-          <Figure
-            value={`${terms.slaHours} hrs`}
-            label="What we hold ourselves to once a payout is due. It lands in the account you registered"
-          />
-          <Figure value="15 min" label="About what it takes to open your shop, on your phone, saved as you go" />
-        </div>
-      </Wrap>
-    </Band>
+    <p className="agx-sell-hero-foot">
+      <span style={zero}>&#8377;0</span> to join, to list, and every month.{' '}
+      <span style={zero}>&#8377;0</span> on an order that is cancelled or comes back.{' '}
+      <span style={zero}>0%</span> of the delivery charge you set &mdash; that stays yours in full.
+      The {terms.commissionPct}% above is the whole of what we take, and only once she has it in her
+      hands. About fifteen minutes to open the shop, on your phone.
+    </p>
   );
 }
 
 /* ── The money, worked ─────────────────────────────────────────────────────── */
 
+/**
+ * The arrangement, in prose.
+ *
+ * This section used to close on a `Card` working ₹2,400 down to a payout. The
+ * hero does that now, and interactively, so what was left here was the same
+ * sum a second time on the same page. Repeating your one proof weakens it.
+ *
+ * What replaces it is the case the arithmetic cannot make: the orders where
+ * nothing is charged at all. Those are the ones a boutique owner is quietly
+ * worried about - the buyer who changes her mind, the piece she cannot make in
+ * time - and every one of them costs her nothing.
+ */
 function TheDeal({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
-  const example = 2400;
   return (
     <Band>
       <Wrap wide>
-        <div className="agx-sell-two">
+        <div className="agx-sell-lean">
           <div>
             <Eyebrow>The whole arrangement</Eyebrow>
             <Display>We only earn when you do.</Display>
             <Text>
               Most marketplaces need a table with nine rows to explain themselves. Here it is one
               line: {terms.commissionPct}% of what the pieces sold for, and only once the order has
-              actually reached your customer. Until that happens, we have not earned anything and we
+              actually reached your customer. Until that happens we have not earned anything, and we
               do not take anything.
             </Text>
             <Text>
-              So if a buyer changes her mind, if you have to turn an order down, or if a piece comes
-              back — that order costs you nothing at all. No fee on a sale that did not happen has
-              always seemed to us like the only fair way to do this.
+              No fee on a sale that did not happen has always seemed to us like the only fair way to
+              do this. It also means the risk of a quiet month sits with us, not with you.
             </Text>
             <div style={css('margin-top:32px;')}>
-              <Link to="/sell/pricing" style={arrowLink}>
+              <ArrowLink to="/sell/pricing">
                 See every charge, worked out on real prices
-                <Icon name="arrow_forward" style={css('font-size:20px;')} />
-              </Link>
+              </ArrowLink>
             </div>
           </div>
 
-          <Card>
-            <div
-              style={css(
-                'font-size:12px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--ag-muted);' +
-                  'padding-bottom:16px;border-bottom:1px solid var(--ag-border);',
-              )}
-            >
-              One delivered order
-            </div>
-            <LedgerRow label="A saree, priced by you at" value={fmtInr(example)} />
-            <LedgerRow
-              label={`Platform fee (${terms.commissionPct}%)`}
-              value={`− ${fmtInr(terms.cutOf(example))}`}
-              negative
-              note="This is the only deduction. Nothing else comes off."
-            />
-            <LedgerRow label="Yours, into your bank" value={fmtInr(terms.netOf(example))} strong />
-            <p
-              style={css(
-                'margin:16px 0 0;padding:16px;background:var(--ag-surface-2);border-radius:0.5rem;' +
-                  'font-size:12px;font-weight:500;line-height:1.5;color:var(--ag-muted);',
-              )}
-            >
-              Sent {terms.holdDays} days after it is delivered, straight to the account you
-              registered. No invoice to raise, no one to remind, nothing to follow up.
-            </p>
-          </Card>
+          <div>
+            <h3 style={css(`${LABEL}color:var(--ag-muted);margin:0 0 4px;`)}>
+              Orders you are charged nothing for
+            </h3>
+            <PointList>
+              <Point icon="do_not_disturb_on">The buyer changes her mind before it is dispatched</Point>
+              <Point icon="do_not_disturb_on">You turn an order down, or cannot make the piece in time</Point>
+              <Point icon="do_not_disturb_on">It comes back inside her return window</Point>
+              <Point icon="do_not_disturb_on">It is refunded, in part or in full</Point>
+              <Point icon="do_not_disturb_on">
+                Anything you ring up at your own counter, to a walk-in customer
+              </Point>
+            </PointList>
+            <Text style={css('margin-top:20px;font-size:14px;')}>
+              The fee attaches to a delivered order and to nothing else, so none of the above ever
+              reaches a payout statement. There is no minimum, and no monthly floor to make up.
+            </Text>
+          </div>
         </div>
       </Wrap>
     </Band>
@@ -647,16 +548,18 @@ function RealShops({
             <Link
               key={b.id}
               to={`/boutique/${b.slug}`}
+              className="agx-sell-shop"
               style={css(
-                'display:flex;gap:16px;align-items:center;padding:20px;border-radius:0.75rem;text-decoration:none;' +
-                  `background:var(--ag-surface);border:1px solid var(--ag-border);box-shadow:${CARD_SHADOW};`,
+                'display:flex;gap:16px;align-items:center;padding:20px;text-decoration:none;' +
+                  'border-radius:var(--sell-r-panel);' +
+                  'background:var(--ag-surface);border:1px solid var(--ag-border);',
               )}
             >
               <BoutiqueLogo name={b.name} src={b.logo} size={48} radius={8} />
               <div style={css('min-width:0;')}>
                 <div
                   style={css(
-                    `font-family:${SERIF};font-weight:600;font-size:18px;line-height:1.3;color:var(--ag-ink);` +
+                    `font-family:${FACE};${HEADING_SM}font-size:17px;color:var(--ag-ink);` +
                       'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',
                   )}
                 >
@@ -673,10 +576,7 @@ function RealShops({
         </div>
 
         <div style={css('margin-top:32px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;')}>
-          <Link to="/boutiques" style={arrowLink}>
-            Browse every shop on MangaiMart
-            <Icon name="arrow_forward" style={css('font-size:20px;')} />
-          </Link>
+          <ArrowLink to="/boutiques">Browse every shop on MangaiMart</ArrowLink>
           <span style={css('font-size:14px;color:var(--ag-muted);')}>
             {products.length} live piece{products.length === 1 ? '' : 's'}
             {cities.size > 0 && ` across ${cities.size} cit${cities.size === 1 ? 'y' : 'ies'}`}
@@ -702,7 +602,7 @@ function Division() {
 
         <div className="agx-sell-two" style={css('margin-top:36px;align-items:start;')}>
           <div>
-            <h3 style={css(`font-family:${SERIF};font-weight:700;font-size:22px;margin:0;color:var(--ag-ink);`)}>
+            <h3 style={css(`font-family:${FACE};${SUBHEAD}margin:0;color:var(--ag-ink);`)}>
               Yours to decide
             </h3>
             <PointList>
@@ -717,7 +617,7 @@ function Division() {
           </div>
 
           <div>
-            <h3 style={css(`font-family:${SERIF};font-weight:700;font-size:22px;margin:0;color:var(--ag-ink);`)}>
+            <h3 style={css(`font-family:${FACE};${SUBHEAD}margin:0;color:var(--ag-ink);`)}>
               Ours to handle
             </h3>
             <PointList>
@@ -781,7 +681,7 @@ function SellerVoices() {
                   <strong style={css('color:var(--ag-ink);')}>{s.name}</strong>
                   {' · '}
                   {s.boutiqueSlug ? (
-                    <Link to={`/boutique/${s.boutiqueSlug}`} style={css('color:var(--ag-deep);')}>
+                    <Link to={`/boutique/${s.boutiqueSlug}`} className="agx-sell-link">
                       {s.shop}
                     </Link>
                   ) : (
@@ -818,25 +718,28 @@ function WhatYouNeed() {
           {WHAT_YOU_NEED.map((item) => (
             <li key={item.need}>
               <Card pad={32} style={css('display:flex;gap:24px;align-items:flex-start;')}>
-                {/* The one place a tinted icon circle earns its keep: this is a
-                    checklist, and the disc reads as a box to tick. */}
-                <div
+                {/* The glyph sits loose, not in a tinted disc. The disc was the
+                    old kit's one permitted exception and it is now on the
+                    forbidden list — it is the single most reliable tell that a
+                    section was assembled rather than designed. */}
+                <Icon
+                  name={item.icon}
                   style={css(
-                    'width:48px;height:48px;border-radius:9999px;background:var(--ag-surface-3);' +
-                      'display:flex;align-items:center;justify-content:center;flex:none;',
+                    "font-size:22px;color:var(--ag-ink);flex:none;margin-top:2px;" +
+                      "font-variation-settings:'wght' 200;",
                   )}
-                >
-                  <Icon name={item.icon} style={css('font-size:22px;color:var(--ag-deep);')} />
-                </div>
+                />
                 <div>
                   <div style={css('display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;')}>
-                    <h3 style={css(`${LABEL_LG}color:var(--ag-ink);margin:0;`)}>{item.need}</h3>
+                    <h3 style={css(`font-family:${FACE};${HEADING_SM}color:var(--ag-ink);margin:0;`)}>
+                      {item.need}
+                    </h3>
                     {!item.required && (
                       <span
                         style={css(
-                          'font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;' +
-                            'color:var(--ag-muted);background:var(--ag-surface-3);' +
-                            'padding:4px 8px;border-radius:0.25rem;',
+                          `${LABEL}font-size:10px;color:var(--ag-muted);` +
+                            'border:1px solid var(--ag-border);padding:3px 7px;' +
+                            'border-radius:var(--sell-r-control);',
                         )}
                       >
                         optional
