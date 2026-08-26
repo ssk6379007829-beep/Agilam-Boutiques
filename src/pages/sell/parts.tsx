@@ -2,62 +2,46 @@ import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { Icon } from '@/components/ui/Icon';
+import { AMOUNT, BODY, CONTROL, DISPLAY, FACE, HEADING_SM, LABEL, LINK, SUBHEAD } from './type';
 
 /**
- * The kit the five /sell pages are set in — the "Heritage Modern" system from
- * DESIGN.md, painted in our own tokens.
+ * The kit the five /sell pages are set in — "Paper and Crimson", generated from
+ * `docs/architecture/SELL_DESIGN_SYSTEM.md`. That file is the source of truth;
+ * if the two disagree, this one is what gets corrected.
  *
- * What was taken from that reference: the type scale and its Libre Caslon /
- * Manrope pairing, the 120px-desktop / 64px-mobile section rhythm, the 1280px
- * container, the small-radius shape language (large containers excepted), and
- * the very soft berry-tinted card shadow that does the work heavy elevation
- * used to.
+ * ── What this replaced ─────────────────────────────────────────────────────
+ * A "Heritage Modern" kit: berry on rose-cream, a Caslon display face, soft
+ * berry-tinted card shadows, arched photography, gold ornament. It was a good
+ * execution of a shop window, and /sell is not a shop window — it sells a
+ * business arrangement to someone deciding whether to trust us with her
+ * livelihood. So this is a counter and a ledger: paper, ink, ruled columns, and
+ * the only coloured thing on any page is the number she came to check.
  *
- * What was NOT taken: its palette. The reference ships its own berry ramp in
- * literal hex; this site uses `--ag-*` so /sell cannot drift from the
- * storefront, the seller console and the admin console — and so CLAUDE.md's
- * "never a literal hex" rule holds. Our `--ag-deep` is a near neighbour of its
- * `#6c0034` anyway.
+ * ── The two rules that hold it together ────────────────────────────────────
  *
- * Libre Caslon Text is added to the global font request in index.html. It costs
- * other pages only the extra bytes in the Google Fonts CSS: browsers fetch a
- * WOFF2 only when rendered text actually uses the family, and nothing outside
- * /sell does.
+ * 1. CRIMSON IS MONEY. It never touches a heading, a button, a border, a link
+ *    or an icon. It appears on amounts, and on the rule amounts sit behind.
+ *    This is why `AMOUNT` and `AMOUNT_XL` carry their own colour rather than
+ *    leaving it to the call site — a heading that reached for `AMOUNT` because
+ *    it wanted the width would take the crimson with it, and the palette's one
+ *    rule would erode in a month.
+ *
+ * 2. RULES, NOT SHADOWS. There is no elevation anywhere on this site. Five
+ *    rules with five distinct meanings do all the separating; see the table in
+ *    the design system. A sixth rule that means nothing is decoration, and
+ *    decoration does not belong in a system whose whole argument is precision.
+ *
+ * Colours are `--ag-*` as CLAUDE.md rule 4 requires. Their VALUES are redefined
+ * on `.agx-sell-light` in index.css, which is what lets /sell look nothing like
+ * the storefront without touching it, the seller console or the admin console.
  */
-
-/**
- * Headings. The reference's display face; Georgia is the metric-ish fallback.
- *
- * There is no monospace on this site. It had one — IBM Plex Mono, for every
- * figure and every small-caps label — and the reference sets both in Caslon and
- * Manrope instead. Losing it is most of the difference between the seller site
- * reading as a dashboard and reading as a printed prospectus.
- */
-export const SERIF = "'Libre Caslon Text',Georgia,'Times New Roman',serif";
-
-/* ── Shape and depth, from DESIGN.md ───────────────────────────────────────
-   "Tonal layering rather than heavy shadows": a white card on a cream ground,
-   a 1px border, and a berry-tinted shadow so soft it reads as warmth rather
-   than elevation. The tint is `--ag-shadow`, so it follows the palette instead
-   of being the hardcoded rgba(139,30,75,.04) the reference writes. */
-export const CARD_SHADOW = '0 4px 20px -4px var(--ag-shadow)';
-/** Large containers — the hero and the closing panel. */
-export const R_HERO = '2rem';
-/** Cards, panels, the rate table. */
-export const R_CARD = '0.75rem';
-/** Buttons, chips, inputs. Deliberately small: "architectural, not clinical". */
-export const R_CONTROL = '0.5rem';
 
 /* ── Structure ─────────────────────────────────────────────────────────────── */
 
 /**
- * A full-bleed horizontal band. `tone` decides the ground it sits on:
+ * A full-bleed horizontal band. `tone` decides the ground:
  *   page  — the paper itself, no fill (the default)
  *   panel — a quiet inset, for a section that should read as an aside
- *
- * There is deliberately no crimson tone here: the footer is already a crimson
- * gradient, so a full-bleed dark band collides with it. Use `DeepPanel`, which
- * keeps a margin of page around itself.
  */
 export function Band({
   tone = 'page',
@@ -74,11 +58,8 @@ export function Band({
   return (
     <section
       id={id}
-      style={{
-        // Full-bleed out of the centred column, the same way SiteFooter does it.
-        ...css(`width:100vw;margin-left:calc(50% - 50vw);${fill}`),
-        ...style,
-      }}
+      // Full-bleed out of the centred column, the same way SiteFooter does it.
+      style={{ ...css(`width:100vw;margin-left:calc(50% - 50vw);${fill}`), ...style }}
     >
       {children}
     </section>
@@ -86,42 +67,30 @@ export function Band({
 }
 
 /**
- * The crimson block — the hero and the closing call to action.
+ * The ink panel — the hero's ground and the closing call to action.
  *
- * A rounded panel inside the page rather than a full-bleed band, for a specific
- * reason: the site footer is a crimson gradient too, so a full-bleed deep band
- * at the foot of a page ran straight into it and the two restarted their
- * gradients against each other — a hard seam that reads as a rendering fault
- * rather than as two sections. A margin of page around it separates them.
+ * Ink, not crimson. On the old site this block was berry, which is exactly the
+ * habit the new palette exists to break: crimson on a panel this large would be
+ * the loudest thing on the page and it would not be a number. Ink gives the same
+ * weight with none of the meaning.
  *
- * The fill is `--ag-deep`, our own token, not the reference's `#6c0034`; see the
- * note at the top of this file.
+ * Flat, and squared off at 4px. No gradient — a gradient across a panel this
+ * large bands visibly on a cheap phone screen, and gradients are forbidden by
+ * the interaction thesis anyway.
  */
 export function DeepPanel({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (
     <div
       style={{
         ...css(
-          // Flat, not a gradient. The reference's hero is one solid primary
-          // block, and the flat field is most of why it reads as expensive —
-          // a gradient across a panel this large bands visibly on a cheap
-          // phone screen. The lit corner below does the depth instead.
-          'position:relative;overflow:hidden;background:var(--ag-deep);color:#fff;' +
-            `border-radius:${R_HERO};padding:clamp(32px,5.5vw,80px) clamp(24px,5vw,72px);`,
+          'position:relative;background:var(--ag-ink);color:var(--ag-bg);' +
+            'border-radius:var(--sell-r-panel);' +
+            'padding:clamp(28px,5vw,64px) clamp(20px,5vw,64px);',
         ),
         ...style,
       }}
     >
-      {/* The reference's one flourish: a soft radial lift in a corner at 10%
-          white. Decorative and pointer-transparent, so it never eats a tap. */}
-      <div
-        aria-hidden="true"
-        style={css(
-          'position:absolute;inset:0;opacity:.1;pointer-events:none;' +
-            'background-image:radial-gradient(circle at 100% 0%,#fff 0%,transparent 50%);',
-        )}
-      />
-      <div style={css('position:relative;')}>{children}</div>
+      {children}
     </div>
   );
 }
@@ -129,13 +98,10 @@ export function DeepPanel({ children, style }: { children: ReactNode; style?: CS
 /**
  * The reading column.
  *
- * 1280px and a 24px gutter (20px on a phone) are DESIGN.md's container and
- * margin. The vertical rhythm is its `section-gap`: 120px on desktop, 64px on
- * mobile — "intentional verticality", the gallery feel that keeps this from
- * looking like a marketplace listing page.
- *
- * `wide` is the full container; the default is the narrower measure for
- * sections that are mostly prose, because 1280px of running text is unreadable.
+ * 1180px wide, 940px for prose — 1180 of running text is unreadable. The
+ * vertical rhythm is `--sell-section`: 96px on desktop, 56px on a phone. The old
+ * kit ran 120px, which is a gallery; a ledger is ruled at a tighter, more
+ * consistent pitch.
  */
 export function Wrap({
   children,
@@ -150,8 +116,8 @@ export function Wrap({
     <div
       style={{
         ...css(
-          `max-width:${wide ? 1280 : 1000}px;margin:0 auto;` +
-            'padding:clamp(64px,9vw,120px) clamp(20px,3vw,24px);',
+          `max-width:${wide ? 1180 : 940}px;margin:0 auto;` +
+            'padding:var(--sell-section) clamp(20px,3vw,24px);',
         ),
         ...style,
       }}
@@ -161,35 +127,24 @@ export function Wrap({
   );
 }
 
-/* ── Type ───────────────────────────────────────────────────────────────────
-   The scale is DESIGN.md's, near enough verbatim. Where it gives one fixed
-   size for a role that has to survive a 360px phone as well as a 1280px
-   container, that becomes a `clamp()` between its mobile and desktop values
-   (display-lg-mobile 36px → display-lg 56px) rather than a size that overflows
-   on one of them.
+/* ── Type ──────────────────────────────────────────────────────────────────── */
 
-   `LABEL_SM` and `LABEL_LG` are its two label roles: Manrope, uppercase, wide
-   tracking for the small one; the button and nav face for the large. Between
-   them they replaced every use of the monospace this site used to have. */
-export const LABEL_SM = 'font-size:12px;font-weight:500;line-height:1.2;letter-spacing:.2em;text-transform:uppercase;';
-/** label-lg: the face for buttons, nav and the small headings inside cards. */
-export const LABEL_LG = 'font-size:14px;font-weight:600;line-height:1.2;letter-spacing:.05em;';
-
+/** A column head or an eyebrow. The condensed end of the width axis. */
 export function Eyebrow({ children, onDeep }: { children: ReactNode; onDeep?: boolean }) {
   return (
-    <div style={css(`${LABEL_SM}color:${onDeep ? 'var(--ag-gold-border)' : 'var(--ag-deep)'};`)}>
+    <div style={css(`${LABEL}color:${onDeep ? 'var(--ag-muted-soft)' : 'var(--ag-muted)'};`)}>
       {children}
     </div>
   );
 }
 
 /**
- * A section heading. `level` sets the tag so the document outline is real —
- * every page has exactly one `h1` and the rest are `h2`/`h3`.
+ * A heading. `level` sets the tag so the document outline is real — one `h1` per
+ * page, the rest `h2`/`h3`.
  *
- * Weights follow the reference: 700 only on display-lg, 600 on the headlines.
- * The negative tracking is likewise display-lg's alone — Caslon at 32px does
- * not want tightening.
+ * The three sizes are three roles from the type system, not three font-sizes:
+ * `lg` is DISPLAY (the page's own headline), `md` is SUBHEAD (a section opens),
+ * `sm` is HEADING_SM (a thing inside a block is named).
  */
 export function Display({
   children,
@@ -205,18 +160,13 @@ export function Display({
   style?: CSSProperties;
 }) {
   const Tag = (`h${level}` as unknown) as 'h2';
-  const scale =
-    size === 'lg'
-      ? 'font-size:clamp(36px,5vw,56px);line-height:1.1;letter-spacing:-.02em;font-weight:700;'
-      : size === 'md'
-      ? 'font-size:clamp(26px,3.2vw,32px);line-height:1.3;font-weight:600;'
-      : 'font-size:clamp(21px,2.2vw,24px);line-height:1.3;font-weight:600;';
+  const role = size === 'lg' ? DISPLAY : size === 'md' ? SUBHEAD : HEADING_SM;
   return (
     <Tag
       style={{
         ...css(
-          `font-family:${SERIF};${scale}` +
-            `color:${onDeep ? '#fff' : 'var(--ag-ink)'};margin:20px 0 0;text-wrap:balance;`,
+          `font-family:${FACE};${role}` +
+            `color:${onDeep ? 'var(--ag-bg)' : 'var(--ag-ink)'};margin:16px 0 0;text-wrap:balance;`,
         ),
         ...style,
       }}
@@ -226,7 +176,7 @@ export function Display({
   );
 }
 
-/** body-lg — the paragraph under a heading. Held to a comfortable measure. */
+/** The paragraph under a heading. Held to a comfortable measure. */
 export function Lede({
   children,
   onDeep,
@@ -240,8 +190,8 @@ export function Lede({
     <p
       style={{
         ...css(
-          `margin:24px 0 0;max-width:62ch;font-size:18px;line-height:1.6;` +
-            `color:${onDeep ? 'rgba(255,255,255,.86)' : 'var(--ag-ink-2)'};`,
+          `margin:20px 0 0;max-width:62ch;${BODY}font-size:17px;` +
+            `color:${onDeep ? 'rgba(245,242,235,.88)' : 'var(--ag-ink-2)'};`,
         ),
         ...style,
       }}
@@ -251,7 +201,7 @@ export function Lede({
   );
 }
 
-/** body-md — body copy inside a section. */
+/** Body copy inside a section. The only role at normal width and regular weight. */
 export function Text({
   children,
   onDeep,
@@ -265,8 +215,8 @@ export function Text({
     <p
       style={{
         ...css(
-          `margin:16px 0 0;max-width:66ch;font-size:16px;line-height:1.6;` +
-            `color:${onDeep ? 'rgba(255,255,255,.86)' : 'var(--ag-ink-2)'};`,
+          `margin:14px 0 0;max-width:66ch;${BODY}` +
+            `color:${onDeep ? 'rgba(245,242,235,.88)' : 'var(--ag-ink-2)'};`,
         ),
         ...style,
       }}
@@ -276,13 +226,13 @@ export function Text({
   );
 }
 
-/** A hairline. The seller site's only divider — no card shadows. */
+/** A hairline. One of the five rules — this is the plain one. */
 export function Rule({ onDeep, style }: { onDeep?: boolean; style?: CSSProperties }) {
   return (
     <div
       style={{
         ...css(
-          `height:1px;background:${onDeep ? 'rgba(255,255,255,.22)' : 'var(--ag-border)'};margin:34px 0;`,
+          `height:1px;background:${onDeep ? 'rgba(245,242,235,.22)' : 'var(--ag-border)'};margin:32px 0;`,
         ),
         ...style,
       }}
@@ -290,18 +240,31 @@ export function Rule({ onDeep, style }: { onDeep?: boolean; style?: CSSPropertie
   );
 }
 
+/**
+ * A link that closes a section — "…and here is the next page".
+ *
+ * Ink, not crimson. The affordance is the rule under it, which thickens on
+ * hover; the colour never moves. See `.agx-sell-link` in index.css.
+ */
+export function ArrowLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to} className="agx-sell-link" style={css(`${LINK}color:var(--ag-ink);`)}>
+      {children}
+      <Icon name="arrow_forward" style={css('font-size:19px;')} />
+    </Link>
+  );
+}
+
 /* ── Calls to action ───────────────────────────────────────────────────────── */
 
 /*
- * Buttons are label-lg on a small radius, generously padded (32px × 16px in the
- * reference). No gradient: the reference's primary is a flat fill, and next to
- * a flat hero a gradient button is the thing that looks cheap.
+ * Five states, and the hover is colour only — nothing scales and nothing lifts.
+ * 44px minimum height for the touch target, which the 13px padding reaches
+ * without inflating the shape past what a 2px radius wants.
+ *
+ * The states live in `.agx-sell-btn` in index.css rather than here, because an
+ * inline style cannot express `:hover`, `:focus-visible` or `:disabled`.
  */
-const ctaBase =
-  'display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:16px 32px;' +
-  `border-radius:${R_CONTROL};${LABEL_LG}text-decoration:none;white-space:nowrap;` +
-  'transition:background-color .2s,color .2s,border-color .2s;';
-
 export function PrimaryCta({
   to,
   children,
@@ -312,19 +275,9 @@ export function PrimaryCta({
   onDeep?: boolean;
 }) {
   return (
-    <Link
-      to={to}
-      // On the deep panel the primary inverts to white-on-berry, which is what
-      // makes it the loudest thing on a page that is already saturated.
-      style={css(
-        ctaBase +
-          (onDeep
-            ? 'background:#fff;color:var(--ag-deep);'
-            : `background:var(--ag-deep);color:#fff;box-shadow:${CARD_SHADOW};`),
-      )}
-    >
+    <Link to={to} className={`agx-sell-btn${onDeep ? ' on-ink' : ''}`} style={css(CONTROL)}>
       {children}
-      <Icon name="arrow_forward" style={css('font-size:20px;')} />
+      <Icon name="arrow_forward" style={css('font-size:18px;')} />
     </Link>
   );
 }
@@ -339,21 +292,13 @@ export function GhostCta({
   onDeep?: boolean;
 }) {
   return (
-    <Link
-      to={to}
-      style={css(
-        ctaBase +
-          (onDeep
-            ? 'border:1px solid rgba(255,255,255,.45);color:#fff;'
-            : 'border:1.5px solid var(--ag-deep);color:var(--ag-deep);background:transparent;'),
-      )}
-    >
+    <Link to={to} className={`agx-sell-btn ghost${onDeep ? ' on-ink' : ''}`} style={css(CONTROL)}>
       {children}
     </Link>
   );
 }
 
-/** The two buttons that close most sections. */
+/** The two buttons that close most sections. 8px apart minimum — see mobile spacing. */
 export function CtaPair({
   to,
   label,
@@ -368,7 +313,7 @@ export function CtaPair({
   onDeep?: boolean;
 }) {
   return (
-    <div style={css('display:flex;flex-wrap:wrap;gap:16px;margin-top:40px;')}>
+    <div style={css('display:flex;flex-wrap:wrap;gap:12px;margin-top:32px;')}>
       <PrimaryCta to={to} onDeep={onDeep}>
         {label}
       </PrimaryCta>
@@ -382,16 +327,17 @@ export function CtaPair({
 }
 
 /**
- * A white card on the cream ground — DESIGN.md's "Surface 1".
+ * A white block on the paper ground.
  *
- * Tonal layering, not elevation: a 1px border does the separating and the
- * shadow is only there to warm the edge. This is the one container shape the
- * whole site uses, so a page never accumulates four different card treatments.
+ * A 1px rule does the separating and there is no shadow at all — that is the
+ * single largest departure from the kit this replaced, which leaned on a soft
+ * berry-tinted elevation everywhere. On paper, elevation is a lie: nothing on a
+ * counter floats.
  */
 export function Card({
   children,
   style,
-  pad = 32,
+  pad = 28,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -401,8 +347,8 @@ export function Card({
     <div
       style={{
         ...css(
-          `background:var(--ag-surface);border:1px solid var(--ag-border);border-radius:${R_CARD};` +
-            `box-shadow:${CARD_SHADOW};padding:clamp(24px,3vw,${pad}px);`,
+          'background:var(--ag-surface);border:1px solid var(--ag-border);' +
+            `border-radius:var(--sell-r-panel);padding:clamp(20px,3vw,${pad}px);`,
         ),
         ...style,
       }}
@@ -412,52 +358,100 @@ export function Card({
   );
 }
 
-/* ── Small pieces ──────────────────────────────────────────────────────────── */
+/* ── The ledger block — the signature ──────────────────────────────────────── */
 
 /**
- * A figure and what it means. Used for facts we can stand behind (a rate, a
- * count of live shops) — never for a made-up milestone.
+ * The one structural device the site repeats.
+ *
+ * Figures never sit inline with prose: they live in a column of their own, ruled
+ * off in crimson, running the height of any block that carries money. It encodes
+ * something true — that the amounts are the part you check — rather than
+ * decorating a section break, which is the test every structural device on this
+ * site has to pass.
+ *
+ * `head` is the pair of column heads. Pass it whenever the block has more than
+ * two rows; a two-row block reads fine without one.
  */
-export function Figure({
-  value,
-  label,
-  onDeep,
+export function Ledger({
+  head,
+  children,
+  style,
 }: {
-  value: ReactNode;
-  label: string;
-  onDeep?: boolean;
+  head?: [ReactNode, ReactNode];
+  children: ReactNode;
+  style?: CSSProperties;
 }) {
   return (
-    <div style={css('display:flex;flex-direction:column;')}>
-      {/* headline-lg, in Caslon. The reference sets its figures in the display
-          face rather than a monospace, and that is most of why the trust bar
-          reads as a statement of terms instead of a dashboard. */}
-      <div
-        style={css(
-          `font-family:${SERIF};font-size:clamp(30px,3.4vw,40px);font-weight:600;line-height:1.2;` +
-            `color:${onDeep ? '#fff' : 'var(--ag-deep)'};margin-bottom:8px;`,
-        )}
-      >
-        {value}
-      </div>
-      <div
-        style={css(
-          `font-size:12px;font-weight:500;line-height:1.45;color:${onDeep ? 'rgba(255,255,255,.78)' : 'var(--ag-muted)'};`,
-        )}
-      >
-        {label}
-      </div>
+    <div className="agx-sell-ledger" style={style}>
+      {head && (
+        <div className="agx-sell-ledger-head">
+          <span style={css(`${LABEL}color:var(--ag-muted);`)}>{head[0]}</span>
+          <span style={css(`${LABEL}color:var(--ag-muted);`)}>{head[1]}</span>
+        </div>
+      )}
+      {children}
     </div>
   );
 }
 
 /**
+ * One line of a ledger: what it is on the left, what it costs on the right.
+ *
+ * `strong` is the total — it takes the ink rule above it and the largest amount
+ * the site sets. There is at most one per block, because a ledger with two
+ * totals is not a ledger.
+ */
+export function LedgerRow({
+  label,
+  value,
+  strong,
+  negative,
+  note,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  strong?: boolean;
+  negative?: boolean;
+  note?: string;
+}) {
+  return (
+    <div className={`agx-sell-ledger-row${strong ? ' total' : ''}`}>
+      <div>
+        <div
+          style={css(
+            `font-family:${FACE};${HEADING_SM}` +
+              `color:${negative ? 'var(--ag-muted)' : 'var(--ag-ink)'};`,
+          )}
+        >
+          {label}
+        </div>
+        {note && (
+          <div style={css(`margin-top:3px;${BODY}font-size:12.5px;color:var(--ag-muted);max-width:46ch;`)}>
+            {note}
+          </div>
+        )}
+      </div>
+      <div
+        style={css(
+          `font-family:${FACE};${AMOUNT}` +
+            (strong ? 'font-size:clamp(26px,6vw,32px);color:var(--ag-deep);' : '') +
+            (negative ? 'color:var(--ag-muted);' : ''),
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/* ── Small pieces ──────────────────────────────────────────────────────────── */
+
+/**
  * An icon-led point: thin-line glyph, a short heading, a sentence under it.
  *
- * DESIGN.md's "List Items" component, used for the where-your-fee-goes list and
- * anywhere else a run of five points would otherwise be five identical cards.
- * The icon sits loose on the page rather than inside a tinted circle — the
- * circle is what makes a section look like a template.
+ * The glyph sits loose on the page rather than inside a tinted circle — the
+ * circle is on the forbidden list, because it is the single most reliable tell
+ * that a section was assembled from a template rather than designed.
  */
 export function IconPoint({
   icon,
@@ -469,24 +463,28 @@ export function IconPoint({
   children: ReactNode;
 }) {
   return (
-    <div style={css('display:flex;gap:24px;align-items:flex-start;')}>
+    <div style={css('display:flex;gap:20px;align-items:flex-start;')}>
       <Icon
         name={icon}
-        // 'wght' 200 is the reference's thin-line stroke. Material Symbols is
-        // loaded as a variable font, so this costs no extra file.
-        style={css("font-size:24px;margin-top:2px;color:var(--ag-deep);flex:none;font-variation-settings:'wght' 200;")}
+        style={css(
+          "font-size:22px;margin-top:2px;color:var(--ag-ink);flex:none;font-variation-settings:'wght' 200;",
+        )}
       />
       <div>
-        <h3 style={css(`${LABEL_LG}color:var(--ag-ink);margin:0 0 8px;`)}>{title}</h3>
-        <p style={css('margin:0;font-size:16px;line-height:1.6;color:var(--ag-ink-2);max-width:56ch;')}>
-          {children}
-        </p>
+        <h3 style={css(`font-family:${FACE};${HEADING_SM}color:var(--ag-ink);margin:0 0 6px;`)}>
+          {title}
+        </h3>
+        <p style={css(`margin:0;${BODY}color:var(--ag-ink-2);max-width:56ch;`)}>{children}</p>
       </div>
     </div>
   );
 }
 
-/** One row of the "here is what happens" lists. Numbered, not bulleted. */
+/**
+ * One row of a "here is what happens" list. Numbered, and the numbering is
+ * earned: these are genuinely sequential — register, then list, then the order
+ * arrives, then you are paid. Order carries information the reader needs.
+ */
 export function Step({
   n,
   title,
@@ -499,27 +497,31 @@ export function Step({
   aside?: ReactNode;
 }) {
   return (
-    <li style={css('display:grid;grid-template-columns:auto 1fr;gap:24px;padding:32px 0;border-top:1px solid var(--ag-border);')}>
+    <li
+      style={css(
+        'display:grid;grid-template-columns:auto 1fr;gap:20px;padding:28px 0;' +
+          'border-top:1px solid var(--ag-border);',
+      )}
+    >
       <div
         style={css(
-          `font-family:${SERIF};font-size:24px;font-weight:600;line-height:1.3;color:var(--ag-deep);` +
-            'opacity:.4;min-width:34px;',
+          `font-family:${FACE};${LABEL}font-size:12px;color:var(--ag-muted);` +
+            'font-variant-numeric:tabular-nums;min-width:26px;padding-top:5px;',
         )}
       >
         {String(n).padStart(2, '0')}
       </div>
       <div>
-        <h3 style={css(`font-family:${SERIF};font-weight:600;font-size:24px;line-height:1.3;margin:0;color:var(--ag-ink);`)}>
-          {title}
-        </h3>
-        <div style={css('margin-top:12px;font-size:16px;line-height:1.6;color:var(--ag-ink-2);max-width:60ch;')}>
+        <h3 style={css(`font-family:${FACE};${SUBHEAD}margin:0;color:var(--ag-ink);`)}>{title}</h3>
+        <div style={css(`margin-top:10px;${BODY}color:var(--ag-ink-2);max-width:60ch;`)}>
           {children}
         </div>
         {aside && (
           <div
             style={css(
-              'margin-top:20px;padding:16px 20px;background:var(--ag-surface-2);' +
-                `border-radius:${R_CONTROL};font-size:14px;line-height:1.55;color:var(--ag-muted);max-width:58ch;`,
+              'margin-top:16px;padding:14px 16px;background:var(--ag-surface-2);' +
+                `border-left:1px solid var(--ag-border);${BODY}font-size:14px;` +
+                'color:var(--ag-muted);max-width:58ch;',
             )}
           >
             {aside}
@@ -541,17 +543,17 @@ export function Point({
   onDeep?: boolean;
 }) {
   return (
-    <li style={css('display:flex;gap:12px;align-items:flex-start;padding:10px 0;')}>
+    <li style={css('display:flex;gap:12px;align-items:flex-start;padding:9px 0;')}>
       <Icon
         name={icon}
         style={css(
-          `font-size:20px;margin-top:1px;flex:none;font-variation-settings:'wght' 200;` +
-            `color:${onDeep ? 'var(--ag-gold-border)' : 'var(--ag-deep)'};`,
+          `font-size:19px;margin-top:2px;flex:none;font-variation-settings:'wght' 200;` +
+            `color:${onDeep ? 'rgba(245,242,235,.7)' : 'var(--ag-muted)'};`,
         )}
       />
       <span
         style={css(
-          `font-size:16px;line-height:1.6;color:${onDeep ? 'rgba(255,255,255,.9)' : 'var(--ag-ink-2)'};`,
+          `${BODY}color:${onDeep ? 'rgba(245,242,235,.9)' : 'var(--ag-ink-2)'};`,
         )}
       >
         {children}
@@ -561,65 +563,7 @@ export function Point({
 }
 
 export function PointList({ children }: { children: ReactNode }) {
-  return <ul style={css('list-style:none;padding:0;margin:24px 0 0;')}>{children}</ul>;
-}
-
-/**
- * A money line: label on the left, figure on the right.
- *
- * Set the way the reference sets its worked example — the label in Manrope, the
- * amount in Caslon at headline size, and a dashed rule under the deduction so
- * the eye reads it as a subtotal. This is the one place the seller site looks
- * like a bill, because that is exactly what it is showing.
- */
-export function LedgerRow({
-  label,
-  value,
-  strong,
-  negative,
-  note,
-}: {
-  label: ReactNode;
-  value: ReactNode;
-  strong?: boolean;
-  negative?: boolean;
-  note?: string;
-}) {
-  return (
-    <div
-      style={css(
-        `padding:20px 0;${strong ? '' : `border-bottom:1px ${negative ? 'dashed' : 'solid'} var(--ag-border);`}`,
-      )}
-    >
-      <div style={css('display:flex;align-items:flex-start;justify-content:space-between;gap:24px;')}>
-        <div>
-          <span
-            style={css(
-              strong
-                ? `font-family:${SERIF};font-size:24px;font-weight:600;line-height:1.3;color:var(--ag-deep);`
-                : `${LABEL_LG}color:${negative ? 'var(--ag-muted)' : 'var(--ag-ink)'};`,
-            )}
-          >
-            {label}
-          </span>
-          {note && (
-            <div style={css('margin-top:6px;font-size:12px;font-weight:500;line-height:1.45;color:var(--ag-muted);max-width:44ch;')}>
-              {note}
-            </div>
-          )}
-        </div>
-        <span
-          style={css(
-            `font-family:${SERIF};font-weight:600;white-space:nowrap;line-height:1.3;` +
-              `font-size:${strong ? '32px' : '24px'};` +
-              `color:${negative ? 'var(--ag-muted)' : strong ? 'var(--ag-deep)' : 'var(--ag-ink)'};`,
-          )}
-        >
-          {value}
-        </span>
-      </div>
-    </div>
-  );
+  return <ul style={css('list-style:none;padding:0;margin:18px 0 0;')}>{children}</ul>;
 }
 
 /** A short quoted line set large. Used for the seller's own words, never ours. */
@@ -631,16 +575,15 @@ export function PullQuote({
   attribution: ReactNode;
 }) {
   return (
-    <figure style={css('margin:0;')}>
+    <figure style={css('margin:0;padding-left:20px;border-left:1px solid var(--ag-border);')}>
       <blockquote
         style={css(
-          `margin:0;font-family:${SERIF};font-size:clamp(21px,2.4vw,24px);line-height:1.4;` +
-            'color:var(--ag-ink);text-wrap:pretty;',
+          `margin:0;font-family:${FACE};${SUBHEAD}color:var(--ag-ink);text-wrap:pretty;`,
         )}
       >
         “{children}”
       </blockquote>
-      <figcaption style={css('margin-top:20px;font-size:12px;font-weight:500;line-height:1.45;color:var(--ag-muted);')}>
+      <figcaption style={css(`margin-top:16px;${LABEL}color:var(--ag-muted);`)}>
         {attribution}
       </figcaption>
     </figure>

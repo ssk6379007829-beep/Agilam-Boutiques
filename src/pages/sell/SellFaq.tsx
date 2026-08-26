@@ -4,7 +4,8 @@ import { usePageMeta } from '@/lib/pageMeta';
 import { graph, organizationSchema, breadcrumbSchema, faqSchema } from '@/lib/schema';
 import { COMPANY, CONTACT_LINKS } from '@/data/company';
 import { Icon } from '@/components/ui/Icon';
-import { Band, Card, CtaPair, Display, Eyebrow, LABEL_SM, Lede, SERIF, Text, Wrap } from './parts';
+import { Band, Card, CtaPair, Display, Eyebrow, Lede, Text, Wrap } from './parts';
+import { FACE, HEADING_SM, LABEL, SUBHEAD } from './type';
 import { ALL_FAQS, FAQ_GROUPS, START_SELLING } from './sellContent';
 import { useSellerTerms } from './useSellerTerms';
 
@@ -70,8 +71,8 @@ export function SellFaq() {
                 >
                   <h2
                     style={css(
-                      `${LABEL_SM}` +
-                        'color:var(--ag-crimson);margin:0 0 6px;',
+                      `${LABEL}` +
+                        'color:var(--ag-muted);margin:0 0 6px;',
                     )}
                   >
                     {group.title}
@@ -80,7 +81,7 @@ export function SellFaq() {
                     <div key={item.q} style={css('padding:22px 0;border-top:1px solid var(--ag-border);')}>
                       <h3
                         style={css(
-                          `font-family:${SERIF};font-weight:700;font-size:20px;line-height:1.3;margin:0;color:var(--ag-ink);`,
+                          `font-family:${FACE};${SUBHEAD}margin:0;color:var(--ag-ink);`,
                         )}
                       >
                         {item.q}
@@ -99,7 +100,7 @@ export function SellFaq() {
               <Card pad={24}>
                 <div
                   style={css(
-                    `${LABEL_SM}color:var(--ag-muted);`,
+                    `${LABEL}color:var(--ag-muted);`,
                   )}
                 >
                   On this page
@@ -118,7 +119,7 @@ export function SellFaq() {
 
                 <div style={css('height:1px;background:var(--ag-border);margin:20px 0;')} />
 
-                <div style={css(`font-family:${SERIF};font-size:17px;font-weight:700;color:var(--ag-ink);`)}>
+                <div style={css(`font-family:${FACE};${HEADING_SM}color:var(--ag-ink);`)}>
                   Not answered here?
                 </div>
                 <p style={css('margin:8px 0 0;font-size:13.5px;line-height:1.6;color:var(--ag-muted);')}>
@@ -126,15 +127,15 @@ export function SellFaq() {
                 </p>
                 <div style={css('display:flex;flex-direction:column;gap:10px;margin-top:14px;')}>
                   <a href={CONTACT_LINKS.call} style={contactRow}>
-                    <Icon name="call" style={css('font-size:18px;color:var(--ag-crimson);')} />
+                    <Icon name="call" style={css('font-size:18px;color:var(--ag-ink);')} />
                     {COMPANY.phone}
                   </a>
                   <a href={CONTACT_LINKS.whatsapp} target="_blank" rel="noreferrer" style={contactRow}>
-                    <Icon name="chat" style={css('font-size:18px;color:var(--ag-crimson);')} />
+                    <Icon name="chat" style={css('font-size:18px;color:var(--ag-ink);')} />
                     WhatsApp us
                   </a>
                   <a href={CONTACT_LINKS.mail} style={contactRow}>
-                    <Icon name="mail" style={css('font-size:18px;color:var(--ag-crimson);')} />
+                    <Icon name="mail" style={css('font-size:18px;color:var(--ag-ink);')} />
                     {COMPANY.email}
                   </a>
                 </div>

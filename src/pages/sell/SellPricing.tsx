@@ -4,20 +4,19 @@ import { graph, organizationSchema, breadcrumbSchema } from '@/lib/schema';
 import { fmtInr } from '@/lib/tokens';
 import {
   Band,
+  Card,
   CtaPair,
   Display,
   Eyebrow,
-  LedgerRow,
   Lede,
-  Card,
-  LABEL_SM,
+  LedgerRow,
   Point,
   PointList,
   Rule,
-  SERIF,
   Text,
   Wrap,
 } from './parts';
+import { AMOUNT, FACE, HEADING_SM, LABEL } from './type';
 import { START_SELLING } from './sellContent';
 import { useSellerTerms } from './useSellerTerms';
 
@@ -113,7 +112,7 @@ export function SellPricing() {
             </div>
 
             <Card>
-              <div style={css(`${LABEL_SM}color:var(--ag-muted);`)}>Worked out</div>
+              <div style={css(`${LABEL}color:var(--ag-muted);`)}>Worked out</div>
               <div style={css('margin-top:8px;font-size:14px;line-height:1.6;color:var(--ag-muted);')}>
                 What reaches your bank on three ordinary orders. No small print under it.
               </div>
@@ -122,7 +121,7 @@ export function SellPricing() {
                 <div key={price} style={css('margin-top:32px;')}>
                   <div
                     style={css(
-                      `font-family:${SERIF};font-size:24px;font-weight:600;line-height:1.3;color:var(--ag-ink);` +
+                      `font-family:${FACE};${AMOUNT}` +
                         'padding-bottom:8px;border-bottom:1px solid var(--ag-border);',
                     )}
                   >
@@ -238,14 +237,14 @@ export function SellPricing() {
 
 function FreeCard({ title, items }: { title: string; items: string[] }) {
   return (
-    <div style={css('border-top:2px solid var(--ag-crimson);padding-top:18px;')}>
-      <h3 style={css(`font-family:${SERIF};font-weight:700;font-size:19px;margin:0;color:var(--ag-ink);`)}>{title}</h3>
+    <div style={css('border-top:1px solid var(--ag-ink);padding-top:18px;')}>
+      <h3 style={css(`font-family:${FACE};${HEADING_SM}margin:0;color:var(--ag-ink);`)}>{title}</h3>
       <ul style={css('list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:9px;')}>
         {items.map((i) => (
           <li key={i} style={css('display:flex;align-items:baseline;gap:9px;font-size:14.5px;color:var(--ag-ink-2);')}>
             <span
               style={css(
-                `font-family:${SERIF};font-size:16px;font-weight:600;color:var(--ag-good-text);flex:none;`,
+                `font-family:${FACE};${HEADING_SM}color:var(--ag-ink);flex:none;`,
               )}
             >
               ₹0
@@ -280,7 +279,10 @@ function AdRates({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
           the number of days, pay for them up front, and the slot runs.
         </Lede>
 
-        <div className="agx-sell-table-scroll" style={css('margin-top:40px;border:1px solid var(--ag-border);border-radius:0.75rem;background:var(--ag-surface);overflow:hidden;')}>
+        <div className="agx-sell-table-scroll" style={css(
+          'margin-top:40px;border:1px solid var(--ag-border);' +
+            'border-radius:var(--sell-r-panel);background:var(--ag-surface);overflow:hidden;',
+        )}>
           <table className="agx-sell-table">
             <thead>
               <tr>
@@ -294,7 +296,7 @@ function AdRates({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
                 <tr key={p.code}>
                   <td style={css('font-weight:700;color:var(--ag-ink);')}>{p.name}</td>
                   <td style={css('color:var(--ag-ink-2);')}>{p.description || '—'}</td>
-                  <td style={css(`font-family:${SERIF};font-size:18px;font-weight:600;color:var(--ag-deep);white-space:nowrap;`)}>
+                  <td style={css(`font-family:${FACE};${AMOUNT}font-size:19px;`)}>
                     {fmtInr(p.daily_rate)}
                   </td>
                 </tr>

@@ -695,6 +695,150 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
 }
 
 /* ------------------------------------------------------------------
+   Admin console motion layer.
+
+   The console is inline-styled, and an inline style can express a resting
+   state but never :hover, :active or :focus-visible — which is why 412 lines
+   of shared kit shipped with exactly one transition in them. These classes are
+   the missing half: kit.tsx and AdminLayout attach them, the declarations live
+   here. Same split .agx-lift and .agx-field already use.
+
+   Tuned deliberately subliminal. An operator lives in these 29 pages for
+   hours, so the motion answers one question — is this interactive, and did my
+   click land? — and then gets out of the way. Nothing bounces, nothing
+   overshoots, and hover never moves an element: transform is reserved for the
+   press, which is a deliberate act worth acknowledging.
+
+   `!important` appears only where the same property is also written inline and
+   would otherwise win the cascade outright (.agx-search-row does the same).
+
+   Reduced motion needs nothing here — the global rule further down this file
+   zeroes every duration app-wide, so this layer inherits that kill switch.
+   ------------------------------------------------------------------ */
+:root {
+  --adm-ease-out:  cubic-bezier(0, 0, .58, 1);   /* arrive */
+  --adm-ease-snap: cubic-bezier(.2, 0, 0, 1);    /* panels */
+  --adm-ease-in:   cubic-bezier(.42, 0, 1, 1);   /* leave  */
+  --adm-t-hover:   120ms;   /* hover, colour only       */
+  --adm-t-press:    90ms;   /* the only transform       */
+  --adm-t-in:      200ms;   /* dialog, bulk bar         */
+  --adm-t-panel:   240ms;   /* drawer                   */
+  --adm-t-out:     150ms;   /* every exit               */
+  --adm-t-oneshot: 400ms;   /* stat bars, once per load */
+}
+
+/* 01 — hover: background and text colour cross-fade, nothing moves. */
+.agx-adm-nav, .agx-adm-tab, .agx-adm-btn, .agx-adm-ibtn, .agx-adm-pager, .agx-adm-row {
+  transition: background-color var(--adm-t-hover) var(--adm-ease-out),
+              color            var(--adm-t-hover) var(--adm-ease-out),
+              border-color     var(--adm-t-hover) var(--adm-ease-out),
+              transform        var(--adm-t-press) var(--adm-ease-out);
+}
+/* `data-on="false"` keeps the hover off the row that is already selected — its
+   inline background IS the selected state, and repainting it on hover would
+   read as deselection. */
+.agx-adm-nav[data-on="false"]:hover { background: var(--ag-surface) !important; color: var(--ag-crimson) !important; }
+.agx-adm-tab[data-on="false"]:hover { background: var(--ag-surface-2) !important; color: var(--ag-crimson) !important; border-color: var(--ag-crimson) !important; }
+.agx-adm-row[data-clickable="true"]:hover { background: var(--ag-surface-2); }
+.agx-adm-btn[data-tone="default"]:hover,
+.agx-adm-pager:not(:disabled):hover { background: var(--ag-surface-2) !important; color: var(--ag-crimson) !important; border-color: var(--ag-crimson) !important; }
+.agx-adm-btn[data-tone="danger"]:hover  { background: var(--ag-bad-bg) !important; border-color: var(--ag-danger-text) !important; }
+.agx-adm-ibtn[data-tone="default"]:hover { background: var(--ag-surface-2) !important; border-color: var(--ag-crimson) !important; }
+.agx-adm-ibtn[data-tone="danger"]:hover  { background: var(--ag-bad-bg) !important; }
+/* The filled tones are gradients and solid brand fills — a background swap
+   would fight them, so they lift by luminance instead. */
+.agx-adm-btn[data-tone="primary"]:hover,
+.agx-adm-ibtn[data-tone="success"]:hover,
+.agx-adm-ibtn[data-tone="warn"]:hover { filter: brightness(1.06); }
+.agx-adm-btn:disabled:hover, .agx-adm-ibtn:disabled:hover { filter: none; }
+
+/* 02 — press: the only transform in the console. */
+.agx-adm-nav:active, .agx-adm-tab:active,
+.agx-adm-btn:not(:disabled):active,
+.agx-adm-pager:not(:disabled):active { transform: translateY(1px); }
+.agx-adm-ibtn:not(:disabled):active  { transform: scale(.94); }
+
+/* 03 — focus: instant, because an indicator that fades in is briefly invisible.
+   :focus-visible keeps the ring off mouse clicks and on for keyboard users. */
+.agx-adm-nav:focus-visible, .agx-adm-tab:focus-visible, .agx-adm-btn:focus-visible,
+.agx-adm-ibtn:focus-visible, .agx-adm-pager:focus-visible, .agx-adm-knob:focus-visible {
+  outline: 2px solid var(--ag-crimson);
+  outline-offset: 2px;
+}
+
+/* 04 — overlays: staged arrival, quicker opacity-first exit. The exit is what
+   `useDismiss` in kit.tsx holds the element mounted for. */
+.agx-adm-scrim { opacity: 0; transition: opacity var(--adm-t-out) var(--adm-ease-in); }
+.agx-adm-scrim[data-open="true"] { opacity: 1; transition: opacity 180ms var(--adm-ease-out); }
+/* Stop a closing scrim from swallowing clicks for its last 150ms. */
+.agx-adm-scrim[data-open="false"] { pointer-events: none; }
+
+.agx-adm-drawer {
+  transform: translateX(100%); opacity: 0;
+  transition: transform var(--adm-t-out) var(--adm-ease-in), opacity var(--adm-t-out) var(--adm-ease-in);
+}
+.agx-adm-drawer[data-open="true"] {
+  transform: translateX(0); opacity: 1;
+  transition: transform var(--adm-t-panel) var(--adm-ease-snap), opacity var(--adm-t-panel) var(--adm-ease-snap);
+}
+/* Never scale(0) — .96 keeps the dialog a real object arriving, not one
+   emerging from a black hole. */
+.agx-adm-dialog {
+  transform: scale(.96); opacity: 0;
+  transition: transform var(--adm-t-out) var(--adm-ease-in), opacity var(--adm-t-out) var(--adm-ease-in);
+}
+.agx-adm-dialog[data-open="true"] {
+  transform: scale(1); opacity: 1;
+  transition: transform var(--adm-t-in) var(--adm-ease-snap), opacity var(--adm-t-in) var(--adm-ease-snap);
+}
+.agx-adm-bulk {
+  transform: translateY(-8px); opacity: 0; pointer-events: none;
+  transition: transform var(--adm-t-out) var(--adm-ease-in), opacity var(--adm-t-out) var(--adm-ease-in);
+}
+.agx-adm-bulk[data-open="true"] {
+  transform: translateY(0); opacity: 1; pointer-events: auto;
+  transition: transform var(--adm-t-in) var(--adm-ease-snap), opacity var(--adm-t-in) var(--adm-ease-snap);
+}
+
+/* 05 — stat bars: the one place expressive motion is allowed, because it plays
+   once per page load rather than on every interaction. scaleY, not height —
+   growing by height would force a layout pass on every frame. */
+.agx-adm-bar { transform: scaleY(0); transform-origin: bottom; animation: agx-adm-bar var(--adm-t-oneshot) var(--adm-ease-out) forwards; }
+@keyframes agx-adm-bar { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+/* The global reduced-motion rule below zeroes every duration but not the
+   delays, which would leave the bars cascading in over 270ms before snapping.
+   A stylesheet !important beats the inline animation-delay the component sets. */
+@media (prefers-reduced-motion: reduce) {
+  .agx-adm-bar { animation-delay: 0ms !important; }
+}
+
+/* 06 — toggle: the knob travels 21px (50px track − 2×3px padding − 23px knob).
+   It used to move by switching justify-content, which is not animatable, under
+   an unscoped `transition:.15s` — so it snapped. */
+.agx-adm-knob { transition: background-color 160ms var(--adm-ease-snap); }
+.agx-adm-knob > span { transform: translateX(0); transition: transform 160ms var(--adm-ease-snap); }
+.agx-adm-knob[data-on="true"] > span { transform: translateX(21px); }
+
+/* The two round header controls (theme, avatar) sit on their own inline fills,
+   so the generic button rules would repaint them with the colour they already
+   have. They get their own hover instead. */
+.agx-adm-hbtn {
+  transition: background-color var(--adm-t-hover) var(--adm-ease-out),
+              filter           var(--adm-t-hover) var(--adm-ease-out),
+              transform        var(--adm-t-press) var(--adm-ease-out);
+}
+.agx-adm-hbtn:not([data-fill="true"]):hover { background: var(--ag-surface-3) !important; }
+.agx-adm-hbtn[data-fill="true"]:hover { filter: brightness(1.08); }
+.agx-adm-hbtn:active { transform: scale(.94); }
+.agx-adm-hbtn:focus-visible { outline: 2px solid var(--ag-crimson); outline-offset: 2px; }
+
+/* 07 — route change: a fade, no slide. The sidebar is a flat list of twenty
+   destinations with no spatial hierarchy, so a direction would be inventing a
+   relationship that is not there. Only the pane that changed moves. */
+.agx-adm-route { animation: agx-adm-route 180ms var(--adm-ease-out); }
+@keyframes agx-adm-route { from { opacity: 0; } to { opacity: 1; } }
+
+/* ------------------------------------------------------------------
    Admin → WhatsApp message log: a two-pane inbox.
 
    Wide screens put the thread list beside the conversation so you keep your
@@ -1056,38 +1200,101 @@ span[style*="Material Symbols Outlined"] {
   /* Native form controls, scrollbars and the like follow this, not our vars. */
   color-scheme: light;
 
-  --ag-bg: #FBF6F2;
-  --ag-surface: #FFFFFF;
-  --ag-surface-2: #FDEEF4;
-  --ag-surface-3: #F2E4EA;
-  --ag-border: #F0D8E2;
-  --ag-border-soft: #EFDCE4;
-  --ag-ink: #241019;
-  --ag-ink-2: #4B3840;
-  --ag-ink-3: #6B4A56;
-  --ag-muted: #775D66;
-  --ag-muted-soft: #836B74;
-  --ag-label: #6B5560;
-  --ag-crimson: #B02454;
-  --ag-deep: #8E1C44;
-  --ag-purple: #9B7FC7; --ag-purple-bg: #F3ECFA; --ag-purple-text: #6E4E93;
-  --ag-frost: rgba(251,246,242,.88);
+  /* ── Paper and Crimson ──────────────────────────────────────────────────
+     The /sell design system, generated from docs/architecture/SELL_DESIGN_SYSTEM.md.
+     That file is the source of truth; if the two disagree, this block is what
+     gets corrected.
+
+     These are the same TOKEN NAMES the rest of the app uses, with different
+     VALUES. That is the whole trick, and it is what makes a separate visual
+     identity safe: components keep saying `var(--ag-deep)`, so CLAUDE.md rule 4
+     holds, and because custom properties inherit and a declaration on a
+     descendant beats one inherited from :root, nothing outside the /sell
+     subtree ever sees any of it.
+
+     The set covers exactly what `:root[data-theme="dark"]` overrides. If a token
+     is added to that dark block, add it here too, or it will be the one thing on
+     /sell that goes dark.
+
+     The neutrals are warm on purpose - the ink is brown-black, not pure black,
+     and the paper is yellow-warm, not grey. A pure neutral here reads as a
+     fintech dashboard, which is the failure mode this palette sits closest to. */
+
+  --ag-bg: #F5F2EB;          /* paper - the ground */
+  --ag-surface: #FFFFFF;     /* the bill - cards, panels */
+  --ag-surface-2: #FCFAF6;   /* quiet inset - asides, the total row */
+  --ag-surface-3: #F0ECE3;   /* deeper chip / rail */
+  --ag-border: #DDD6CB;      /* rule - hairline, never load-bearing alone */
+  --ag-border-soft: #EDE8DF; /* row rule, inside a block */
+  --ag-ink: #1A1614;         /* primary text - 16.1:1 on paper */
+  --ag-ink-2: #4A423D;       /* body copy - 8.8:1 */
+  --ag-ink-3: #5C534D;       /* secondary */
+  --ag-muted: #6E655E;       /* captions, labels - 5.1:1 */
+  --ag-muted-soft: #7C736C;  /* softest text / placeholders */
+  --ag-label: #6E655E;
+
+  /* The two that carry the whole discipline. Crimson never touches a heading, a
+     button, a border, a link or an icon - only money, and the rule money sits
+     behind. --ag-deep is reserved harder still: the largest amount, and nothing
+     else. Both are MangaiMart's own crimsons, unchanged - it is the one thread
+     back to the storefront. */
+  --ag-crimson: #B02454;     /* money - 5.8:1 on paper */
+  --ag-deep: #8E1C44;        /* the total - 7.8:1 on paper */
+
+  --ag-purple: #6E655E; --ag-purple-bg: #F0ECE3; --ag-purple-text: #4A423D;
+  --ag-frost: rgba(245,242,235,.88);
   --ag-frost-strong: rgba(255,255,255,.94);
-  --ag-frost-border: #EFDCE4;
-  --ag-shadow: rgba(107,20,54,.55);
-  --ag-cover-fade: rgba(251,246,242,.55);
-  --ag-shimmer-1: #F1E5EC;
-  --ag-shimmer-2: #F9F0F4;
-  --ag-unread: #FFF3F8;
-  --ag-good: #2FA36B; --ag-good-bg: #E5F3EC; --ag-good-text: #1D7A4D;
-  --ag-wa-out-bg: #FCDDE9; --ag-wa-out-border: #F4C2D6;
-  --ag-star: #AD7D08;
-  --ag-warn-bg: #FBF0DA; --ag-warn-text: #8A6420;
-  --ag-bad-bg: #FBE3E3; --ag-bad-text: #C0392B;
-  --ag-info-bg: #E6F0FA; --ag-info-text: #3A6EA5;
-  --ag-gold: #C99A3F; --ag-gold-text: #8A6420; --ag-gold-bg: #FFF8E8; --ag-gold-border: #F0DCB4;
-  --ag-danger-text: #AD2439;
+  --ag-frost-border: #DDD6CB;
+
+  /* No shadows anywhere on this site - separation is done with rules, the way a
+     ledger does it. The token stays defined because shared components read it;
+     it is near-transparent so that anything still reaching for it paints
+     nothing rather than painting a berry shadow onto paper. */
+  --ag-shadow: rgba(26,22,20,.05);
+
+  --ag-cover-fade: rgba(245,242,235,.55);
+  --ag-shimmer-1: #EDE8DF;
+  --ag-shimmer-2: #F5F2EB;
+  --ag-unread: #FCFAF6;
+
+  /* Semantic colour is suppressed almost to nothing: /sell is read, not
+     operated, so it has no state to report. The survivors are for form feedback
+     only, and neither is crimson, so neither can be mistaken for money. */
+  --ag-good: #2F6B4A; --ag-good-bg: #E8F0EA; --ag-good-text: #2F6B4A;
+  --ag-wa-out-bg: #F0ECE3; --ag-wa-out-border: #DDD6CB;
+  --ag-star: #8A6420;
+  --ag-warn-bg: #F6EEDD; --ag-warn-text: #7A5A1E;
+  --ag-bad-bg: #F6E7E1; --ag-bad-text: #9A3A22;
+  --ag-info-bg: #E9EDF0; --ag-info-text: #46555F;
+  --ag-gold: #8A6420; --ag-gold-text: #8A6420; --ag-gold-bg: #F6EEDD; --ag-gold-border: #E0D6C0;
+  --ag-danger-text: #9A3A22;
+
+  /* ── Shape ──────────────────────────────────────────────────────────────
+     2px is the corner of a stamped form, not of a card UI. Zero radius plus
+     hairline rules is a look AI design collapses into; 2px with ledger rules is
+     not the same thing, and the difference is visible. */
+  --sell-r-control: 2px;
+  --sell-r-panel: 4px;
+
+  /* ── Motion ─────────────────────────────────────────────────────────────
+     One curve: off the mark hard, then a long settle, no overshoot - the value
+     never passes the number and comes back. 180ms is a ceiling, not a
+     suggestion. Nothing on this site is slower except the reckoning's settle,
+     which runs once on load and is the only animation here at all. */
+  --sell-t-fast: 120ms;
+  --sell-t-base: 160ms;
+  --sell-t-max: 180ms;
+  --sell-ease: cubic-bezier(.2, 0, 0, 1);
+  --sell-t-settle: 520ms;
+
+  /* ── Rhythm ─────────────────────────────────────────────────────────────
+     A ledger is ruled at a consistent pitch. The old site ran a 120px section
+     gap, which is a gallery - a different building. */
+  --sell-row: 56px;
+  --sell-section: clamp(56px, 7vw, 96px);
 }
+
+@media (max-width: 600px) { .agx-sell-light { --sell-row: 48px; } }
 
 /* The wordmark knock-out is keyed to the dark THEME, not to the ground it sits
    on — and inside /sell the header is cream in either theme, so a dark-mode
@@ -1110,69 +1317,176 @@ span[style*="Material Symbols Outlined"] {
   .agx-sell-rail { display: flex !important; }
 }
 
-/* The hero: copy and portrait at about half each, and the portrait is dropped
-   entirely below 1024px. That is the reference's own breakpoint and it is the
-   right one — a portrait stacked above the headline on a phone pushes the offer
-   and the button below the fold, which is the only thing this page has to get
-   right. `HeroArt` also removes itself if the photo file is missing, and the
-   single-column rule below is what it falls back to. */
-.agx-sell-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 48px; align-items: center; }
-@media (min-width: 1024px) { .agx-sell-hero { grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr); gap: clamp(40px, 4.5vw, 72px); } }
-.agx-sell-hero-art { display: none; }
-/* Padding-right leaves room for the badge, which hangs off the arch's edge. */
-@media (min-width: 1024px) { .agx-sell-hero-art { display: block; padding: 14px 26px 14px 14px; } }
-/* The arch is 4:5, so an uncapped column on a 1600px screen makes it 700px tall
-   and pushes the button and the terms strip under the fold — which is the one
-   thing this screen has to get right. Capped, and pushed to the outside edge. */
-.agx-sell-hero-arch { max-width: 430px; margin-left: auto; }
+/* ── The seller site's components ───────────────────────────────────────────
+   States, structure and the one animation. These live here rather than inline
+   because `:hover`, `:focus-visible` and `:disabled` cannot be expressed in a
+   style attribute, and because the ledger block needs a media query.
 
-/* The floating trust card, overlapping the foot of the arch. Translucent over
-   the berry rather than a solid chip: a solid card here reads as a UI element
-   dropped on a photograph, which is exactly what the arch is there to avoid. */
-.agx-sell-hero-badge {
-  position: absolute; right: -18px; bottom: 44px; z-index: 1;
-  max-width: 236px; display: flex; gap: 12px; align-items: flex-start;
-  padding: 14px 16px; border-radius: 0.75rem;
-  background: rgba(92, 19, 48, .82); border: 1px solid rgba(255, 255, 255, .22);
-  box-shadow: 0 22px 44px -26px rgba(0, 0, 0, .7);
-}
-@supports (backdrop-filter: blur(10px)) {
-  .agx-sell-hero-badge { background: rgba(255, 255, 255, .13); backdrop-filter: blur(10px); }
-}
+   Generated from docs/architecture/SELL_DESIGN_SYSTEM.md. Every value below is
+   a token from that document; nothing here is invented at the call site.
 
-/* The reach motif behind the portrait. Decorative, so it is pinned to the right
-   half and simply not painted at all on a phone, where the berry field is
-   mostly type and the arcs would only crowd it. */
-.agx-sell-hero-motif { display: none; }
-@media (min-width: 1024px) {
-  .agx-sell-hero-motif {
-    display: block; position: absolute; right: 30%; top: 6%;
-    width: min(46vw, 620px); height: auto; opacity: .85;
-  }
+   The selvedge that used to sit under the header is gone. It was the previous
+   identity's single permitted ornament, and this thesis has no ornament budget
+   at all — separation is done by rules that mean something. */
+
+/* Buttons. Five states, and hover is colour only: nothing scales, nothing
+   lifts. 44px minimum height for the touch target (WCAG 2.5.5), which the 13px
+   padding reaches without inflating the shape past what a 2px radius wants. */
+.agx-sell-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 13px 26px;
+  border-radius: var(--sell-r-control);
+  border: 1px solid var(--ag-ink);
+  background: var(--ag-ink); color: var(--ag-bg);
+  text-decoration: none; white-space: nowrap; cursor: pointer;
+  transition: background-color var(--sell-t-base) var(--sell-ease),
+              color var(--sell-t-base) var(--sell-ease),
+              border-color var(--sell-t-base) var(--sell-ease);
+}
+.agx-sell-btn:hover { background: var(--ag-deep); border-color: var(--ag-deep); }
+.agx-sell-btn:active { background: var(--ag-ink); border-color: var(--ag-ink); }
+.agx-sell-btn:focus-visible { outline: 2px solid var(--ag-crimson); outline-offset: 3px; }
+.agx-sell-btn[aria-disabled="true"] {
+  background: transparent; color: var(--ag-muted); border-color: var(--ag-border);
+  pointer-events: none;
 }
 
-/* The terms strip along the foot of the hero: one column on a phone, two on a
-   tablet, four across a desktop, hairline-divided rather than gapped so it
-   reads as one statement of terms instead of four tiles. */
-.agx-sell-hero-stats {
-  margin-top: clamp(36px, 4.5vw, 60px);
-  display: grid; grid-template-columns: minmax(0, 1fr);
-  border: 1px solid rgba(255, 255, 255, .2); border-radius: 1rem;
-  background: rgba(255, 255, 255, .07); overflow: hidden;
+.agx-sell-btn.ghost { background: transparent; color: var(--ag-ink); }
+.agx-sell-btn.ghost:hover { background: var(--ag-ink); color: var(--ag-bg); }
+
+/* On the ink panel the fills invert: the primary becomes paper-on-ink, which is
+   the loudest thing available without reaching for crimson — and crimson is
+   money, so it is not available. */
+.agx-sell-btn.on-ink { background: var(--ag-bg); color: var(--ag-ink); border-color: var(--ag-bg); }
+.agx-sell-btn.on-ink:hover { background: #FFFFFF; border-color: #FFFFFF; }
+.agx-sell-btn.ghost.on-ink {
+  background: transparent; color: var(--ag-bg); border-color: rgba(245, 242, 235, .45);
 }
-.agx-sell-hero-stat { display: flex; gap: 14px; align-items: flex-start; padding: clamp(16px, 1.8vw, 22px); }
-/* Single column: a rule above every item but the first. The media queries below
-   re-point the same hairline as the grid rewraps. */
-.agx-sell-hero-stat + .agx-sell-hero-stat { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15); }
-@media (min-width: 640px) and (max-width: 1023.98px) {
-  .agx-sell-hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .agx-sell-hero-stat:nth-child(2n) { box-shadow: inset 1px 0 0 rgba(255, 255, 255, .15); }
-  .agx-sell-hero-stat:nth-child(n+3) { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15); }
-  .agx-sell-hero-stat:nth-child(4) { box-shadow: inset 1px 0 0 rgba(255, 255, 255, .15), inset 0 1px 0 rgba(255, 255, 255, .15); }
+.agx-sell-btn.ghost.on-ink:hover { background: var(--ag-bg); color: var(--ag-ink); border-color: var(--ag-bg); }
+.agx-sell-btn.on-ink:focus-visible { outline-color: var(--ag-bg); }
+
+/* Links. Ink, never crimson — the affordance is the rule underneath, which goes
+   from hairline to ink on hover. The colour never moves, so a link cannot be
+   confused with an amount. */
+.agx-sell-link {
+  display: inline-flex; align-items: center; gap: 7px;
+  text-decoration: none; color: var(--ag-ink);
+  border-bottom: 1px solid var(--ag-border);
+  padding-bottom: 2px;
+  transition: border-color var(--sell-t-fast) var(--sell-ease);
 }
-@media (min-width: 1024px) {
-  .agx-sell-hero-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .agx-sell-hero-stat + .agx-sell-hero-stat { box-shadow: inset 1px 0 0 rgba(255, 255, 255, .15); }
+.agx-sell-link:hover { border-bottom-color: var(--ag-ink); }
+.agx-sell-link:focus-visible { outline: 2px solid var(--ag-crimson); outline-offset: 3px; border-radius: 1px; }
+
+/* ── The ledger block ──────────────────────────────────────────────────────
+   The signature. Figures live in a column of their own, ruled off in crimson,
+   running the height of any block that carries money. */
+.agx-sell-ledger {
+  background: var(--ag-surface);
+  border: 1px solid var(--ag-border);
+  border-radius: var(--sell-r-panel);
+}
+.agx-sell-ledger-head,
+.agx-sell-ledger-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px; padding: 12px clamp(16px, 2.4vw, 24px);
+}
+.agx-sell-ledger-head { border-bottom: 1px solid var(--ag-ink); }
+.agx-sell-ledger-row {
+  align-items: baseline; min-height: var(--sell-row);
+  border-bottom: 1px solid var(--ag-border-soft);
+}
+.agx-sell-ledger-row:last-child { border-bottom: 0; }
+/* The money rule, and the money column's fixed gutter. `min-width` keeps the
+   figures aligned down the block even when one row's amount is shorter. */
+.agx-sell-ledger-head > :last-child,
+.agx-sell-ledger-row > :last-child {
+  border-left: 1px solid var(--ag-crimson);
+  padding-left: 16px; min-width: 124px; text-align: right;
+}
+/* The total takes the ink rule above it: everything higher sums to this. */
+.agx-sell-ledger-row.total {
+  border-top: 1px solid var(--ag-ink); border-bottom: 0;
+  background: var(--ag-surface-2);
+}
+@media (max-width: 420px) {
+  /* Below this the two columns and their gutter no longer fit a 124px money
+     column, so the gutter narrows rather than the label wrapping to three
+     lines. The rule stays — it is what makes the block a ledger. */
+  .agx-sell-ledger-head > :last-child,
+  .agx-sell-ledger-row > :last-child { min-width: 96px; padding-left: 12px; }
+}
+
+/* The bill — one white object lying on the ink hero.
+   The site has no shadows, so this reads as separate by its own edge and by the
+   ground behind it, not by elevation. It is also load-bearing for contrast: the
+   figures inside it are crimson and deep, which on ink measure 2:1 and are
+   unreadable, and on paper measure 7.8:1. */
+.agx-sell-bill {
+  background: var(--ag-surface);
+  border: 1px solid var(--ag-border);
+  border-radius: var(--sell-r-panel);
+  padding: clamp(20px, 2.6vw, 28px);
+}
+/* The ledger inside the bill drops its own frame — two nested boxes with two
+   borders is the tell of a component dropped inside another rather than
+   designed into it. The rules between its rows stay; they are the ledger. */
+.agx-sell-bill .agx-sell-ledger { border: 0; border-radius: 0; }
+.agx-sell-bill .agx-sell-ledger-head,
+.agx-sell-bill .agx-sell-ledger-row { padding-left: 0; padding-right: 0; }
+
+/* ── The price field ───────────────────────────────────────────────────────
+   The site's only input. No box and no chrome: a form field on a marketing page
+   reads as a signup step, and this should read as a number written on a bill. */
+.agx-sell-price-row { display: block; cursor: text; }
+.agx-sell-price {
+  display: inline-flex; align-items: baseline; gap: 2px;
+  margin-top: 6px; padding-bottom: 6px;
+  border-bottom: 2px solid var(--ag-crimson);
+  transition: border-color var(--sell-t-base) var(--sell-ease);
+}
+.agx-sell-price input {
+  font: inherit; color: inherit; letter-spacing: inherit;
+  font-variation-settings: inherit;
+  font-variant-numeric: inherit; font-feature-settings: inherit;
+  /* Fixed at the six digits the field accepts rather than hugging its content:
+     a rule that grew and shrank on every keystroke would reflow the line as she
+     types, which is exactly what the tabular figures prevent. `ch` is the width
+     of a zero, and with `tnum` on that is every digit. */
+  width: 6ch;
+  padding: 0; margin: 0; border: 0; outline: 0; background: transparent;
+}
+/* Focus draws a ring around the whole figure. A colour shift on the rule alone
+   is too quiet to be the only indicator, and the ring is what actually
+   satisfies 2.4.7; it encloses the rupee sign because that is part of the
+   number, not decoration beside it. */
+.agx-sell-price:focus-within {
+  outline: 2px solid var(--ag-crimson); outline-offset: 6px; border-radius: 2px;
+}
+.agx-sell-price input:focus-visible { outline: 0; }
+
+/* ── Layout ────────────────────────────────────────────────────────────────
+   The hero: copy on the left, the reckoning on the right. Stacked below 1024px
+   with the copy first, so a phone opens on the headline and the button and the
+   bill is one thumb-flick below — the bill is the argument, but the button is
+   the job. */
+.agx-sell-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(32px, 4vw, 48px); align-items: start; }
+@media (min-width: 1024px) { .agx-sell-hero { grid-template-columns: minmax(0, 1fr) minmax(0, .92fr); gap: clamp(40px, 4.5vw, 72px); } }
+
+/* The bill is a small object and stops looking like one the moment it is the
+   width of a table. */
+.agx-sell-reckoning { max-width: 440px; width: 100%; margin-inline: auto; }
+@media (min-width: 1024px) { .agx-sell-reckoning { margin-inline: auto 0; } }
+
+/* The catch, in running text along the foot of the hero. A reader scanning for
+   it reads a sentence; a grid of figures is the thing she has learned to skip. */
+.agx-sell-hero-foot {
+  margin: clamp(32px, 4vw, 48px) 0 0; max-width: 76ch;
+  padding-top: clamp(18px, 2.4vw, 24px);
+  border-top: 1px solid rgba(245, 242, 235, .22);
+  font-variation-settings: 'wdth' 100, 'wght' 400;
+  font-size: 15px; line-height: 1.75; color: rgba(245, 242, 235, .82);
+  text-wrap: pretty;
 }
 
 /* Gaps are the reference's: 64px between columns on desktop, 96px where the two
@@ -1216,3 +1530,73 @@ span[style*="Material Symbols Outlined"] {
 @media (min-width: 900px) {
   .agx-sell-faq-index { position: sticky; top: 88px; }
 }
+
+/* ── /sell: focus, hover and the sticky header ─────────────────────────────
+   Three things the inline-styled kit in src/pages/sell/parts.tsx cannot state
+   for itself. Inline styles carry no pseudo-classes, so every rule below that
+   overrides a painted colour needs `!important` to beat the element's own
+   `style` attribute — the same reason `.agx-lift` and `.agx-search-row` above
+   are written that way. */
+
+/* 1. The focus ring on a berry ground.
+   The global ring is #C7275E (see the `a:focus-visible` rule near the top of
+   this file). Measured against the grounds this site actually paints, it is
+   1.62:1 on `--ag-deep` — the hero band and `DeepPanel` — and 1.20:1 on the
+   crimson end of the footer gradient. Both are invisible, and between them
+   they cover every CTA that matters: the hero's two buttons, the closing
+   panel's pair, and the whole footer including "Open your boutique".
+   White is 8.75:1 on the deep, 6.51:1 on the crimson and 13.2:1 on the
+   footer's darkest stop. The 2px offset keeps the ring outside the button
+   face, so it still reads on the white-on-deep primary. */
+.agx-ondeep :is(a, button, input, [tabindex]):focus-visible {
+  outline-color: #fff;
+}
+
+/* 2. Pointer feedback.
+   `ctaBase` declares `transition:background-color .2s,color .2s,border-color
+   .2s` and then nothing on the site ever changes any of those three, because
+   an inline style cannot hold a `:hover`. The global `a:hover{color:#B02454}`
+   loses to the inline `color`, so it does not land either. The result is a
+   marketing page whose entire job is the button, and whose buttons are inert
+   under the cursor. Colour only — no lift, no scale: this site is meant to
+   read as printed, and `.agx-lift`'s 6px hop belongs to the storefront. */
+@media (hover: hover) and (pointer: fine) {
+  .agx-sell-cta:hover { background: var(--ag-crimson) !important; }
+  .agx-sell-cta-deep:hover { background: var(--ag-gold-bg) !important; }
+  .agx-sell-ghost:hover { background: var(--ag-surface-2) !important; }
+  .agx-sell-ghost-deep:hover {
+    background: rgba(255, 255, 255, .14) !important;
+    border-color: rgba(255, 255, 255, .75) !important;
+  }
+  /* The boutique cards in `RealShops` are links to a live shop and read as
+     flat panels until you touch them. Ink and rule only — no lift and no
+     shadow, per "Interaction" in docs/architecture/SELL_DESIGN_SYSTEM.md. */
+  .agx-sell-shop:hover {
+    border-color: var(--ag-deep) !important;
+    background: var(--ag-surface-2) !important;
+  }
+  /* Header and footer navigation. */
+  .agx-sell-navlink:hover { color: var(--ag-deep) !important; }
+  .agx-sell-footlink:hover { opacity: 1 !important; text-decoration: underline !important; }
+}
+
+/* 3. Focus under the sticky header.
+   The header is 80px plus the 3px selvedge, and below 940px it grows the
+   scrollable rail as well. Tabbing down the page scrolls the focused control
+   into view against the top of the viewport, i.e. underneath it — WCAG 2.2
+   SC 2.4.11 Focus Not Obscured. `scroll-padding` on the scroll container (the
+   document, hence `:has`) offsets every scroll-into-view, keyboard focus and
+   `#anchor` jump alike. `SellFaq` already sets its own `scroll-margin-top` on
+   the group headings; this covers everything that does not. */
+/* The header nav label is 14px over a 4px underline gap — about 23px tall,
+   which is just under WCAG 2.2 SC 2.5.8's 24 CSS px. Padding would fix the
+   number and move the active underline away from the word it underlines, so
+   the hit area is grown with a pseudo-element instead: the link measures
+   ~45px to the pointer and not one pixel of the design moves. Horizontal
+   inset is 0, and the nav's own gap is 12px at its tightest, so no two
+   targets overlap. */
+.agx-sell-navlink { position: relative; }
+.agx-sell-navlink::after { content: ''; position: absolute; inset: -11px 0; }
+
+html:has(.agx-sell-light) { scroll-padding-top: 96px; }
+@media (max-width: 939px) { html:has(.agx-sell-light) { scroll-padding-top: 140px; } }
