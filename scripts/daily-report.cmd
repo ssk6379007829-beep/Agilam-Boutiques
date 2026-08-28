@@ -3,7 +3,7 @@ REM Fallback sender for the daily admin report, invoked by Windows Task Schedule
 REM
 REM The PRIMARY sender is the `daily-report` Supabase Edge Function on pg_cron at
 REM 01:30 UTC (07:00 IST). This task exists for the morning that does not happen.
-REM Schedule it for 07:45 local — after the cloud run, and after the 25-minute
+REM Schedule it for 07:45 local -- after the cloud run, and after the 25-minute
 REM staleness window a claimed-but-never-completed cloud run has to sit out.
 REM
 REM --ensure asks the database whether the report already went out and does
