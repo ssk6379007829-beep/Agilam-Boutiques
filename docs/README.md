@@ -1,4 +1,4 @@
-# Agilam Boutique — documentation
+# MangaiMart — documentation
 
 The repo root holds only `README.md` (how to run the app) and `CLAUDE.md` (the
 working rules). Everything else lives here, in four groups:

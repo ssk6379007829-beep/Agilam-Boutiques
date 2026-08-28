@@ -1,4 +1,4 @@
-# Agilam Boutique (package name: `mangaimart`)
+# MangaiMart (package name: `mangaimart`)
 
 A multi-boutique Indian ethnic-wear marketplace. Three consoles in one React app —
 buyer storefront at the root URL, seller console, admin console — on Supabase,
