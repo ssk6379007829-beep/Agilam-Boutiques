@@ -1,0 +1,4 @@
+# Batch files must be CRLF. cmd.exe seeks by byte offset after an external
+# command returns; with LF endings it lands mid-line and executes fragments.
+*.cmd text eol=crlf
+*.bat text eol=crlf
