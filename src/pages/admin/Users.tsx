@@ -227,11 +227,16 @@ function UserDirectory() {
   };
 
   /**
-   * Clear a colleague's 2FA so they can enrol a new authenticator.
+   * Clear a colleague's 2FA so they can set a new method up.
    *
    * The support call this answers: an admin or staff member has lost their phone
-   * AND run out of backup codes, so they cannot reach aal2, and after migration
-   * 0100 that means they cannot reach the console at all. This is the door.
+   * or their security inbox AND run out of backup codes, so they cannot verify
+   * at all, and after migrations 0100/0102 that means they cannot reach the
+   * console. This is the door.
+   *
+   * It clears BOTH methods — the authenticator apps and the email address —
+   * because a reset that left the address behind would hand a "recovered"
+   * account back to whoever had been reading its codes.
    *
    * It is also, unavoidably, a door — which is why the Edge Function re-checks
    * that the caller is a live admin at aal2 rather than trusting this screen,
@@ -501,7 +506,7 @@ function UserDirectory() {
       <ConfirmDialog
         open={!!resetMfaUser}
         title="Reset two-factor authentication?"
-        message={`${resetMfaUser?.full_name || 'This account'} will lose their current authenticator and any unused backup codes, and will be asked to set up a new one the next time they sign in. Until they do, they cannot open the console. Only do this after you are certain who you are talking to — this is the one step that removes someone's second factor.`}
+        message={`${resetMfaUser?.full_name || 'This account'} will lose every second factor they have — authenticator apps and their security email address alike — along with any unused backup codes, and will be asked to set one up again the next time they sign in. Until they do, they cannot open the console. Only do this after you are certain who you are talking to: this is the one step that removes someone's second factor.`}
         confirmLabel="Reset two-factor"
         danger
         busy={busy}
