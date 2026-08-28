@@ -28,6 +28,16 @@ export interface ProductWithBoutique {
   last_viewed_at?: string | null;
   description?: string | null;
   mrp?: number | null;
+  /** Ties this piece to its other colours (migration 0103). Every product
+   *  sharing the id is the same piece in a different colour, each with its own
+   *  photos, price and stock. Absent until the migration is applied. */
+  variant_group_id?: string | null;
+  /** Per-size stock, e.g. `{ S: 3, M: 5 }` (migration 0103). NULL/absent means
+   *  the sizes share the single pooled `stock`, as every product did before —
+   *  nothing was backfilled, so a product converts when its seller next saves
+   *  it. `stock` stays the authoritative total either way, kept equal to the
+   *  sum of this map by trigger. */
+  size_stock?: Record<string, number> | null;
   /** Packed weight in grams (migration 0065). Optional so a project that hasn't
    *  run it still reads products; NULL means "use the boutique default". */
   weight_grams?: number | null;

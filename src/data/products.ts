@@ -79,6 +79,11 @@ export async function createProduct(input: {
   shipping_info?: string;
   color_disclaimer?: string;
   specs?: ProductSpec[];
+  // Colour sets and per-size stock (migration 0103). `size_stock` null keeps
+  // the sizes on the pooled `stock`; when it is set the database derives
+  // `stock` from it, so the number passed above is only a fallback.
+  variant_group_id?: string | null;
+  size_stock?: Record<string, number> | null;
 }) {
   const { error } = await supabase.from('products').insert(input);
   if (error) throw error;
@@ -107,10 +112,67 @@ export async function updateProduct(
     shipping_info: string;
     color_disclaimer: string;
     specs: ProductSpec[];
+    variant_group_id: string | null;
+    size_stock: Record<string, number> | null;
   }>,
 ) {
   const { error } = await supabase.from('products').update(patch).eq('id', id);
   if (error) throw error;
+}
+
+/** One other colour of the same piece, as the seller's colour-set panel and the
+ *  buyer's product page render it. Each is a full product in its own right —
+ *  this is only the slice both screens need to draw a swatch. */
+export type ColourSibling = {
+  id: string;
+  slug?: string | null;
+  title: string;
+  color: string | null;
+  image_url: string | null;
+  price: number;
+  mrp: number | null;
+  stock: number;
+};
+
+const SIBLING_COLS = 'id, slug, title, color, image_url, price, mrp, stock';
+
+/**
+ * The other colours of a piece (migration 0103). Returns the whole set in
+ * listing order — the caller drops the one it is already showing, because the
+ * seller's panel and the buyer's strip disagree about whether the current
+ * colour belongs in the row.
+ *
+ * Soft-deleted rows are excluded; moderation-hidden ones are not, so a seller
+ * still sees their own set intact while RLS keeps buyers from reading them.
+ */
+export async function fetchColourSet(groupId: string): Promise<ColourSibling[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(SIBLING_COLS)
+    .eq('variant_group_id', groupId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as ColourSibling[];
+}
+
+/**
+ * The seller's own products that could join a colour set — anything in the shop
+ * that isn't already in one, so linking can never quietly pull a product out of
+ * another set it belongs to. Used by the "Link an existing product" picker.
+ */
+export async function fetchColourSetCandidates(boutiqueId: string, excludeId: string): Promise<ColourSibling[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(SIBLING_COLS)
+    .eq('boutique_id', boutiqueId)
+    .neq('id', excludeId)
+    .is('variant_group_id', null)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(60);
+  if (error) throw error;
+  return (data ?? []) as unknown as ColourSibling[];
 }
 
 export async function deleteProduct(id: string) {
