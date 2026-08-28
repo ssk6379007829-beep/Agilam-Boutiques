@@ -47,6 +47,14 @@ export type Product = {
   description?: string;
   mrp?: number | null;
   sizes?: string[];
+  /** Pieces per size (migration 0103). Absent/null means the sizes share the
+   *  pooled `stock` above, the way every product worked before — so a missing
+   *  map is never "out of stock", it is "we only know the total". */
+  sizeStock?: Record<string, number> | null;
+  /** The colour set this piece belongs to (migration 0103). Every product
+   *  sharing the id is the same piece in another colour, each with its own
+   *  photos, price and stock — the product page offers them as swatches. */
+  variantGroupId?: string | null;
   washCare?: string;
   images?: string[];
   /** Buyer PDP detail sections the seller fills in (migration 0054). Absent on

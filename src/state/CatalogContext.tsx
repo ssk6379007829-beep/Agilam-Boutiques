@@ -58,6 +58,8 @@ function toProduct(p: ProductWithBoutique): Product {
     description: p.description ?? '',
     mrp: p.mrp ?? null,
     sizes: p.sizes ?? [],
+    sizeStock: p.size_stock ?? null,
+    variantGroupId: p.variant_group_id ?? null,
     washCare: p.wash_care ?? '',
     images: p.images ?? [],
     badges: p.badges ?? [],
