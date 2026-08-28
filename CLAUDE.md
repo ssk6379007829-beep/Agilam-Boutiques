@@ -1,4 +1,4 @@
-# Agilam Boutique (package name: `mangaimart`)
+# MangaiMart (package name: `mangaimart`)
 
 A multi-boutique Indian ethnic-wear marketplace. Three consoles in one React app —
 buyer storefront at the root URL, seller console, admin console — on Supabase,
@@ -29,11 +29,16 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0101`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0103`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase.
    Never report a schema change as live; say "migration 00XX must be applied".
    (`0068a`/`0068b`, `0077a`/`0077b` and `0078a`/`0078b` are pairs that each
-   shipped under one number; apply a before b. All are idempotent.)
+   shipped under one number; apply a before b. All are idempotent. Two unrelated
+   files both claim `0101` — `_daily_digest_payout_parity` and
+   `_mangaimart_bill_prefix`; they touch nothing in common, so either order works.)
+   **`0102` must be applied after `0100`, and re-applied if `0100` ever is** — 0100
+   restores an `is_admin()` that knows nothing about the email second factor, and
+   would lock out every admin using it, silently.
    **Never run `supabase db push` against this project.** `schema_migrations` has
    no record of the hand-applied history, so a push replays the ENTIRE series
    over the live database — it did exactly that on 2026-08-19, reaching 0076

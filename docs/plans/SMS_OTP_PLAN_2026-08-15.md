@@ -58,7 +58,7 @@ can be tested end-to-end until it clears.** Start it today; build in parallel.
 
 **Three separate approvals, in order:**
 
-1. **Entity registration** — register Agilam/MangaiMart as a Principal Entity on
+1. **Entity registration** — register MangaiMart as a Principal Entity on
    an operator DLT portal (Jio, Vodafone-Idea and Airtel all run one; register on
    one, it propagates). Needs PAN, GST certificate, incorporation/registration
    proof, an authorised signatory letter. Yields an **Entity ID**.

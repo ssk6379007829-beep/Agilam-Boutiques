@@ -16,7 +16,7 @@ pieces into a family WhatsApp group and asks "which one?" — so the decision
 happens outside the app, the screenshots are dead images nobody can tap, and the
 four relatives who saw our catalogue never reach it.
 
-This moves that conversation inside Agilam without asking a single relative to
+This moves that conversation inside MangaiMart without asking a single relative to
 sign up:
 
 1. She taps **Ask my people** on the wishlist or a product page, picks what

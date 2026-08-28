@@ -1297,14 +1297,31 @@ export interface Database {
         Returns: number;
       };
       /**
-       * Which accounts have a verified second factor (migration 0099).
+       * Which accounts have a verified second factor (migration 0099,
+       * widened by 0102).
        *
        * `auth.mfa_factors` is not readable from the browser; this is the narrow
-       * view of it the admin Users page needs to show who is enrolled.
+       * view of it the admin Users page needs to show who is enrolled. Since
+       * 0102 it unions in the email method, so an email-only admin is not
+       * reported as unprotected.
        */
       mfa_enrollment_status: {
         Args: Record<string, never>;
         Returns: { user_id: string; verified_at: string }[];
+      };
+      /**
+       * The caller's own email second factor (migration 0102).
+       *
+       * At most one row. `session_verified` is the one the screens actually
+       * turn on: an email-verified session stays `aal1` in the JWT forever, so
+       * this RPC is the only way the client can tell a verified session from an
+       * unverified one. The tables behind it are revoked from `authenticated`
+       * outright — see 0102 for why a readable challenge table would be an
+       * oracle for other people's codes.
+       */
+      mfa_email_status: {
+        Args: Record<string, never>;
+        Returns: { email: string; verified: boolean; session_verified: boolean }[];
       };
     };
     Enums: Record<string, never>;
