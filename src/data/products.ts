@@ -89,6 +89,21 @@ export async function createProduct(input: {
   if (error) throw error;
 }
 
+/**
+ * Publish several products in one statement — a piece and its other colours,
+ * written together from the Add page.
+ *
+ * One multi-row INSERT rather than a loop on purpose: Postgres runs it as a
+ * single statement, so either every colour is listed or none is. A loop that
+ * failed on the third colour would leave two half of a set live, with the
+ * seller's photos already uploaded and no way to tell what went in.
+ */
+export async function createProducts(inputs: Parameters<typeof createProduct>[0][]) {
+  if (inputs.length === 0) return;
+  const { error } = await supabase.from('products').insert(inputs);
+  if (error) throw error;
+}
+
 export async function updateProduct(
   id: string,
   patch: Partial<{

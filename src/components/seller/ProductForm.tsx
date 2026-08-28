@@ -69,6 +69,80 @@ export function readSizeStock(v: ProductFormValues): { size_stock: Record<string
   return { size_stock: map, stock: Object.values(map).reduce((a, b) => a + b, 0) };
 }
 
+/**
+ * Everything a product must have before it can be published, in one pure pass.
+ *
+ * Pulled out of the component because a page can now hold several of these at
+ * once — the Add page publishes a piece and its other colours together — and
+ * one Publish has to be able to check them all without each form's own submit
+ * button. `isApprovedColor` is passed in rather than read from the taxonomy
+ * context so this stays callable outside a React tree.
+ */
+export function validateProductForm(
+  form: ProductFormValues,
+  isApprovedColor: (colour: string) => boolean,
+): Partial<Record<keyof ProductFormValues, string>> {
+  const next: Partial<Record<keyof ProductFormValues, string>> = {};
+  if (!form.title.trim()) next.title = 'Required';
+  if (!form.category.trim()) next.category = 'Required';
+  if (!form.fabric.trim()) next.fabric = 'Required';
+  // The pickers are comboboxes over the approved vocabulary, so a NEW product
+  // cannot carry an off-list value. An OLD one can: products predating the
+  // pickers (and anything loaded by seed, CSV or straight SQL) hold free text
+  // like "Desert Rose" or "Olive Brown with Orange Floral Design". Those are
+  // unreachable by the colour filter — it matches the taxonomy exactly — so
+  // the product is quietly invisible to anyone browsing by colour.
+  //
+  // Catching it here means the next edit of an old listing is where it gets
+  // fixed, by the one person who knows what colour the garment actually is.
+  // Only colour is checked: it is the only picker whose vocabulary the buyer
+  // filter matches exactly, and the only one with off-list values in the wild.
+  if (!form.color.trim()) next.color = 'Required';
+  else if (!isApprovedColor(form.color)) {
+    next.color = 'Pick a colour from the list so buyers can filter by it';
+  }
+  if (!form.occasion.trim()) next.occasion = 'Required';
+  if (!form.price.trim() || Number(form.price) <= 0) next.price = 'Enter a valid price';
+  // Stock is asked for in one of two shapes and only ever one of them: a
+  // pooled number when the piece has no sizes, otherwise a count per size.
+  // A blank box is the one thing not accepted — 0 is a fine answer, and says
+  // "that size is sold out" rather than "I haven't got round to counting".
+  if (form.sizes.length > 0) {
+    const missing = form.sizes.filter((s) => (form.sizeStock[s] ?? '').trim() === '');
+    if (missing.length) {
+      next.sizeStock = `How many do you have in ${sortSizes(missing).join(', ')}? Enter 0 if that size is sold out.`;
+    }
+  } else if (form.stock.trim() === '' || Number(form.stock) < 0) {
+    next.stock = 'Enter valid stock';
+  }
+  if (!form.imageUrl) next.imageUrl = 'Add a cover photo';
+  if (form.mrp.trim() && Number(form.mrp) < Number(form.price || 0)) next.mrp = 'MRP must be ≥ price';
+  // Optional — a blank falls back to the shop default so no existing product
+  // is blocked — but a nonsense value must not reach a courier booking, where
+  // an under-declared weight becomes a discrepancy charge weeks later.
+  if (form.weightGrams.trim()) {
+    const g = Number(form.weightGrams);
+    if (!Number.isFinite(g) || g <= 0 || g > 50000) next.weightGrams = 'Enter a weight between 1 and 50000 grams';
+  }
+  // The three the buyer page can't fake convincingly. Everything else in the
+  // detail section is an optional override with a sensible fallback.
+  if (!form.description.trim()) next.description = 'Buyers read this first — describe the piece';
+  if (!form.washCare.trim()) next.washCare = 'Required — tell buyers how to wash it';
+  if (form.badges.length < MIN_PRODUCT_BADGES) next.badges = `Pick at least ${MIN_PRODUCT_BADGES} badges`;
+  // A half-typed spec row would publish as "Blouse: " — make the seller finish
+  // it or drop it, rather than quietly discarding what they typed.
+  if (form.specs.some((s) => !!s.label.trim() !== !!s.value.trim())) {
+    next.specs = 'Fill both sides of every specification, or remove the row';
+  }
+  return next;
+}
+
+/** Blank rows are how an "Add specification" tap that changed its mind looks;
+ *  dropped here so they never reach the database. */
+export function cleanProductForm(v: ProductFormValues): ProductFormValues {
+  return { ...v, specs: v.specs.filter((s) => s.label.trim() && s.value.trim()) };
+}
+
 const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface-2);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 const textAreaStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;font-family:inherit;resize:vertical;min-height:80px;';
@@ -108,6 +182,11 @@ export function ProductForm({
   onSubmit,
   onAddColour,
   onLinkColour,
+  value,
+  onChange,
+  errors: errorsProp,
+  embedded = false,
+  onUploadingChange,
 }: {
   boutiqueId: string;
   /** The product being edited, absent while adding. Only the edit form can
@@ -115,9 +194,25 @@ export function ProductForm({
    *  being added does not exist yet. */
   productId?: string;
   initial?: Partial<ProductFormValues>;
-  submitLabel: string;
+  submitLabel?: string;
   busy: boolean;
-  onSubmit: (values: ProductFormValues) => void;
+  onSubmit?: (values: ProductFormValues) => void;
+  /** Controlled mode. Pass both and the parent owns the values — which is how
+   *  the Add page holds a piece and each of its other colours at once and
+   *  publishes the lot from one button. Omit both and the form keeps its own
+   *  state, exactly as the edit modal uses it. */
+  value?: ProductFormValues;
+  onChange?: (values: ProductFormValues) => void;
+  /** Validation results from the parent, for a form whose submit lives outside
+   *  it. Takes over from the form's own errors entirely when given. */
+  errors?: Partial<Record<keyof ProductFormValues, string>>;
+  /** One colour inside a bigger page: no submit button of its own, and no
+   *  colour-set panel — the page it sits in IS the colour set. */
+  embedded?: boolean;
+  /** Fires while a photo of this form is uploading. A page whose Publish sits
+   *  outside the form has no other way to know, and publishing mid-upload
+   *  would drop the photo that hadn't landed yet. */
+  onUploadingChange?: (uploading: boolean) => void;
   /** Start another colour of this piece. Handed the values as they stand right
    *  now, not as they were last saved, so an edit the seller just typed carries
    *  into the new colour instead of being silently dropped. */
@@ -136,12 +231,40 @@ export function ProductForm({
   // read from its name — so a well-detected dress colour has the whole palette
   // to match against, not just the handful an admin happened to hand-swatch.
   const colorSwatches = taxonomy.rows('color').map((r) => ({ name: r.name, hex: taxonomy.hexOf(r.name) }));
-  const [form, setForm] = useState<ProductFormValues>({ ...EMPTY_PRODUCT_FORM, ...initial });
-  const [errors, setErrors] = useState<Partial<Record<keyof ProductFormValues, string>>>({});
+  const [internal, setInternal] = useState<ProductFormValues>({ ...EMPTY_PRODUCT_FORM, ...initial });
+  const controlled = value !== undefined && onChange !== undefined;
+  const form = controlled ? value : internal;
+  const [ownErrors, setOwnErrors] = useState<Partial<Record<keyof ProductFormValues, string>>>({});
+  const errors = errorsProp ?? ownErrors;
+
+  /**
+   * Held in a ref as well as in state so a run of updates composes correctly.
+   * `fillGallery` fires one per photo across `await`s, and in controlled mode
+   * the parent's re-render has not landed between them — reading the prop each
+   * time would make three uploads overwrite each other and land one photo.
+   */
+  const formRef = useRef(form);
+  formRef.current = form;
+  const setForm = (updater: ProductFormValues | ((f: ProductFormValues) => ProductFormValues)) => {
+    const next = typeof updater === 'function' ? updater(formRef.current) : updater;
+    formRef.current = next;
+    if (controlled) onChange(next);
+    else setInternal(next);
+  };
+  const setErrors = (
+    updater: Partial<Record<keyof ProductFormValues, string>>
+      | ((e: Partial<Record<keyof ProductFormValues, string>>) => Partial<Record<keyof ProductFormValues, string>>),
+  ) => setOwnErrors(updater);
   const [uploading, setUploading] = useState<'cover' | 'gallery' | null>(null);
   // The colours we read off the cover photo — offered, never forced. Only shown
   // while Colour is still empty, so a seller's own choice is never second-guessed.
   const [colorSuggestions, setColorSuggestions] = useState<string[]>([]);
+  // Through a ref, so an inline callback from the parent doesn't re-fire the
+  // effect on every render.
+  const uploadingCb = useRef(onUploadingChange);
+  uploadingCb.current = onUploadingChange;
+  useEffect(() => { uploadingCb.current?.(uploading != null); }, [uploading]);
+
   const coverInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
   const { cropImage, cropper } = useImageCropper();
@@ -195,7 +318,8 @@ export function ProductForm({
   // Load the colour set whenever the form is carrying a group id — on open for
   // a piece that is already in one, and again right after a link.
   useEffect(() => {
-    if (!form.variantGroupId) {
+    // Embedded forms never draw the panel, so there is nothing to fetch for.
+    if (!form.variantGroupId || embedded) {
       setSiblings([]);
       return;
     }
@@ -256,7 +380,9 @@ export function ProductForm({
   // framed in the cropper one after another; a cancelled crop is simply skipped.
   // Appends functionally so several uploads in a row accumulate correctly.
   const fillGallery = async (files: File[]) => {
-    let slots = 3 - form.images.length;
+    // Read through the ref: in controlled mode the parent's re-render has not
+    // landed yet between two photos of the same pick.
+    let slots = 3 - formRef.current.images.length;
     for (const picked of files) {
       if (slots <= 0) break;
       const file = await cropImage(picked, CROP.product);
@@ -309,70 +435,18 @@ export function ProductForm({
   };
 
   const validate = (): boolean => {
-    const next: Partial<Record<keyof ProductFormValues, string>> = {};
-    if (!form.title.trim()) next.title = 'Required';
-    if (!form.category.trim()) next.category = 'Required';
-    if (!form.fabric.trim()) next.fabric = 'Required';
-    // The pickers are comboboxes over the approved vocabulary, so a NEW product
-    // cannot carry an off-list value. An OLD one can: products predating the
-    // pickers (and anything loaded by seed, CSV or straight SQL) hold free text
-    // like "Desert Rose" or "Olive Brown with Orange Floral Design". Those are
-    // unreachable by the colour filter — it matches the taxonomy exactly — so
-    // the product is quietly invisible to anyone browsing by colour.
-    //
-    // Catching it here means the next edit of an old listing is where it gets
-    // fixed, by the one person who knows what colour the garment actually is.
-    // Only colour is checked: it is the only picker whose vocabulary the buyer
-    // filter matches exactly, and the only one with off-list values in the wild.
-    if (!form.color.trim()) next.color = 'Required';
-    else if (!taxonomy.isApproved('color', form.color)) {
-      next.color = 'Pick a colour from the list so buyers can filter by it';
-    }
-    if (!form.occasion.trim()) next.occasion = 'Required';
-    if (!form.price.trim() || Number(form.price) <= 0) next.price = 'Enter a valid price';
-    // Stock is asked for in one of two shapes and only ever one of them: a
-    // pooled number when the piece has no sizes, otherwise a count per size.
-    // A blank box is the one thing not accepted — 0 is a fine answer, and says
-    // "that size is sold out" rather than "I haven't got round to counting".
-    if (perSize) {
-      const missing = form.sizes.filter((s) => (form.sizeStock[s] ?? '').trim() === '');
-      if (missing.length) {
-        next.sizeStock = `How many do you have in ${sortSizes(missing).join(', ')}? Enter 0 if that size is sold out.`;
-      }
-    } else if (form.stock.trim() === '' || Number(form.stock) < 0) {
-      next.stock = 'Enter valid stock';
-    }
-    if (!form.imageUrl) next.imageUrl = 'Add a cover photo';
-    if (form.mrp.trim() && Number(form.mrp) < Number(form.price || 0)) next.mrp = 'MRP must be ≥ price';
-    // Optional — a blank falls back to the shop default so no existing product
-    // is blocked — but a nonsense value must not reach a courier booking, where
-    // an under-declared weight becomes a discrepancy charge weeks later.
-    if (form.weightGrams.trim()) {
-      const g = Number(form.weightGrams);
-      if (!Number.isFinite(g) || g <= 0 || g > 50000) next.weightGrams = 'Enter a weight between 1 and 50000 grams';
-    }
-    // The three the buyer page can't fake convincingly. Everything else in the
-    // detail section is an optional override with a sensible fallback.
-    if (!form.description.trim()) next.description = 'Buyers read this first — describe the piece';
-    if (!form.washCare.trim()) next.washCare = 'Required — tell buyers how to wash it';
-    if (form.badges.length < MIN_PRODUCT_BADGES) next.badges = `Pick at least ${MIN_PRODUCT_BADGES} badges`;
-    // A half-typed spec row would publish as "Blouse: " — make the seller finish
-    // it or drop it, rather than quietly discarding what they typed.
-    if (form.specs.some((s) => !!s.label.trim() !== !!s.value.trim())) {
-      next.specs = 'Fill both sides of every specification, or remove the row';
-    }
+    const next = validateProductForm(form, (c) => taxonomy.isApproved('color', c));
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
   const submit = () => {
+    if (!onSubmit) return;
     if (!validate()) {
       showToast('Please fill all required fields');
       return;
     }
-    // Blank rows are how an "Add specification" tap that changed its mind looks;
-    // they're dropped here so they never reach the database.
-    onSubmit({ ...form, specs: form.specs.filter((s) => s.label.trim() && s.value.trim()) });
+    onSubmit(cleanProductForm(form));
   };
 
   const discountPct = form.mrp.trim() && Number(form.mrp) > Number(form.price || 0)
@@ -598,105 +672,110 @@ export function ProductForm({
         )}
       </div>
 
-      {/* ── The same piece in another colour ──────────────────────────────────
-          Each colour is its own listing — its own photos, price, stock, reviews
-          and page — and the set id is the only thread between them (0103). So a
-          buyer who finds the green one is shown the maroon, and a seller never
-          re-types a product to change one word. */}
-      <div style={css('border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);padding:13px 14px;')}>
-        <div style={css('display:flex;align-items:center;gap:9px;')}>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>palette</span>
-          <div style={css('flex:1;min-width:0;')}>
-            <div style={css('font-size:13.5px;font-weight:800;color:var(--ag-ink);')}>Colours in this set</div>
-            <div style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);line-height:1.45;')}>
-              {siblings.length > 1
-                ? 'Buyers see these as swatches on the product page and can switch between them.'
-                : 'Stitch this in more than one colour? Add each one — buyers get swatches to switch between them, and each colour keeps its own photos, price and stock.'}
+      {/* The colour-set panel needs a saved row to hang a set off, so it is
+          the edit form only. The Add page publishes a piece and all of its
+          colours together instead, and owns that section itself. */}
+      {!embedded && productId && (<>
+        {/* ── The same piece in another colour ──────────────────────────────────
+            Each colour is its own listing — its own photos, price, stock, reviews
+            and page — and the set id is the only thread between them (0103). So a
+            buyer who finds the green one is shown the maroon, and a seller never
+            re-types a product to change one word. */}
+        <div style={css('border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);padding:13px 14px;')}>
+          <div style={css('display:flex;align-items:center;gap:9px;')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>palette</span>
+            <div style={css('flex:1;min-width:0;')}>
+              <div style={css('font-size:13.5px;font-weight:800;color:var(--ag-ink);')}>Colours in this set</div>
+              <div style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);line-height:1.45;')}>
+                {siblings.length > 1
+                  ? 'Buyers see these as swatches on the product page and can switch between them.'
+                  : 'Stitch this in more than one colour? Add each one — buyers get swatches to switch between them, and each colour keeps its own photos, price and stock.'}
+              </div>
             </div>
           </div>
-        </div>
 
-        {siblings.length > 0 && (
-          <div style={css('display:flex;gap:9px;flex-wrap:wrap;margin-top:12px;')}>
-            {siblings.map((s) => {
-              const self = !!productId && s.id === productId;
-              return (
-                <div key={s.id} style={css(`width:78px;flex:none;border:1.5px solid ${self ? 'var(--ag-crimson)' : 'var(--ag-border)'};border-radius:13px;overflow:hidden;background:var(--ag-surface-2);`)}>
-                  <div style={css('position:relative;width:100%;height:88px;')}>
-                    <ImageSlot src={s.image_url ?? undefined} placeholder={s.title} style={css('position:absolute;inset:0;')} />
-                  </div>
-                  <div style={css('padding:5px 6px 6px;')}>
-                    <div style={css(`font-size:11px;font-weight:800;color:${self ? 'var(--ag-crimson)' : 'var(--ag-ink)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`)}>
-                      {s.color || 'No colour'}
+          {siblings.length > 0 && (
+            <div style={css('display:flex;gap:9px;flex-wrap:wrap;margin-top:12px;')}>
+              {siblings.map((s) => {
+                const self = !!productId && s.id === productId;
+                return (
+                  <div key={s.id} style={css(`width:78px;flex:none;border:1.5px solid ${self ? 'var(--ag-crimson)' : 'var(--ag-border)'};border-radius:13px;overflow:hidden;background:var(--ag-surface-2);`)}>
+                    <div style={css('position:relative;width:100%;height:88px;')}>
+                      <ImageSlot src={s.image_url ?? undefined} placeholder={s.title} style={css('position:absolute;inset:0;')} />
                     </div>
-                    <div style={css('font-size:10.5px;font-weight:700;color:var(--ag-muted);')}>
-                      {s.stock === 0 ? 'Sold out' : fmt(Number(s.price))}
+                    <div style={css('padding:5px 6px 6px;')}>
+                      <div style={css(`font-size:11px;font-weight:800;color:${self ? 'var(--ag-crimson)' : 'var(--ag-ink)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`)}>
+                        {s.color || 'No colour'}
+                      </div>
+                      <div style={css('font-size:10.5px;font-weight:700;color:var(--ag-muted);')}>
+                        {s.stock === 0 ? 'Sold out' : fmt(Number(s.price))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;')}>
-          {onAddColour && (
-            <button
-              type="button"
-              onClick={() => onAddColour(form)}
-              style={css('flex:1;min-width:150px;height:44px;border:none;border-radius:12px;background:var(--ag-crimson);color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}
-            >
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>
-              Add another colour
-            </button>
+                );
+              })}
+            </div>
           )}
-          {onLinkColour && productId && (
-            <button
-              type="button"
-              onClick={() => void openLinkPicker()}
-              style={css('flex:1;min-width:150px;height:44px;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:13px;font-family:inherit;cursor:pointer;')}
-            >
-              Link one I've listed
-            </button>
+
+          <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;')}>
+            {onAddColour && (
+              <button
+                type="button"
+                onClick={() => onAddColour(form)}
+                style={css('flex:1;min-width:150px;height:44px;border:none;border-radius:12px;background:var(--ag-crimson);color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}
+              >
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>
+                Add another colour
+              </button>
+            )}
+            {onLinkColour && productId && (
+              <button
+                type="button"
+                onClick={() => void openLinkPicker()}
+                style={css('flex:1;min-width:150px;height:44px;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:13px;font-family:inherit;cursor:pointer;')}
+              >
+                Link one I've listed
+              </button>
+            )}
+          </div>
+
+          {/* The picker only offers products that aren't already in a set, so
+              linking can never quietly pull a piece out of a set it belongs to. */}
+          {candidates && (
+            <div style={css('margin-top:11px;border-top:1px solid var(--ag-border-soft);padding-top:11px;')}>
+              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;')}>
+                <span style={css('font-size:12px;font-weight:800;color:var(--ag-label);')}>Pick the same piece in another colour</span>
+                <button type="button" onClick={() => setCandidates(null)} style={css('border:none;background:none;color:var(--ag-muted);font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;')}>Close</button>
+              </div>
+              <div style={css('max-height:210px;overflow-y:auto;margin-top:8px;display:flex;flex-direction:column;gap:7px;')}>
+                {candidates.length === 0 && (
+                  <span style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);')}>
+                    Nothing to link — every other piece in your shop is already in a colour set.
+                  </span>
+                )}
+                {candidates.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    disabled={linking}
+                    onClick={() => void linkCandidate(c.id)}
+                    style={css(`display:flex;align-items:center;gap:9px;text-align:left;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface-2);padding:7px 9px;font-family:inherit;cursor:${linking ? 'default' : 'pointer'};opacity:${linking ? 0.6 : 1};`)}
+                  >
+                    <span style={css('width:38px;height:38px;flex:none;border-radius:10px;overflow:hidden;position:relative;display:block;')}>
+                      <ImageSlot src={c.image_url ?? undefined} placeholder={c.title} style={css('position:absolute;inset:0;')} />
+                    </span>
+                    <span style={css('flex:1;min-width:0;')}>
+                      <span style={css('display:block;font-size:12.5px;font-weight:800;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{c.title}</span>
+                      <span style={css('display:block;font-size:11px;font-weight:700;color:var(--ag-muted);')}>{c.color || 'No colour'} · {fmt(Number(c.price))}</span>
+                    </span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>link</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
-
-        {/* The picker only offers products that aren't already in a set, so
-            linking can never quietly pull a piece out of a set it belongs to. */}
-        {candidates && (
-          <div style={css('margin-top:11px;border-top:1px solid var(--ag-border-soft);padding-top:11px;')}>
-            <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;')}>
-              <span style={css('font-size:12px;font-weight:800;color:var(--ag-label);')}>Pick the same piece in another colour</span>
-              <button type="button" onClick={() => setCandidates(null)} style={css('border:none;background:none;color:var(--ag-muted);font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;')}>Close</button>
-            </div>
-            <div style={css('max-height:210px;overflow-y:auto;margin-top:8px;display:flex;flex-direction:column;gap:7px;')}>
-              {candidates.length === 0 && (
-                <span style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);')}>
-                  Nothing to link — every other piece in your shop is already in a colour set.
-                </span>
-              )}
-              {candidates.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  disabled={linking}
-                  onClick={() => void linkCandidate(c.id)}
-                  style={css(`display:flex;align-items:center;gap:9px;text-align:left;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface-2);padding:7px 9px;font-family:inherit;cursor:${linking ? 'default' : 'pointer'};opacity:${linking ? 0.6 : 1};`)}
-                >
-                  <span style={css('width:38px;height:38px;flex:none;border-radius:10px;overflow:hidden;position:relative;display:block;')}>
-                    <ImageSlot src={c.image_url ?? undefined} placeholder={c.title} style={css('position:absolute;inset:0;')} />
-                  </span>
-                  <span style={css('flex:1;min-width:0;')}>
-                    <span style={css('display:block;font-size:12.5px;font-weight:800;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{c.title}</span>
-                    <span style={css('display:block;font-size:11px;font-weight:700;color:var(--ag-muted);')}>{c.color || 'No colour'} · {fmt(Number(c.price))}</span>
-                  </span>
-                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>link</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      </>)}
 
       {/* ── What the buyer's product page shows ──────────────────────────────
           Everything below fills a section of the product page. The buyer app
@@ -842,13 +921,16 @@ export function ProductForm({
         <span style={css(hintStyle)}>Leave blank to use the standard note shown above.</span>
       </label>
 
-      <button
-        onClick={submit}
-        disabled={busy || uploading != null}
-        style={css(`width:100%;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:${busy || uploading ? 'default' : 'pointer'};opacity:${busy || uploading ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);`)}
-      >
-        {uploading ? 'Uploading photo…' : busy ? 'Saving…' : submitLabel}
-      </button>
+      {/* One colour among several publishes with the page, not on its own. */}
+      {!embedded && (
+        <button
+          onClick={submit}
+          disabled={busy || uploading != null}
+          style={css(`width:100%;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:${busy || uploading ? 'default' : 'pointer'};opacity:${busy || uploading ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);`)}
+        >
+          {uploading ? 'Uploading photo…' : busy ? 'Saving…' : submitLabel}
+        </button>
+      )}
     </div>
   );
 }
