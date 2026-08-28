@@ -60,5 +60,53 @@ select cron.schedule('daily-report', '30 1 * * *', $job$
   );
 $job$);
 
+-- ─────────────────────────────────────────────────────────────────────────────
+--  DID YOU ACTUALLY REPLACE THE TOKEN?
+--
+--  Added 2026-08-28, after the cloud sender had been dead for six days without
+--  anyone noticing. This file was run with the placeholder above left as
+--  literal text, so every morning pg_cron dutifully posted an Authorization
+--  header containing that placeholder verbatim, the function rejected it
+--  401 at the auth check before touching the database, and NOTHING recorded the
+--  failure: no report_runs row, no log line, no cron error — pg_cron only sees
+--  that net.http_post returned a request id, which it always does. The Windows
+--  fallback quietly carried the report for six days and the only visible trace
+--  was one line in daily-report.log saying "Cloud did not send", which reads
+--  like a normal fallback morning.
+--
+--  A silent 401 is the worst possible failure here, because the fallback hides
+--  it. So make it loud: this raises, and because cron.schedule() is an ordinary
+--  transactional insert, the raise rolls the registration back. You get an
+--  error instead of a job that is registered and permanently useless.
+--
+--  The placeholder is built by concatenation on purpose. Written literally, a
+--  find-and-replace across this file would substitute it too and the check
+--  would pass while testing nothing.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+do $do$
+declare
+  v_command     text;
+  v_placeholder text := '<' || 'REPORT_TOKEN' || '>';
+begin
+  select command into v_command from cron.job where jobname = 'daily-report';
+
+  if v_command is null then
+    raise exception 'daily-report is not registered — cron.schedule() above did not take.';
+  end if;
+
+  if position(v_placeholder in v_command) > 0 then
+    raise exception using
+      message = 'daily-report was scheduled with the token placeholder still in it.',
+      detail  = 'The Authorization header contains the literal placeholder text, so the '
+             || 'Edge Function will answer 401 every morning and the report will never '
+             || 'send from the cloud. The registration has been rolled back.',
+      hint    = 'Replace the placeholder in the cron.schedule() body above with the value '
+             || 'of REPORT_TOKEN from the repo .env — NOT the service-role key — and run '
+             || 'this file again.';
+  end if;
+end;
+$do$;
+
 -- Confirm it registered. Expect one row, schedule '30 1 * * *', active = true.
 select jobid, jobname, schedule, active from cron.job where jobname = 'daily-report';
