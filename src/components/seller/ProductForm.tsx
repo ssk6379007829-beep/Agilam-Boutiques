@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
-import { uploadProductImage } from '@/data/products';
+import { fetchColourSet, fetchColourSetCandidates, uploadProductImage, type ColourSibling } from '@/data/products';
+import { fmt } from '@/data/demo';
+import { ImageSlot } from '@/components/ui/ImageSlot';
 import { sortSizes } from '@/lib/sizes';
 import { dominantColorsHex, nearestColorName } from '@/lib/imageColor';
 import { TaxonomySelect } from '@/components/seller/TaxonomySelect';
@@ -25,6 +27,14 @@ export type ProductFormValues = {
    *  the shop's default weight in Settings. */
   weightGrams: string;
   sizes: string[];
+  /** How many pieces of each selected size (migration 0103), keyed by size
+   *  label. Held as strings because these are controlled number inputs and a
+   *  half-typed box is legitimately empty, not zero. Ignored entirely when no
+   *  sizes are selected — that product stays on the pooled `stock` above. */
+  sizeStock: Record<string, string>;
+  /** The colour set this piece belongs to (migration 0103), '' when it is on
+   *  its own. Carried through the form untouched; the panel writes it. */
+  variantGroupId: string;
   washCare: string;
   imageUrl: string;
   images: string[];
@@ -39,9 +49,25 @@ export type ProductFormValues = {
 
 export const EMPTY_PRODUCT_FORM: ProductFormValues = {
   title: '', category: '', color: '', occasion: '', fabric: '', price: '', stock: '',
-  description: '', mrp: '', weightGrams: '', sizes: [], washCare: '', imageUrl: '', images: [],
+  description: '', mrp: '', weightGrams: '', sizes: [], sizeStock: {}, variantGroupId: '',
+  washCare: '', imageUrl: '', images: [],
   badges: [], feedingFriendly: false, feedingNote: '', shippingInfo: '', colorDisclaimer: '', specs: [],
 };
+
+/**
+ * What the form's size boxes mean in database terms (migration 0103).
+ *
+ * No sizes selected → the piece stays on the single pooled `stock` number, the
+ * way every product worked before, and `size_stock` is null. Sizes selected →
+ * the map is authoritative and the database derives `stock` from it, so the
+ * total returned here is only what the seller sees while typing.
+ */
+export function readSizeStock(v: ProductFormValues): { size_stock: Record<string, number> | null; stock: number } {
+  if (v.sizes.length === 0) return { size_stock: null, stock: Number(v.stock) || 0 };
+  const map: Record<string, number> = {};
+  for (const s of v.sizes) map[s] = Math.max(0, Math.floor(Number(v.sizeStock[s]) || 0));
+  return { size_stock: map, stock: Object.values(map).reduce((a, b) => a + b, 0) };
+}
 
 const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface-2);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
@@ -75,16 +101,30 @@ const PICKERS = [
 
 export function ProductForm({
   boutiqueId,
+  productId,
   initial,
   submitLabel,
   busy,
   onSubmit,
+  onAddColour,
+  onLinkColour,
 }: {
   boutiqueId: string;
+  /** The product being edited, absent while adding. Only the edit form can
+   *  offer to link an existing piece — linking writes both rows, and the one
+   *  being added does not exist yet. */
+  productId?: string;
   initial?: Partial<ProductFormValues>;
   submitLabel: string;
   busy: boolean;
   onSubmit: (values: ProductFormValues) => void;
+  /** Start another colour of this piece. Handed the values as they stand right
+   *  now, not as they were last saved, so an edit the seller just typed carries
+   *  into the new colour instead of being silently dropped. */
+  onAddColour?: (values: ProductFormValues) => void;
+  /** Join an already-listed product to this piece's colour set. Writes both
+   *  rows immediately and resolves with the group id they now share. */
+  onLinkColour?: (candidateId: string) => Promise<string>;
 }) {
   const { showToast } = useShop();
   const taxonomy = useTaxonomy();
@@ -106,11 +146,92 @@ export function ProductForm({
   const galleryInput = useRef<HTMLInputElement>(null);
   const { cropImage, cropper } = useImageCropper();
 
+  // "Same for every size", the one-tap fill for the common case where a shop
+  // stitches the same run of each size.
+  const [bulkQty, setBulkQty] = useState('');
+  // The other colours of this piece, and the picker for adding one that is
+  // already listed. Loaded from the group id the form is carrying.
+  const [siblings, setSiblings] = useState<ColourSibling[]>([]);
+  const [candidates, setCandidates] = useState<ColourSibling[] | null>(null);
+  const [linking, setLinking] = useState(false);
+
+  // A product listed before migration 0103 arrives with sizes but no split, and
+  // the form now insists on one. Captured at mount so the nudge below can tell
+  // the seller what the pooled number was — it disappears the moment they
+  // start typing, and never shows for a product that already has a split.
+  const pooledOnOpen = useRef(
+    (initial?.sizes?.length ?? 0) > 0 && Object.keys(initial?.sizeStock ?? {}).length === 0
+      ? Number(initial?.stock ?? 0) || 0
+      : 0,
+  );
+
   const set = <K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
+  // Unticking a size drops its count too, so a size the seller changed their
+  // mind about can't leave a stale number behind in the saved map.
   const toggleSize = (s: string) =>
-    setForm((f) => ({ ...f, sizes: f.sizes.includes(s) ? f.sizes.filter((x) => x !== s) : [...f.sizes, s] }));
+    setForm((f) => {
+      if (!f.sizes.includes(s)) return { ...f, sizes: [...f.sizes, s] };
+      const { [s]: _dropped, ...rest } = f.sizeStock;
+      return { ...f, sizes: f.sizes.filter((x) => x !== s), sizeStock: rest };
+    });
+
+  const setSizeQty = (s: string, v: string) => {
+    setForm((f) => ({ ...f, sizeStock: { ...f.sizeStock, [s]: v.replace(/[^0-9]/g, '') } }));
+    setErrors((e) => ({ ...e, sizeStock: undefined }));
+  };
+
+  const applyBulkQty = () => {
+    const v = bulkQty.replace(/[^0-9]/g, '');
+    if (!v) return;
+    setForm((f) => ({ ...f, sizeStock: Object.fromEntries(f.sizes.map((s) => [s, v])) }));
+    setErrors((e) => ({ ...e, sizeStock: undefined }));
+  };
+
+  const perSize = form.sizes.length > 0;
+  const sizeTotal = form.sizes.reduce((sum, s) => sum + (Number(form.sizeStock[s]) || 0), 0);
+
+  // Load the colour set whenever the form is carrying a group id — on open for
+  // a piece that is already in one, and again right after a link.
+  useEffect(() => {
+    if (!form.variantGroupId) {
+      setSiblings([]);
+      return;
+    }
+    let live = true;
+    fetchColourSet(form.variantGroupId)
+      .then((rows) => { if (live) setSiblings(rows); })
+      // A colour strip that can't load is not worth interrupting a save for.
+      .catch(() => { if (live) setSiblings([]); });
+    return () => { live = false; };
+  }, [form.variantGroupId]);
+
+  const openLinkPicker = async () => {
+    if (!productId) return;
+    setCandidates([]);
+    try {
+      setCandidates(await fetchColourSetCandidates(boutiqueId, productId));
+    } catch (e) {
+      setCandidates(null);
+      showToast(e instanceof Error ? e.message : 'Could not load your other products');
+    }
+  };
+
+  const linkCandidate = async (id: string) => {
+    if (!onLinkColour || linking) return;
+    setLinking(true);
+    try {
+      const groupId = await onLinkColour(id);
+      setCandidates(null);
+      // Drives the effect above, which reloads the set with the new colour in it.
+      set('variantGroupId', groupId);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not link that product');
+    } finally {
+      setLinking(false);
+    }
+  };
 
   // Badges keep the seller's pick order — that's the order the buyer's 3×2 grid
   // renders them in, so the first three picks are the ones above the fold.
@@ -209,7 +330,18 @@ export function ProductForm({
     }
     if (!form.occasion.trim()) next.occasion = 'Required';
     if (!form.price.trim() || Number(form.price) <= 0) next.price = 'Enter a valid price';
-    if (form.stock.trim() === '' || Number(form.stock) < 0) next.stock = 'Enter valid stock';
+    // Stock is asked for in one of two shapes and only ever one of them: a
+    // pooled number when the piece has no sizes, otherwise a count per size.
+    // A blank box is the one thing not accepted — 0 is a fine answer, and says
+    // "that size is sold out" rather than "I haven't got round to counting".
+    if (perSize) {
+      const missing = form.sizes.filter((s) => (form.sizeStock[s] ?? '').trim() === '');
+      if (missing.length) {
+        next.sizeStock = `How many do you have in ${sortSizes(missing).join(', ')}? Enter 0 if that size is sold out.`;
+      }
+    } else if (form.stock.trim() === '' || Number(form.stock) < 0) {
+      next.stock = 'Enter valid stock';
+    }
     if (!form.imageUrl) next.imageUrl = 'Add a cover photo';
     if (form.mrp.trim() && Number(form.mrp) < Number(form.price || 0)) next.mrp = 'MRP must be ≥ price';
     // Optional — a blank falls back to the shop default so no existing product
@@ -345,10 +477,23 @@ export function ProductForm({
           Price (₹) *<input value={form.price} onChange={(e) => set('price', e.target.value)} inputMode="numeric" placeholder="4899" style={css(errors.price ? inputErrStyle : inputStyle)} />
           {errors.price && <span style={css(errStyle)}>{errors.price}</span>}
         </label>
-        <label style={css(`flex:1;${labelStyle}`)}>
-          Stock *<input value={form.stock} onChange={(e) => set('stock', e.target.value)} inputMode="numeric" placeholder="12" style={css(errors.stock ? inputErrStyle : inputStyle)} />
-          {errors.stock && <span style={css(errStyle)}>{errors.stock}</span>}
-        </label>
+        {/* Two shapes, one slot. The box turns into a running total the moment
+            the piece has sizes, so stock is never asked for in two places at
+            once and the seller can still see it beside the price. */}
+        {perSize ? (
+          <div style={css(`flex:1;${labelStyle}`)}>
+            Stock *
+            <div style={css('margin-top:6px;height:50px;border:1.5px solid var(--ag-border);border-radius:13px;background:var(--ag-surface-2);display:flex;flex-direction:column;align-items:center;justify-content:center;')}>
+              <span style={css('font-size:15px;font-weight:800;color:var(--ag-ink);line-height:1.1;')}>{sizeTotal}</span>
+              <span style={css('font-size:10px;font-weight:700;color:var(--ag-muted);')}>set per size below</span>
+            </div>
+          </div>
+        ) : (
+          <label style={css(`flex:1;${labelStyle}`)}>
+            Stock *<input value={form.stock} onChange={(e) => set('stock', e.target.value)} inputMode="numeric" placeholder="12" style={css(errors.stock ? inputErrStyle : inputStyle)} />
+            {errors.stock && <span style={css(errStyle)}>{errors.stock}</span>}
+          </label>
+        )}
       </div>
 
       <label style={css(labelStyle)}>
@@ -378,16 +523,179 @@ export function ProductForm({
           )}
       </label>
 
+      {/* ── Sizes, and how many of each ───────────────────────────────────────
+          Stock used to be one pooled number for every size, so a kurta with two
+          pieces left sold happily as an XL that ran out weeks ago. Tick the
+          sizes and the box above turns into a total fed from here (0103). */}
       <div>
         <div style={css(labelStyle)}>Sizes available — optional</div>
+        <span style={css(hintStyle)}>
+          Tick the sizes you stitch this in, then say how many of each you have on the shelf.
+          Leave them all unticked for a one-size piece and stock stays a single number.
+        </span>
         <div style={css('display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;')}>
           {sizeOptions.map((s) => {
             const on = form.sizes.includes(s);
             return (
-              <span key={s} onClick={() => toggleSize(s)} style={css(`padding:9px 14px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-weight:700;font-size:13px;cursor:pointer;`)}>{s}</span>
+              <span key={s} onClick={() => toggleSize(s)} style={css(`padding:9px 14px;border-radius:11px;border:1.5px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-weight:700;font-size:13px;cursor:pointer;`)}>{s}</span>
             );
           })}
         </div>
+
+        {perSize && (
+          <div style={css('margin-top:11px;border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);padding:13px 14px;')}>
+            <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
+              <span style={css('font-size:13px;font-weight:800;color:var(--ag-ink);')}>Pieces per size *</span>
+              <span style={css('font-size:12px;font-weight:800;color:var(--ag-crimson);')}>{sizeTotal} in total</span>
+            </div>
+
+            <div style={css('display:flex;gap:9px;flex-wrap:wrap;margin-top:11px;')}>
+              {sortSizes(form.sizes).map((s) => (
+                <label key={s} style={css('width:74px;flex:none;')}>
+                  <span style={css('display:block;font-size:11.5px;font-weight:800;color:var(--ag-label);text-align:center;')}>{s}</span>
+                  <input
+                    value={form.sizeStock[s] ?? ''}
+                    onChange={(e) => setSizeQty(s, e.target.value)}
+                    inputMode="numeric"
+                    placeholder="0"
+                    aria-label={`Pieces in size ${s}`}
+                    style={css('width:100%;margin-top:5px;height:46px;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface-2);text-align:center;font-size:15px;font-weight:800;font-family:inherit;color:var(--ag-ink);')}
+                  />
+                </label>
+              ))}
+            </div>
+
+            {/* Most shops cut the same run of every size — one number, one tap. */}
+            <div style={css('display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--ag-border-soft);')}>
+              <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-muted);flex:1;min-width:0;')}>Same number of every size?</span>
+              <input
+                value={bulkQty}
+                onChange={(e) => setBulkQty(e.target.value.replace(/[^0-9]/g, ''))}
+                inputMode="numeric"
+                placeholder="5"
+                aria-label="Pieces of every size"
+                style={css('width:64px;flex:none;height:40px;border:1.5px solid var(--ag-border);border-radius:11px;background:var(--ag-surface-2);text-align:center;font-size:14px;font-weight:800;font-family:inherit;color:var(--ag-ink);')}
+              />
+              <button
+                type="button"
+                onClick={applyBulkQty}
+                style={css('flex:none;height:40px;padding:0 14px;border:1.5px solid var(--ag-crimson);border-radius:11px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:12.5px;font-family:inherit;cursor:pointer;')}
+              >
+                Fill all
+              </button>
+            </div>
+
+            {/* Only for a piece listed before per-size stock existed: it arrives
+                with sizes and one pooled number, and the form now needs a split. */}
+            {pooledOnOpen.current > 0 && sizeTotal === 0 && (
+              <span style={css('display:block;margin-top:10px;font-size:11.5px;font-weight:700;color:var(--ag-info-text);line-height:1.45;')}>
+                This piece had {pooledOnOpen.current} in stock as one pool. Split that across the sizes you
+                actually have — buyers can then only order a size you can post.
+              </span>
+            )}
+            {errors.sizeStock && <span style={css(errStyle)}>{errors.sizeStock}</span>}
+          </div>
+        )}
+      </div>
+
+      {/* ── The same piece in another colour ──────────────────────────────────
+          Each colour is its own listing — its own photos, price, stock, reviews
+          and page — and the set id is the only thread between them (0103). So a
+          buyer who finds the green one is shown the maroon, and a seller never
+          re-types a product to change one word. */}
+      <div style={css('border:1.5px solid var(--ag-border);border-radius:16px;background:var(--ag-surface);padding:13px 14px;')}>
+        <div style={css('display:flex;align-items:center;gap:9px;')}>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>palette</span>
+          <div style={css('flex:1;min-width:0;')}>
+            <div style={css('font-size:13.5px;font-weight:800;color:var(--ag-ink);')}>Colours in this set</div>
+            <div style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);line-height:1.45;')}>
+              {siblings.length > 1
+                ? 'Buyers see these as swatches on the product page and can switch between them.'
+                : 'Stitch this in more than one colour? Add each one — buyers get swatches to switch between them, and each colour keeps its own photos, price and stock.'}
+            </div>
+          </div>
+        </div>
+
+        {siblings.length > 0 && (
+          <div style={css('display:flex;gap:9px;flex-wrap:wrap;margin-top:12px;')}>
+            {siblings.map((s) => {
+              const self = !!productId && s.id === productId;
+              return (
+                <div key={s.id} style={css(`width:78px;flex:none;border:1.5px solid ${self ? 'var(--ag-crimson)' : 'var(--ag-border)'};border-radius:13px;overflow:hidden;background:var(--ag-surface-2);`)}>
+                  <div style={css('position:relative;width:100%;height:88px;')}>
+                    <ImageSlot src={s.image_url ?? undefined} placeholder={s.title} style={css('position:absolute;inset:0;')} />
+                  </div>
+                  <div style={css('padding:5px 6px 6px;')}>
+                    <div style={css(`font-size:11px;font-weight:800;color:${self ? 'var(--ag-crimson)' : 'var(--ag-ink)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`)}>
+                      {s.color || 'No colour'}
+                    </div>
+                    <div style={css('font-size:10.5px;font-weight:700;color:var(--ag-muted);')}>
+                      {s.stock === 0 ? 'Sold out' : fmt(Number(s.price))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={css('display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;')}>
+          {onAddColour && (
+            <button
+              type="button"
+              onClick={() => onAddColour(form)}
+              style={css('flex:1;min-width:150px;height:44px;border:none;border-radius:12px;background:var(--ag-crimson);color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;')}
+            >
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>
+              Add another colour
+            </button>
+          )}
+          {onLinkColour && productId && (
+            <button
+              type="button"
+              onClick={() => void openLinkPicker()}
+              style={css('flex:1;min-width:150px;height:44px;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:13px;font-family:inherit;cursor:pointer;')}
+            >
+              Link one I've listed
+            </button>
+          )}
+        </div>
+
+        {/* The picker only offers products that aren't already in a set, so
+            linking can never quietly pull a piece out of a set it belongs to. */}
+        {candidates && (
+          <div style={css('margin-top:11px;border-top:1px solid var(--ag-border-soft);padding-top:11px;')}>
+            <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;')}>
+              <span style={css('font-size:12px;font-weight:800;color:var(--ag-label);')}>Pick the same piece in another colour</span>
+              <button type="button" onClick={() => setCandidates(null)} style={css('border:none;background:none;color:var(--ag-muted);font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;')}>Close</button>
+            </div>
+            <div style={css('max-height:210px;overflow-y:auto;margin-top:8px;display:flex;flex-direction:column;gap:7px;')}>
+              {candidates.length === 0 && (
+                <span style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);')}>
+                  Nothing to link — every other piece in your shop is already in a colour set.
+                </span>
+              )}
+              {candidates.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  disabled={linking}
+                  onClick={() => void linkCandidate(c.id)}
+                  style={css(`display:flex;align-items:center;gap:9px;text-align:left;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface-2);padding:7px 9px;font-family:inherit;cursor:${linking ? 'default' : 'pointer'};opacity:${linking ? 0.6 : 1};`)}
+                >
+                  <span style={css('width:38px;height:38px;flex:none;border-radius:10px;overflow:hidden;position:relative;display:block;')}>
+                    <ImageSlot src={c.image_url ?? undefined} placeholder={c.title} style={css('position:absolute;inset:0;')} />
+                  </span>
+                  <span style={css('flex:1;min-width:0;')}>
+                    <span style={css('display:block;font-size:12.5px;font-weight:800;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{c.title}</span>
+                    <span style={css('display:block;font-size:11px;font-weight:700;color:var(--ag-muted);')}>{c.color || 'No colour'} · {fmt(Number(c.price))}</span>
+                  </span>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>link</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── What the buyer's product page shows ──────────────────────────────

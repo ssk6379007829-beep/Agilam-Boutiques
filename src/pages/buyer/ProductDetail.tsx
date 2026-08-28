@@ -337,6 +337,24 @@ export function ProductDetail() {
     .sort((a, b) => (b.cat === ap.cat ? 1 : 0) - (a.cat === ap.cat ? 1 : 0))
     .slice(0, 30);
 
+  // The same piece in its other colours (migration 0103). Read straight off the
+  // catalogue already in memory rather than a fresh query — it is the same
+  // buyer-visible set, so a colour whose shop isn't approved, or whose listing
+  // is hidden, simply isn't in it. Oldest first, so the strip doesn't reshuffle
+  // under a returning buyer as the boutique adds colours.
+  const colourSet = ap.variantGroupId
+    ? PRODUCTS.filter((p) => p.variantGroupId === ap.variantGroupId)
+      .sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
+    : [];
+
+  /** How many of one size this piece has, or null when the shop only counts a
+   *  total (every listing before 0103, and any the seller hasn't split yet).
+   *  Null is "unknown", never "none" — a pooled product must stay buyable. */
+  const sizeLeft = (s: string): number | null => {
+    const n = ap.sizeStock ? Number(ap.sizeStock[s]) : NaN;
+    return Number.isFinite(n) ? n : null;
+  };
+
   const stockLabel = ap.stock === 0 ? 'Out of stock' : ap.stock <= 5 ? `Low · ${ap.stock} left` : 'In stock';
   const stockFg = ap.stock === 0 ? 'var(--ag-danger-text)' : ap.stock <= 5 ? 'var(--ag-gold-text)' : 'var(--ag-good-text)';
 
@@ -355,6 +373,7 @@ export function ProductDetail() {
   const selectedSize =
     (pickedSize && sizeOptions.includes(pickedSize) ? pickedSize : null) ??
     (bagLine && sizeOptions.includes(bagLine.size) ? bagLine.size : null);
+  const selectedLeft = selectedSize ? sizeLeft(selectedSize) : null;
   const hasMrp = !!ap.mrp && ap.mrp > ap.price;
   const discountPct = hasMrp ? Math.round((1 - ap.price / (ap.mrp as number)) * 100) : null;
   const gallery = [...new Set([ap.image, ...(ap.images ?? [])].filter(Boolean))];
@@ -758,6 +777,58 @@ export function ProductDetail() {
             </div>
           )}
 
+          {/* ── The same piece in its other colours (migration 0103) ──────────
+              Each colour is its own listing with its own photos, price and
+              stock, so the swatch is that colour's actual cover photo and the
+              tap is a real navigation — reviews, delivery and stock all belong
+              to the colour being looked at. A price only appears where the
+              colour costs something different, so a set priced alike stays
+              quiet and a dearer colour warns before the tap. */}
+          {colourSet.length > 1 && (
+            <div style={css('margin-top:24px;')}>
+              <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>
+                Colour{ap.color ? ` · ${ap.color}` : ''}
+              </div>
+              <div style={css('display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;')}>
+                {colourSet.map((c) => {
+                  const on = c.id === ap.id;
+                  const gone = c.stock === 0;
+                  const differs = Number(c.price) !== Number(ap.price);
+                  const tile = (
+                    <div style={css(`width:84px;border:1.5px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};border-radius:14px;overflow:hidden;background:var(--ag-bg);`)}>
+                      <div style={css(`position:relative;width:100%;height:96px;opacity:${gone ? 0.5 : 1};`)}>
+                        <ImageSlot src={c.image} placeholder={c.title} sizes="84px" style={css('position:absolute;inset:0;')} />
+                      </div>
+                      <div style={css('padding:5px 7px 7px;')}>
+                        <div style={css(`font-size:11px;font-weight:800;color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`)}>
+                          {c.color || 'Colour'}
+                        </div>
+                        {gone ? (
+                          <div style={css('font-size:10px;font-weight:800;color:var(--ag-muted);')}>Sold out</div>
+                        ) : differs ? (
+                          <div style={css('font-size:10px;font-weight:800;color:var(--ag-ink-2);')}>
+                            {fmt(c.price)}
+                            {c.mrp && c.mrp > c.price && (
+                              <span style={css('margin-left:4px;font-weight:700;color:var(--ag-muted);text-decoration:line-through;')}>{fmt(c.mrp)}</span>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                  // The colour already being read is not a link to itself.
+                  return on ? (
+                    <div key={c.id} aria-current="true">{tile}</div>
+                  ) : (
+                    <CardLink key={c.id} to={routes.product(c)} label={`${c.title} in ${c.color || 'another colour'}`} className="agx-lift">
+                      {tile}
+                    </CardLink>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div style={css('display:flex;align-items:flex-start;gap:36px;margin-top:24px;flex-wrap:wrap;')}>
             <div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;gap:14px;')}>
@@ -777,21 +848,38 @@ export function ProductDetail() {
               <div role="radiogroup" aria-labelledby="agx-size-label" style={css('display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;')}>
                 {sizeOptions.map((s) => {
                   const on = selectedSize === s;
+                  // Struck through rather than hidden: a buyer looking for their
+                  // own size needs to see that the shop cuts it and is out,
+                  // not silently conclude the piece was never made in it.
+                  const left = sizeLeft(s);
+                  const gone = left === 0;
                   return (
                     <button
                       key={s}
                       type="button"
                       role="radio"
                       aria-checked={on}
-                      aria-label={`Size ${s}`}
+                      aria-label={gone ? `Size ${s} — sold out` : `Size ${s}`}
+                      aria-disabled={gone}
+                      disabled={gone}
                       onClick={() => pickSize(s)}
-                      style={css(`width:44px;height:44px;padding:0;border-radius:12px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'transparent'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};display:flex;align-items:center;justify-content:center;font-weight:${on ? 800 : 700};font-size:14px;cursor:pointer;font-family:inherit;`)}
+                      style={css(`width:44px;height:44px;padding:0;border-radius:12px;border:1.5px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'transparent'};color:${gone ? 'var(--ag-muted-soft)' : on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};display:flex;align-items:center;justify-content:center;font-weight:${on ? 800 : 700};font-size:14px;cursor:${gone ? 'not-allowed' : 'pointer'};font-family:inherit;text-decoration:${gone ? 'line-through' : 'none'};`)}
                     >{s}</button>
                   );
                 })}
               </div>
+              {/* The piece-wide "Low · 2 left" says nothing about the size in
+                  hand once stock is counted per size, and the two can disagree
+                  wildly — 40 in stock, one left in L. */}
+              {selectedLeft != null && selectedLeft > 0 && selectedLeft <= 5 && (
+                <span style={css('display:block;margin-top:8px;font-size:11.5px;font-weight:800;color:var(--ag-gold-text);')}>
+                  Only {selectedLeft} left in {selectedSize}
+                </span>
+              )}
             </div>
-            {ap.color && (
+            {/* The swatch strip above already names the colour when there is a
+                set; this stands in for it when the piece is on its own. */}
+            {ap.color && colourSet.length <= 1 && (
               <div>
                 <div className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-muted);')}>Colour</div>
                 <div style={css('display:flex;align-items:center;height:44px;margin-top:9px;padding:0 16px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-bg);font-weight:700;font-size:14px;color:var(--ag-ink-2);')}>{ap.color}</div>

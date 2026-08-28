@@ -634,9 +634,14 @@ export default async function handler(req, res) {
     // All-or-nothing: if any item is short, nothing is decremented. The buyer
     // has already paid by this point, so if stock sold out in the meantime we
     // refund rather than oversell.
+    // The size travels with the line: where a seller has split their stock by
+    // size (migration 0103), reserving without one takes the unit off whichever
+    // size happens to be fullest and lets a buyer order an XL that ran out
+    // weeks ago. A product with no split, or a size the seller doesn't stock
+    // separately, still takes the pooled path inside reserve_stock.
     const reserveItems = [];
     for (const g of groups.values()) {
-      for (const l of g.lines) reserveItems.push({ product_id: l.product_id, qty: l.qty });
+      for (const l of g.lines) reserveItems.push({ product_id: l.product_id, qty: l.qty, size: l.size });
     }
 
     const { error: reserveErr } = await supabase.rpc('reserve_stock', { p_items: reserveItems });
@@ -784,7 +789,7 @@ export default async function handler(req, res) {
         const unwritten = [];
         for (const g of groups.values()) {
           if (written.has(g.boutique_id)) continue;
-          for (const l of g.lines) unwritten.push({ product_id: l.product_id, qty: l.qty });
+          for (const l of g.lines) unwritten.push({ product_id: l.product_id, qty: l.qty, size: l.size });
         }
         if (unwritten.length > 0) {
           try {

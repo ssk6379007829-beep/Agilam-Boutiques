@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PAY_METHODS } from '@/data/demo';
+import { sortSizes } from '@/lib/sizes';
 import { computeTotals, findCoupon, undeliverableReason, type ShopTermsMap } from '@/lib/pricing';
 import type { BuyerPlace } from '@/lib/deliveryZone';
 import { resolvePincode } from '@/data/pincodes';
@@ -258,11 +259,37 @@ export function ShopProvider({ children }: { children: ReactNode }) {
    */
   const catalogRef = useRef(productById);
   useEffect(() => { catalogRef.current = productById; }, [productById]);
-  const stockLimit = useCallback((id: string): number => {
+  const stockLimit = useCallback((id: string, size?: string): number => {
     const p = catalogRef.current(id);
     if (!p || typeof p.stock !== 'number' || !Number.isFinite(p.stock)) return Infinity;
+    // Per-size stock (migration 0103). A size the seller counted separately is
+    // capped by its own number rather than by the shop's total for the piece —
+    // that total is what let two pieces be sold as an XL that ran out weeks
+    // ago. A product with no map, or a size that isn't in it, keeps the pooled
+    // behaviour: a missing map means "we only know the total", never "none".
+    if (size && p.sizeStock) {
+      const n = Number(p.sizeStock[size]);
+      if (Number.isFinite(n)) return Math.max(0, n);
+    }
     return Math.max(0, p.stock);
   }, []);
+
+  /**
+   * Which size a bag line carries when the screen adding it didn't ask for one.
+   *
+   * Grid cards and Buy now add straight off a card, and used to hardcode `M`.
+   * That was always a guess — a shop that never cut an M got orders for one —
+   * and once stock is counted per size it becomes a guess that fails at
+   * checkout. So: the buyer's own pick, else what the line already holds, else
+   * the smallest size actually in stock, and only then `M`. The product page
+   * doesn't come through here at all; it still requires a deliberate choice.
+   */
+  const resolveSize = useCallback((id: string, wanted?: string, current?: string): string => {
+    if (wanted) return wanted;
+    if (current) return current;
+    const sizes = sortSizes(catalogRef.current(id)?.sizes ?? []);
+    return sizes.find((s) => stockLimit(id, s) > 0) ?? sizes[0] ?? 'M';
+  }, [stockLimit]);
 
   const toggleWish = useCallback((id: string) => {
     setWishlist((w) => {
@@ -279,44 +306,66 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   // `size` comes from screens that let the buyer pick one (the product page);
   // grid cards omit it and keep whatever the line already had.
   const addToCart = useCallback((id: string, size?: string) => {
-    const limit = stockLimit(id);
-    if (limit === 0) {
-      showToast('That piece is out of stock', 'error');
-      return;
-    }
+    // The size decides the limit now, and the size can depend on what the bag
+    // already holds — so both are worked out inside the updater and reported
+    // back out, the way `capped` already was.
     let capped = false;
+    let soldOut = false;
+    let limit = 0;
+    let chosen = '';
     setCart((c) => {
+      chosen = resolveSize(id, size, c[id]?.size);
+      limit = stockLimit(id, chosen);
+      if (limit === 0) {
+        soldOut = true;
+        return c;
+      }
       const wanted = (c[id]?.qty ?? 0) + 1;
       const qty = Math.min(wanted, limit);
       capped = qty < wanted;
-      const line = { qty, size: size ?? c[id]?.size ?? 'M' };
+      const line = { qty, size: chosen };
       const uid = buyerIdRef.current;
       if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, line.qty, line.size));
       return { ...c, [id]: line };
     });
-    showToast(capped ? `Only ${limit} left — that's all we can add` : 'Added to cart');
-  }, [showToast, pushToAccount, stockLimit]);
-
-  const buyNow = useCallback((id: string) => {
-    if (stockLimit(id) === 0) {
-      showToast('That piece is out of stock', 'error');
+    if (soldOut) {
+      showToast(chosen ? `Size ${chosen} is sold out` : 'That piece is out of stock', 'error');
       return;
     }
+    // Naming the size matters when nobody picked it: the buyer is told what
+    // they got and can change it in the bag, rather than finding out on arrival.
+    showToast(
+      capped ? `Only ${limit} left — that's all we can add`
+        : size ? 'Added to cart'
+          : `Added to cart · size ${chosen}`,
+    );
+  }, [showToast, pushToAccount, stockLimit, resolveSize]);
+
+  const buyNow = useCallback((id: string) => {
+    let soldOut = false;
     setCart((c) => {
       if (c[id]) return c;
-      const line = { qty: 1, size: 'M' };
+      const chosen = resolveSize(id);
+      if (stockLimit(id, chosen) === 0) {
+        soldOut = true;
+        return c;
+      }
+      const line = { qty: 1, size: chosen };
       const uid = buyerIdRef.current;
       if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, line.qty, line.size));
       return { ...c, [id]: line };
     });
-  }, [pushToAccount, showToast, stockLimit]);
+    if (soldOut) showToast('That piece is out of stock', 'error');
+  }, [pushToAccount, showToast, stockLimit, resolveSize]);
 
   const cartQty = useCallback((id: string, delta: number) => {
-    const limit = stockLimit(id);
     let capped = false;
+    let limit = 0;
     setCart((c) => {
       const line = c[id];
       if (!line) return c;
+      // The ceiling is this line's own size, not the piece's total.
+      limit = stockLimit(id, line.size);
       const wanted = line.qty + delta;
       const qty = Math.min(wanted, limit);
       capped = qty < wanted;
@@ -336,13 +385,29 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [pushToAccount, showToast, stockLimit]);
 
   const setCartSize = useCallback((id: string, size: string) => {
+    let soldOut = false;
+    let trimmed = 0;
     setCart((c) => {
-      if (!c[id]) return c;
+      const line = c[id];
+      if (!line) return c;
+      // Sizes are stocked separately (0103), so switching can land on one the
+      // shop has fewer of — or none at all. Refuse the sold-out switch and
+      // trim the quantity to what the new size can actually cover, rather than
+      // carrying five of a size there is one of through to checkout.
+      const limit = stockLimit(id, size);
+      if (limit === 0) {
+        soldOut = true;
+        return c;
+      }
+      const qty = Math.min(line.qty, limit);
+      if (qty < line.qty) trimmed = qty;
       const uid = buyerIdRef.current;
-      if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, c[id].qty, size));
-      return { ...c, [id]: { ...c[id], size } };
+      if (uid) pushToAccount(() => dbUpsertCartItem(uid, id, qty, size));
+      return { ...c, [id]: { ...line, qty, size } };
     });
-  }, [pushToAccount]);
+    if (soldOut) showToast(`Size ${size} is sold out`, 'error');
+    else if (trimmed) showToast(`Only ${trimmed} left in size ${size}`, 'error');
+  }, [pushToAccount, showToast, stockLimit]);
 
   const removeCart = useCallback((id: string) => {
     setCart((c) => {

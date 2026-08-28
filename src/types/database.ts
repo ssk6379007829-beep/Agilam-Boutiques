@@ -242,6 +242,15 @@ export interface Database {
            *  back to boutiques.default_weight_grams when a parcel is booked. */
           weight_grams: number | null;
           sizes: string[];
+          /** Pieces per size, e.g. `{ S: 3, M: 5 }` (migration 0103). NULL means
+           *  the sizes share the pooled `stock` above, as they did before —
+           *  nothing was backfilled. When set, the database derives `stock`
+           *  from it by trigger, so the two can never disagree. */
+          size_stock: Record<string, number> | null;
+          /** Ties this piece to its other colours (migration 0103). Every row
+           *  sharing the id is the same piece in a different colour, each with
+           *  its own photos, price, stock and product page. */
+          variant_group_id: string | null;
           wash_care: string;
           images: string[];
           /** Buyer-facing detail sections (migration 0054). */
