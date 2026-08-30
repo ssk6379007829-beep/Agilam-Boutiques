@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape';
+import { LoadError } from '@/components/seller/LoadError';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
@@ -23,12 +25,13 @@ const relTime = (iso: string | null) => {
 export function Messages() {
   const navigate = useNavigate();
   const { boutique } = useMyBoutique();
-  const { data: convos } = useAsync(() => (boutique ? fetchConversationsForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+  const { data: convos, error, reload } = useAsync(() => (boutique ? fetchConversationsForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
 
   const [prefs, setPrefs] = useState(getChatPrefs);
   const [tab, setTab] = useState<Tab>('All');
   const [search, setSearch] = useState('');
   const [menu, setMenu] = useState<string | null>(null);
+  useDismissOnEscape(() => setMenu(null), menu !== null);
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -84,14 +87,24 @@ export function Messages() {
             <button key={t} onClick={() => setTab(t)} style={css(`display:flex;align-items:center;gap:6px;padding:8px 15px;border:none;border-radius:999px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;background:${on ? 'var(--ag-crimson)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-label)'};`)}>
               {t}
               {t === 'Unread' && totalUnread > 0 && (
-                <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:10.5px;display:flex;align-items:center;justify-content:center;background:${on ? 'rgba(255,255,255,.25)' : '#D6336C'};color:#fff;`)}>{totalUnread}</span>
+                <span style={css(`min-width:18px;height:18px;padding:0 5px;border-radius:9px;font-size:11px;display:flex;align-items:center;justify-content:center;background:${on ? 'rgba(255,255,255,.25)' : '#D6336C'};color:#fff;`)}>{totalUnread}</span>
               )}
             </button>
           );
         })}
       </div>
 
-      {rows.length === 0 && (
+      {error && (
+        <div style={css('padding:0 16px;')}>
+          <LoadError
+            title="Couldn’t load your messages"
+            detail="No enquiry has been lost — this inbox just can’t reach them right now."
+            onRetry={reload}
+          />
+        </div>
+      )}
+
+      {!error && rows.length === 0 && (
         <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:56px 30px;')}>
           <div style={css('width:78px;height:78px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:36px;color:var(--ag-crimson);")}>forum</span>
@@ -108,7 +121,7 @@ export function Messages() {
       <div style={css('display:flex;flex-direction:column;')}>
         {rows.map((m) => (
           <div key={m.id} style={css('position:relative;display:flex;gap:12px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--ag-border-soft);')}>
-            <div onClick={() => navigate(`/seller/chat/${m.id}`)} style={css('display:flex;gap:12px;align-items:center;flex:1;min-width:0;cursor:pointer;')}>
+            <button type="button" className="agx-con-row" onClick={() => navigate(`/seller/chat/${m.id}`)} style={css('display:flex;gap:12px;align-items:center;flex:1;min-width:0;cursor:pointer;')}>
               <BoutiqueLogo name={m.name} size={52} radius={16} />
               <div style={css('flex:1;min-width:0;')}>
                 <div style={css('display:flex;justify-content:space-between;align-items:center;gap:8px;')}>
@@ -117,21 +130,21 @@ export function Messages() {
                     {m.fav && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>}
                     <span style={css('font-weight:800;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{m.name}</span>
                   </span>
-                  <span style={css('font-size:11.5px;color:var(--ag-muted-soft);flex:none;')}>{m.time}</span>
+                  <span style={css('font-size:12px;color:var(--ag-muted-soft);flex:none;')}>{m.time}</span>
                 </div>
                 <div style={css('display:flex;justify-content:space-between;align-items:center;margin-top:2px;gap:8px;')}>
                   <span style={css(`font-size:13px;color:${m.unread > 0 ? 'var(--ag-ink)' : 'var(--ag-muted)'};font-weight:${m.unread > 0 ? 700 : 400};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`)}>{m.last}</span>
                   {m.unread > 0 && (
-                    <span style={css('min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#D6336C;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;')}>{m.unread}</span>
+                    <span style={css('min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#D6336C;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;')}>{m.unread}</span>
                   )}
                 </div>
               </div>
-            </div>
+            </button>
 
             <button
               onClick={(e) => { e.stopPropagation(); setMenu(menu === m.id ? null : m.id); }}
               aria-label="Conversation options"
-              style={css('width:34px;height:34px;flex:none;border-radius:10px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+              style={css('width:44px;height:44px;flex:none;border-radius:10px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;')}
             >
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);")}>more_vert</span>
             </button>

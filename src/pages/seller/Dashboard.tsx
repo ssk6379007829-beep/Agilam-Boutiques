@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { LoadError } from '@/components/seller/LoadError';
 import { TONES, fmt, statusStyle } from '@/data/demo';
 import { useAuth } from '@/auth/AuthContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
@@ -40,11 +41,11 @@ export function Dashboard() {
   const { profile, session } = useAuth();
   const { boutique } = useMyBoutique();
 
-  const { data: orderRows, loading: ordersLoading } = useAsync(
+  const { data: orderRows, loading: ordersLoading, error: ordersError, reload: reloadOrders } = useAsync(
     () => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])),
     [boutique?.id],
   );
-  const { data: productRows } = useAsync(
+  const { data: productRows, error: productsError } = useAsync(
     () => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])),
     [boutique?.id],
   );
@@ -120,16 +121,16 @@ export function Dashboard() {
   ];
 
   const STATS = [
-    { label: 'Total Products', value: String(products.length), icon: 'inventory_2', tint: 'var(--ag-surface-2)', ic: '#D6336C', to: '/seller/products' },
-    { label: 'Total Orders', value: String(orders.length), icon: 'receipt_long', tint: 'var(--ag-info-bg)', ic: 'var(--ag-info-text)', to: '/seller/orders' },
-    { label: 'Total Customers', value: String(customerCount), icon: 'group', tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)', to: '/seller/customers' },
-    { label: 'Total Revenue', value: fmt(totalRevenue), icon: 'payments', tint: 'var(--ag-purple-bg)', ic: '#9B7FC7', to: '/seller/earnings' },
+    { label: 'Total Products', value: productsError ? '—' : String(products.length), icon: 'inventory_2', tint: 'var(--ag-surface-2)', ic: 'var(--ag-crimson)', to: '/seller/products' },
+    { label: 'Total Orders', value: ordersError ? '—' : String(orders.length), icon: 'receipt_long', tint: 'var(--ag-info-bg)', ic: 'var(--ag-info-text)', to: '/seller/orders' },
+    { label: 'Total Customers', value: ordersError ? '—' : String(customerCount), icon: 'group', tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)', to: '/seller/customers' },
+    { label: 'Total Revenue', value: ordersError ? '—' : fmt(totalRevenue), icon: 'payments', tint: 'var(--ag-purple-bg)', ic: 'var(--ag-purple)', to: '/seller/earnings' },
   ];
 
   const QUICK = [
-    { label: 'New Bill', sub: 'Create invoice', icon: 'receipt_long', tint: 'var(--ag-surface-2)', ic: '#D6336C', to: '/seller/billing', badge: 0 },
+    { label: 'New Bill', sub: 'Create invoice', icon: 'receipt_long', tint: 'var(--ag-surface-2)', ic: 'var(--ag-crimson)', to: '/seller/billing', badge: 0 },
     { label: 'Notifications', sub: 'View alerts', icon: 'notifications', tint: 'var(--ag-gold-bg)', ic: 'var(--ag-gold-text)', to: '/seller/notifications', badge: unread ?? 0 },
-    { label: 'Orders', sub: 'Manage orders', icon: 'shopping_bag', tint: 'var(--ag-purple-bg)', ic: '#9B7FC7', to: '/seller/orders', badge: pendingCount },
+    { label: 'Orders', sub: 'Manage orders', icon: 'shopping_bag', tint: 'var(--ag-purple-bg)', ic: 'var(--ag-purple)', to: '/seller/orders', badge: pendingCount },
     { label: 'Add Product', sub: 'List a new piece', icon: 'add_box', tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)', to: '/seller/add-product', badge: 0 },
   ];
 
@@ -192,12 +193,12 @@ export function Dashboard() {
           {/* Standing and the small facts, as one wrapped row of translucent
               pills — legible on the gradient without fighting it. */}
           <div style={css('display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;')}>
-            <span style={css('display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);font-size:11px;font-weight:800;')}>
+            <span style={css('display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);font-size:12px;font-weight:800;')}>
               <span style={css(`width:6px;height:6px;border-radius:50%;background:${approved ? '#5BE0A0' : '#F4D9A6'};`)} />
               {approved ? 'Active seller' : 'Awaiting verification'}
             </span>
             {facts.map((f) => (
-              <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);font-size:11px;font-weight:800;')}>
+              <span key={f.text} style={css('display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);font-size:12px;font-weight:800;')}>
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;opacity:.9;")}>{f.icon}</span>
                 {f.text}
               </span>
@@ -253,14 +254,14 @@ export function Dashboard() {
             <span style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${q.tint};display:flex;align-items:center;justify-content:center;position:relative;`)}>
               <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:22px;color:${q.ic};`)}>{q.icon}</span>
               {q.badge > 0 && (
-                <span style={css('position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--ag-surface);')}>
+                <span style={css('position:absolute;top:-5px;right:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#D6336C;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:2px solid var(--ag-surface);')}>
                   {q.badge > 99 ? '99+' : q.badge}
                 </span>
               )}
             </span>
             <span style={css('flex:1;min-width:0;')}>
               <span style={css('display:block;font-weight:800;font-size:14px;color:var(--ag-ink);')}>{q.label}</span>
-              <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);font-weight:600;')}>{q.sub}</span>
+              <span style={css('display:block;font-size:12px;color:var(--ag-muted);font-weight:600;')}>{q.sub}</span>
             </span>
           </button>
         ))}
@@ -281,7 +282,7 @@ export function Dashboard() {
         </span>
         <span style={css('flex:1;min-width:0;')}>
           <span style={css('display:block;font-weight:800;font-size:14px;color:var(--ag-ink);')}>Reviews</span>
-          <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);font-weight:600;margin-top:1px;')}>
+          <span style={css('display:block;font-size:12px;color:var(--ag-muted);font-weight:600;margin-top:1px;')}>
             {reviewsNeedingReply > 0
               ? `${reviewsNeedingReply} review${reviewsNeedingReply > 1 ? 's are' : ' is'} waiting for your reply`
               : rating > 0
@@ -290,19 +291,19 @@ export function Dashboard() {
           </span>
         </span>
         {reviewsNeedingReply > 0 && (
-          <span style={css('flex:none;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:#D6336C;color:#fff;font-size:11.5px;font-weight:800;display:flex;align-items:center;justify-content:center;')}>
+          <span style={css('flex:none;min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:#D6336C;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;')}>
             {reviewsNeedingReply > 99 ? '99+' : reviewsNeedingReply}
           </span>
         )}
-        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;flex:none;")}>chevron_right</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);flex:none;")}>chevron_right</span>
       </button>
 
       {/* Promote CTA — an upsell, so it follows the seller's own numbers
           rather than outranking them. ---------------------------------------- */}
       <button
         onClick={() => navigate('/seller/promote')}
-        className="agx-lift"
-        style={css('width:100%;text-align:left;margin-top:16px;background:linear-gradient(135deg,#D6336C,#B02454);border:none;border-radius:18px;padding:15px 16px;display:flex;align-items:center;gap:13px;cursor:pointer;font-family:inherit;color:#fff;')}
+        className="agx-con-btn agx-lift"
+        style={css('width:100%;text-align:left;margin-top:16px;border:none;border-radius:18px;padding:15px 16px;display:flex;align-items:center;gap:13px;cursor:pointer;font-family:inherit;color:#fff;')}
       >
         <span style={css('width:42px;height:42px;flex:none;border-radius:13px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:23px;")}>campaign</span>
@@ -317,13 +318,23 @@ export function Dashboard() {
       {/* Business overview -------------------------------------------------- */}
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:28px 0 14px;gap:12px;')}>
         <div>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Business overview</div>
+          <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);')}>Business overview</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.4vw,28px);line-height:1.12;margin-top:5px;")}>Your numbers</div>
         </div>
         <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;white-space:nowrap;')}>
           {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
         </div>
       </div>
+
+      {ordersError && (
+        <div style={css('margin-bottom:14px;')}>
+          <LoadError
+            title="Couldn’t load your numbers"
+            detail="Your orders and takings are safe — the dashboard just can’t reach them right now. The totals below are not real figures until this loads."
+            onRetry={reloadOrders}
+          />
+        </div>
+      )}
 
       <div className="agx-sd-stats">
         {STATS.map((st) => (
@@ -338,7 +349,7 @@ export function Dashboard() {
             </span>
             <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3vw,31px);line-height:1;margin-top:13px;color:var(--ag-ink);word-break:break-word;")}>{st.value}</span>
             <span style={css('display:block;color:var(--ag-muted);font-size:12.5px;font-weight:600;margin-top:5px;')}>{st.label}</span>
-            <span style={css('display:flex;align-items:center;gap:3px;color:var(--ag-crimson);font-size:11.5px;font-weight:800;margin-top:8px;')}>
+            <span style={css('display:flex;align-items:center;gap:3px;color:var(--ag-crimson);font-size:12px;font-weight:800;margin-top:8px;')}>
               View all<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
             </span>
           </button>
@@ -349,7 +360,7 @@ export function Dashboard() {
       <div style={css('margin-top:16px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);display:flex;gap:12px;flex-wrap:wrap;')}>
         {TODAY.map((s) => (
           <div key={s.label} style={css('flex:1;min-width:120px;')}>
-            <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>{s.label}</div>
+            <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;')}>{s.label}</div>
             <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:${s.ic};`)}>{s.value}</div>
           </div>
         ))}
@@ -394,11 +405,11 @@ export function Dashboard() {
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:700;font-size:14px;color:var(--ag-ink);')}>{o.customer}</div>
                     <div style={css('font-size:12.5px;color:var(--ag-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{o.item}</div>
-                    <div style={css('font-size:11px;color:var(--ag-muted-soft);font-weight:700;margin-top:2px;')}>{o.number} · {o.date}</div>
+                    <div style={css('font-size:12px;color:var(--ag-muted-soft);font-weight:700;margin-top:2px;')}>{o.number} · {o.date}</div>
                   </div>
                   <div style={css('text-align:right;flex:none;')}>
                     <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-crimson);")}>{fmt(o.amount)}</div>
-                    <span style={css(`display:inline-block;margin-top:4px;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
+                    <span style={css(`display:inline-block;margin-top:4px;font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
                   </div>
                 </div>
               );
@@ -420,7 +431,7 @@ export function Dashboard() {
           <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:8px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             {lowStock.length === 0 && (
               <div style={css('padding:18px 12px;text-align:center;')}>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#B6DCC6;")}>check_circle</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:var(--ag-good);")}>check_circle</span>
                 <div style={css('font-size:13px;color:var(--ag-muted);font-weight:700;margin-top:5px;')}>
                   {products.length === 0 ? 'No products listed yet' : 'Everything is well stocked'}
                 </div>
@@ -437,9 +448,9 @@ export function Dashboard() {
                 </span>
                 <span style={css('flex:1;min-width:0;')}>
                   <span style={css('display:block;font-weight:700;font-size:13px;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</span>
-                  <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);font-weight:600;')}>{fmt(Number(p.price))}</span>
+                  <span style={css('display:block;font-size:12px;color:var(--ag-muted);font-weight:600;')}>{fmt(Number(p.price))}</span>
                 </span>
-                <span style={css(`flex:none;font-size:11px;font-weight:800;padding:4px 9px;border-radius:8px;background:${p.stock === 0 ? 'var(--ag-bad-bg)' : 'var(--ag-warn-bg)'};color:${p.stock === 0 ? 'var(--ag-bad-text)' : 'var(--ag-warn-text)'};`)}>
+                <span style={css(`flex:none;font-size:12px;font-weight:800;padding:4px 9px;border-radius:8px;background:${p.stock === 0 ? 'var(--ag-bad-bg)' : 'var(--ag-warn-bg)'};color:${p.stock === 0 ? 'var(--ag-bad-text)' : 'var(--ag-warn-text)'};`)}>
                   {p.stock === 0 ? 'Out of stock' : `${p.stock} left`}
                 </span>
               </button>

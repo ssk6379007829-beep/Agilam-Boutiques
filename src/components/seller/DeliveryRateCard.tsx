@@ -155,7 +155,7 @@ export function DeliveryRateCard({
           two bands are on screen at a time, so the mismatch is also stated once
           where the seller can see both numbers together. */}
       {undercut.length > 0 && (
-        <div style={css('display:flex;gap:8px;padding:11px 13px;border-radius:12px;background:var(--ag-warn-bg);font-size:11.5px;font-weight:600;color:var(--ag-warn-text);line-height:1.6;')}>
+        <div style={css('display:flex;gap:8px;padding:11px 13px;border-radius:12px;background:var(--ag-warn-bg);font-size:12px;font-weight:600;color:var(--ag-warn-text);line-height:1.6;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;flex:none;")}>warning</span>
           <span>
             <strong style={css('font-weight:800;')}>Check your rate card.</strong>{' '}

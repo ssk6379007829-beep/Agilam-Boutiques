@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useGoBack } from '@/hooks/useGoBack';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { fetchBoutiquePrivate } from '@/data/boutiques';
 import type { BoutiqueStatus } from '@/data/types';
@@ -62,6 +63,7 @@ const COPY: Record<Exclude<BoutiqueStatus, 'approved'>, { eyebrow: string; headi
 
 export function Verification() {
   const navigate = useNavigate();
+  const goBack = useGoBack('/seller/profile');
   const { boutique, loading } = useMyBoutique();
   const [note, setNote] = useState<string | null>(null);
   const boutiqueId = boutique?.id;
@@ -107,12 +109,12 @@ export function Verification() {
         <div style={css('display:flex;align-items:center;gap:10px;padding:6px 0 14px;')}>
           <button
             aria-label="Go back"
-            onClick={() => navigate('/seller/profile')}
-            style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+            onClick={goBack}
+            style={css('width:44px;height:44px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
           >
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
           </button>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Verification</div>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin:0;")}>Verification</h1>
         </div>
 
         {/* Status hero */}
@@ -122,7 +124,7 @@ export function Verification() {
               <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:27px;color:${tone.accent};`)}>{tone.icon}</span>
             </span>
             <div>
-              <div className="agx-eyebrow" style={css(`font-size:9.5px;color:${tone.accent};`)}>{copy.eyebrow}</div>
+              <div className="agx-eyebrow" style={css(`font-size:11px;color:${tone.accent};`)}>{copy.eyebrow}</div>
               <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(20px,2.6vw,26px);line-height:1.2;margin-top:3px;color:${tone.fg};`)}>{copy.heading}</div>
             </div>
           </div>
@@ -136,9 +138,9 @@ export function Verification() {
           )}
 
           {copy.cta && (
-            <button
+            <button className="agx-con-btn"
               onClick={() => navigate('/seller/onboarding')}
-              style={css('margin-top:16px;height:50px;padding:0 24px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 14px 30px -16px rgba(214,51,108,.85);font-family:inherit;')}
+              style={css('margin-top:16px;height:50px;padding:0 24px;border:none;border-radius:14px;color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 14px 30px -16px rgba(214,51,108,.85);font-family:inherit;')}
             >
               {copy.cta}
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;")}>arrow_forward</span>
@@ -165,8 +167,8 @@ export function Verification() {
           <div style={css('margin-top:12px;display:flex;flex-direction:column;gap:10px;')}>
             {CHECKS.map((c) => (
               <div key={c.label} style={css('display:flex;align-items:center;gap:11px;')}>
-                <span style={css('width:34px;height:34px;flex:none;border-radius:11px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:18px;")}>{c.icon}</span>
+                <span style={css('width:44px;height:44px;flex:none;border-radius:11px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:18px;")}>{c.icon}</span>
                 </span>
                 <span style={css('flex:1;font-weight:700;font-size:13.5px;color:var(--ag-ink);')}>{c.label}</span>
                 <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:19px;color:${status === 'pending' ? '#C7B2BC' : tone.accent};`)}>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { LoadError } from '@/components/seller/LoadError';
 import { useShop } from '@/state/ShopContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
@@ -39,7 +40,7 @@ export function Reviews() {
   const navigate = useNavigate();
   const { showToast } = useShop();
   const { boutique } = useMyBoutique();
-  const { data, loading, reload } = useAsync(
+  const { data, loading, error, reload } = useAsync(
     () => (boutique ? fetchReviewsForBoutique(boutique.id) : Promise.resolve([])),
     [boutique?.id],
   );
@@ -114,17 +115,17 @@ export function Reviews() {
       {/* Summary ---------------------------------------------------------- */}
       <div style={css('margin:12px 20px 0;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;display:flex;gap:12px;flex-wrap:wrap;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
         <div style={css('flex:1;min-width:90px;')}>
-          <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>Average</div>
+          <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;')}>Average</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;color:var(--ag-crimson);margin-top:3px;")}>
             {summary.count ? summary.avg.toFixed(1) : '—'} <span style={css('font-size:13px;color:var(--ag-star);')}>★</span>
           </div>
         </div>
         <div style={css('flex:1;min-width:90px;')}>
-          <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>Total reviews</div>
+          <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;')}>Total reviews</div>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;margin-top:3px;")}>{summary.count}</div>
         </div>
         <div style={css('flex:1;min-width:90px;')}>
-          <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>Needs reply</div>
+          <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;')}>Needs reply</div>
           <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:23px;margin-top:3px;color:${summary.needsReply ? 'var(--ag-gold-text)' : 'var(--ag-good)'};`)}>{summary.needsReply}</div>
         </div>
       </div>
@@ -149,7 +150,14 @@ export function Reviews() {
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:6px 20px 0;')}>
         {loading && reviews.length === 0 && <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>Loading reviews…</div>}
 
-        {!loading && shown.length === 0 && (
+        {!loading && error && (
+          <LoadError
+            title="Couldn’t load your reviews"
+            detail="Your ratings are unchanged — this page just can’t reach them right now."
+            onRetry={reload}
+          />
+        )}
+        {!loading && !error && shown.length === 0 && (
           <div style={css('background:var(--ag-surface);border:1px dashed var(--ag-border);border-radius:18px;padding:30px 22px;text-align:center;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:32px;color:var(--ag-border);")}>reviews</span>
             <div style={css('font-weight:700;font-size:14.5px;margin-top:8px;color:var(--ag-ink);')}>
@@ -179,11 +187,11 @@ export function Reviews() {
                 onClick={() => navigate(`/seller/products/${r.product_id}`)}
                 style={css('width:100%;display:flex;align-items:center;gap:10px;border:none;background:none;cursor:pointer;text-align:left;padding:0 0 10px;font-family:inherit;border-bottom:1px solid var(--ag-border-soft);')}
               >
-                <span style={css('width:38px;height:38px;flex:none;border-radius:11px;overflow:hidden;background:var(--ag-surface-2);display:block;')}>
+                <span style={css('width:44px;height:44px;flex:none;border-radius:11px;overflow:hidden;background:var(--ag-surface-2);display:block;')}>
                   {r.product_image && <img src={r.product_image} alt="" style={css('width:100%;height:100%;object-fit:cover;')} />}
                 </span>
                 <span style={css('flex:1;min-width:0;font-weight:700;font-size:12.5px;color:var(--ag-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{r.product_title ?? 'Product'}</span>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#CBB0BC;")}>chevron_right</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-muted-soft);")}>chevron_right</span>
               </button>
 
               {/* The review itself. */}
@@ -193,12 +201,12 @@ export function Reviews() {
                   <div style={css('display:flex;align-items:center;gap:7px;flex-wrap:wrap;')}>
                     <span style={css('font-weight:700;font-size:13.5px;')}>{name}</span>
                     {r.verified_purchase && (
-                      <span style={css('display:inline-flex;align-items:center;gap:3px;background:var(--ag-good-bg);color:var(--ag-good);border-radius:7px;padding:2px 6px;font-size:9.5px;font-weight:800;')}>
-                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>verified</span>Verified
+                      <span style={css('display:inline-flex;align-items:center;gap:3px;background:var(--ag-good-bg);color:var(--ag-good);border-radius:7px;padding:2px 6px;font-size:11px;font-weight:800;')}>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:12px;")}>verified</span>Verified
                       </span>
                     )}
                   </div>
-                  <div style={css('color:var(--ag-muted);font-size:11.5px;margin-top:1px;')}>{timeAgo(r.created_at)}</div>
+                  <div style={css('color:var(--ag-muted);font-size:12px;margin-top:1px;')}>{timeAgo(r.created_at)}</div>
                 </div>
                 <span style={css('color:var(--ag-gold-text);font-size:13px;letter-spacing:1px;flex:none;')}>{starsFor(r.rating)}</span>
               </div>
@@ -218,8 +226,8 @@ export function Reviews() {
                 <div style={css('margin-top:12px;padding:11px 13px;background:var(--ag-surface-2);border-left:3px solid #D6336C;border-radius:0 12px 12px 0;')}>
                   <div style={css('display:flex;align-items:center;gap:6px;')}>
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-crimson);")}>storefront</span>
-                    <span style={css('font-weight:800;font-size:11.5px;color:var(--ag-crimson);')}>Your reply</span>
-                    {r.seller_reply_at && <span style={css('color:var(--ag-muted);font-size:11px;')}>· {timeAgo(r.seller_reply_at)}</span>}
+                    <span style={css('font-weight:800;font-size:12px;color:var(--ag-crimson);')}>Your reply</span>
+                    {r.seller_reply_at && <span style={css('color:var(--ag-muted);font-size:12px;')}>· {timeAgo(r.seller_reply_at)}</span>}
                   </div>
                   <div style={css('color:var(--ag-ink-2);font-size:13px;line-height:1.55;margin-top:5px;')}>{r.seller_reply}</div>
                 </div>
@@ -237,17 +245,17 @@ export function Reviews() {
                     style={css('width:100%;box-sizing:border-box;resize:vertical;border:1px solid var(--ag-border);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13.5px;color:var(--ag-ink-2);background:var(--ag-bg);')}
                   />
                   <div style={css('display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;')}>
-                    <button
+                    <button className="agx-con-btn"
                       onClick={() => send(r)}
                       disabled={busy || draft.trim().length === 0}
-                      style={css(`flex:1;min-width:120px;height:42px;border:none;border-radius:12px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13.5px;cursor:${busy || !draft.trim() ? 'not-allowed' : 'pointer'};opacity:${busy || !draft.trim() ? '.6' : '1'};`)}
+                      style={css(`flex:1;min-width:120px;height:42px;border:none;border-radius:12px;color:#fff;font-weight:800;font-size:13.5px;cursor:${busy || !draft.trim() ? 'not-allowed' : 'pointer'};opacity:${busy || !draft.trim() ? '.6' : '1'};`)}
                     >
                       {busy ? 'Saving…' : r.seller_reply ? 'Update reply' : 'Post reply'}
                     </button>
                     {r.seller_reply && (
-                      <button onClick={() => send(r, true)} disabled={busy} style={css('height:42px;padding:0 14px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:12px;font-weight:800;font-size:12.5px;cursor:pointer;')}>Remove</button>
+                      <button onClick={() => send(r, true)} disabled={busy} style={css('min-height:44px;padding:0 14px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:12px;font-weight:800;font-size:12.5px;cursor:pointer;')}>Remove</button>
                     )}
-                    <button onClick={() => { setOpenId(null); setDraft(''); }} disabled={busy} style={css('height:42px;padding:0 16px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);border-radius:12px;font-weight:800;font-size:12.5px;cursor:pointer;')}>Cancel</button>
+                    <button onClick={() => { setOpenId(null); setDraft(''); }} disabled={busy} style={css('min-height:44px;padding:0 16px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);border-radius:12px;font-weight:800;font-size:12.5px;cursor:pointer;')}>Cancel</button>
                   </div>
                 </div>
               ) : (

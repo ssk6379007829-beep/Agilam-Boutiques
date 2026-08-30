@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { css } from '@/lib/css';
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape';
+import { LoadError } from '@/components/seller/LoadError';
 import { useShop } from '@/state/ShopContext';
 import { useAsync } from '@/hooks/useAsync';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
@@ -51,7 +53,7 @@ export function Promote() {
   const { boutique } = useMyBoutique();
   const boutiqueId = boutique?.id;
 
-  const { data: campaigns, loading, reload } = useAsync(
+  const { data: campaigns, loading, error, reload } = useAsync(
     () => (boutiqueId ? fetchMyCampaigns(boutiqueId) : Promise.resolve([] as AdCampaign[])),
     [boutiqueId],
   );
@@ -70,6 +72,7 @@ export function Promote() {
   // destructive actions — a native window.confirm was the only browser dialog
   // left in the console and broke out of the app's own visual language.
   const [confirmDraft, setConfirmDraft] = useState<string | null>(null);
+  useDismissOnEscape(() => setConfirmDraft(null), confirmDraft !== null);
 
   const removeDraft = async (id: string) => {
     try {
@@ -85,7 +88,7 @@ export function Promote() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:28px;')}>
       <div style={css('background:linear-gradient(150deg,#D6336C,#B02454);padding:22px 20px 26px;color:#fff;')}>
-        <div className="agx-eyebrow" style={css('font-size:10.5px;opacity:.85;')}>Grow your reach</div>
+        <div className="agx-eyebrow" style={css('font-size:11px;opacity:.85;')}>Grow your reach</div>
         <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:25px;margin-top:4px;")}>Promote & Ads</h1>
         <div style={css('opacity:.85;font-size:13px;margin-top:4px;max-width:440px;')}>
           Book a slot on the marketplace, pay online, and go live after a quick review. You’re charged a flat daily rate — no bidding, no surprises.
@@ -100,10 +103,17 @@ export function Promote() {
       </div>
 
       <div style={css('padding:18px 20px 0;')}>
-        <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:0 2px 10px;')}>Your campaigns</div>
+        <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);margin:0 2px 10px;')}>Your campaigns</div>
 
         {loading && <div style={css('color:var(--ag-muted);font-size:13.5px;')}>Loading campaigns…</div>}
-        {!loading && rows.length === 0 && (
+        {!loading && error && (
+          <LoadError
+            title="Couldn’t load your campaigns"
+            detail="Any live ad is still running and still booked — this page just can’t reach the list right now."
+            onRetry={reload}
+          />
+        )}
+        {!loading && !error && rows.length === 0 && (
           <div style={css('background:var(--ag-surface);border-radius:16px;padding:26px 18px;text-align:center;color:var(--ag-muted);font-size:13.5px;box-shadow:0 12px 30px -22px rgba(107,20,54,.6);')}>
             No campaigns yet. Tap <b>Create an ad</b> to get your products in front of more buyers.
           </div>
@@ -130,7 +140,7 @@ export function Promote() {
                       {status === 'live' && c.end_at ? ` · ends ${new Date(c.end_at).toLocaleDateString()}` : status === 'expired' && c.end_at ? ` · ended ${new Date(c.end_at).toLocaleDateString()}` : c.start_date ? ` · from ${c.start_date}` : ''}
                     </div>
                   </div>
-                  <span style={css(`font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;flex:none;background:${st.bg};color:${st.fg};`)}>{st.label}</span>
+                  <span style={css(`font-size:12px;font-weight:800;padding:4px 10px;border-radius:8px;flex:none;background:${st.bg};color:${st.fg};`)}>{st.label}</span>
                 </div>
 
                 {(status === 'live' || status === 'expired' || status === 'paused') && (
@@ -143,19 +153,19 @@ export function Promote() {
 
                 {/* The admin's rework note (or a rejection reason). */}
                 {(c.status === 'changes_requested' || c.status === 'rejected') && c.reject_reason && (
-                  <div style={css('margin-top:10px;font-size:12.5px;color:#B26B1B;background:var(--ag-gold-bg);border-radius:10px;padding:9px 11px;')}>
+                  <div style={css('margin-top:10px;font-size:12.5px;color:var(--ag-warn-text);background:var(--ag-gold-bg);border-radius:10px;padding:9px 11px;')}>
                     <b>Reviewer:</b> {c.reject_reason}
                   </div>
                 )}
 
                 <div style={css('display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;')}>
                   {EDITABLE.includes(status) && (
-                    <button onClick={() => setWizard({ campaign: c })} style={css('height:36px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
+                    <button onClick={() => setWizard({ campaign: c })} style={css('min-height:44px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
                       {status === 'pending_payment' ? 'Finish & pay' : status === 'changes_requested' ? 'Edit & resubmit' : 'Edit ad'}
                     </button>
                   )}
                   {status === 'pending_payment' && confirmDraft !== c.id && (
-                    <button onClick={() => setConfirmDraft(c.id)} style={css('height:36px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
+                    <button onClick={() => setConfirmDraft(c.id)} style={css('min-height:44px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);font-weight:700;font-size:12.5px;cursor:pointer;padding:0 14px;')}>
                       Delete draft
                     </button>
                   )}
@@ -165,8 +175,8 @@ export function Promote() {
                   <div style={css('margin-top:10px;background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:12px;padding:11px 13px;')}>
                     <div style={css('font-size:12.5px;font-weight:700;color:var(--ag-bad-text);')}>Delete this unpaid draft? This can’t be undone.</div>
                     <div style={css('display:flex;gap:8px;margin-top:9px;')}>
-                      <button onClick={() => setConfirmDraft(null)} style={css('flex:1;height:38px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}>Cancel</button>
-                      <button onClick={() => removeDraft(c.id)} style={css('flex:1;height:38px;border:none;background:var(--ag-danger-text);color:#fff;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}>Delete</button>
+                      <button onClick={() => setConfirmDraft(null)} style={css('flex:1;min-height:44px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}>Cancel</button>
+                      <button onClick={() => removeDraft(c.id)} style={css('flex:1;min-height:44px;border:none;background:var(--ag-danger-text);color:#fff;border-radius:10px;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}>Delete</button>
                     </div>
                   </div>
                 )}
@@ -196,7 +206,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;line-height:1;")}>{value}</div>
-      <div style={css('font-size:10.5px;color:var(--ag-muted-soft);margin-top:2px;')}>{label}</div>
+      <div style={css('font-size:11px;color:var(--ag-muted-soft);margin-top:2px;')}>{label}</div>
     </div>
   );
 }
@@ -325,7 +335,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
       {/* Header + step progress */}
       <div style={css('background:linear-gradient(150deg,#D6336C,#B02454);color:#fff;padding:16px 18px 14px;')}>
         <div style={css('display:flex;align-items:center;gap:12px;')}>
-          <button onClick={onClose} disabled={busy} style={css('width:36px;height:36px;border-radius:11px;border:none;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <button onClick={onClose} disabled={busy} style={css('width:44px;height:44px;border-radius:12px;border:none;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>close</span>
           </button>
           <div>
@@ -475,7 +485,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                     <button onClick={() => setHeroImage('')} disabled={uploading} style={css('flex:none;height:46px;padding:0 16px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);font-weight:700;font-size:13px;cursor:pointer;')}>Reset</button>
                   )}
                 </div>
-                <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:6px;line-height:1.55;')}>
+                <div style={css('font-size:12px;color:var(--ag-muted);margin-top:6px;line-height:1.55;')}>
                   Recommended: <b>1600 × 1000&nbsp;px</b> landscape (16:10), JPG or PNG under 2&nbsp;MB.
                   {' '}The banner is wider than it is tall on a laptop, so keep faces and the
                   garment in the <b>upper middle</b> — the bottom of the photo is what gets
@@ -497,10 +507,10 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
             </label>
             <div style={css('display:flex;gap:8px;margin-top:8px;')}>
               {[3, 7, 14, 30].map((d) => (
-                <button key={d} onClick={() => setDays(d)} style={css(`flex:1;height:38px;border-radius:10px;border:1.5px solid ${days === d ? '#D6336C' : 'var(--ag-border)'};background:${days === d ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${days === d ? 'var(--ag-crimson)' : 'var(--ag-muted)'};font-weight:800;font-size:12.5px;cursor:pointer;`)}>{d}d</button>
+                <button key={d} onClick={() => setDays(d)} style={css(`flex:1;min-height:44px;border-radius:10px;border:1.5px solid ${days === d ? '#D6336C' : 'var(--ag-border)'};background:${days === d ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${days === d ? 'var(--ag-crimson)' : 'var(--ag-muted)'};font-weight:800;font-size:12.5px;cursor:pointer;`)}>{d}d</button>
               ))}
             </div>
-            <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:8px;')}>Each day is a full 24 hours, counted from when your ad goes live.</div>
+            <div style={css('font-size:12px;color:var(--ag-muted);margin-top:8px;')}>Each day is a full 24 hours, counted from when your ad goes live.</div>
             <label style={css('font-size:12.5px;font-weight:700;color:var(--ag-label);display:block;margin-top:14px;')}>
               Start date
               <input type="date" min={todayISO()} value={startDate} onChange={(e) => setStartDate(e.target.value)} style={css(field)} />
@@ -517,7 +527,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
                 <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;color:var(--ag-crimson);")}>{money(price)}</span>
               </div>
             </div>
-            <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:10px;text-align:center;')}>
+            <div style={css('font-size:12px;color:var(--ag-muted);margin-top:10px;text-align:center;')}>
               Paid securely via Razorpay. Your ad goes live after our team approves it.
             </div>
           </div>
@@ -529,7 +539,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
         {paidEdit ? (
           <>
             <button onClick={onClose} disabled={busy} style={css('flex:none;height:50px;padding:0 20px;border-radius:14px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);font-weight:700;cursor:pointer;')}>Cancel</button>
-            <button onClick={finish} disabled={busy || (needsProduct && !productId)} style={css('flex:1;height:50px;border-radius:14px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;opacity:' + (busy || (needsProduct && !productId) ? '.6' : '1') + ';')}>{busy ? 'Saving…' : 'Save & resubmit'}</button>
+            <button className="agx-con-btn" onClick={finish} disabled={busy || (needsProduct && !productId)} style={css('flex:1;height:50px;border-radius:14px;border:none;color:#fff;font-weight:800;font-size:15px;cursor:pointer;opacity:' + (busy || (needsProduct && !productId) ? '.6' : '1') + ';')}>{busy ? 'Saving…' : 'Save & resubmit'}</button>
           </>
         ) : (
           <>
@@ -537,9 +547,9 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
               <button onClick={() => setStep((s) => s - 1)} disabled={busy} style={css('flex:none;height:50px;padding:0 20px;border-radius:14px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);font-weight:700;cursor:pointer;')}>Back</button>
             )}
             {step < 2 ? (
-              <button onClick={() => canNext && setStep((s) => s + 1)} disabled={!canNext} style={css('flex:1;height:50px;border-radius:14px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;opacity:' + (canNext ? '1' : '.5') + ';')}>Continue</button>
+              <button className="agx-con-btn" onClick={() => canNext && setStep((s) => s + 1)} disabled={!canNext} style={css('flex:1;height:50px;border-radius:14px;border:none;color:#fff;font-weight:800;font-size:15px;cursor:pointer;opacity:' + (canNext ? '1' : '.5') + ';')}>Continue</button>
             ) : (
-              <button onClick={finish} disabled={busy} style={css('flex:1;height:50px;border-radius:14px;border:none;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;opacity:' + (busy ? '.6' : '1') + ';')}>{busy ? 'Processing…' : `Pay ${money(price)}`}</button>
+              <button className="agx-con-btn" onClick={finish} disabled={busy} style={css('flex:1;height:50px;border-radius:14px;border:none;color:#fff;font-weight:800;font-size:15px;cursor:pointer;opacity:' + (busy ? '.6' : '1') + ';')}>{busy ? 'Processing…' : `Pay ${money(price)}`}</button>
             )}
           </>
         )}
@@ -552,7 +562,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
 // Live ad preview — a faithful miniature of each buyer-facing render.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PROMOTED_PILL = 'display:inline-flex;align-items:center;gap:3px;background:rgba(42,26,32,.72);color:#fff;border-radius:7px;padding:2px 7px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;';
+const PROMOTED_PILL = 'display:inline-flex;align-items:center;gap:3px;background:rgba(42,26,32,.72);color:#fff;border-radius:7px;padding:2px 7px;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;';
 
 function AdPreview({
   placementCode,
@@ -582,7 +592,7 @@ function AdPreview({
     if (!product) {
       return (
         <div style={css(frame + 'color:var(--ag-muted);font-size:13px;text-align:center;flex-direction:column;gap:8px;padding:28px 16px;')}>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#D9A9BE;")}>image</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:var(--ag-border);")}>image</span>
           Choose a product below to preview your ad.
         </div>
       );
@@ -590,13 +600,13 @@ function AdPreview({
     return (
       <div style={css(frame)}>
         <div style={css('width:172px;')}>
-          <div style={css('font-size:11px;font-weight:800;color:var(--ag-crimson);letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px;')}>
+          <div style={css('font-size:12px;font-weight:800;color:var(--ag-crimson);letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>bolt</span>Sponsored for you
           </div>
           <div style={css('border-radius:14px;overflow:hidden;background:var(--ag-surface-2);aspect-ratio:3/4;position:relative;')}>
             {product.image_url && <img src={product.image_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} />}
             <span style={css('position:absolute;left:9px;top:9px;' + PROMOTED_PILL)}>
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>bolt</span>Sponsored
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:12px;")}>bolt</span>Sponsored
             </span>
           </div>
           <div style={css('padding:9px 2px 0;')}>
@@ -617,7 +627,7 @@ function AdPreview({
     if (subjectType === 'product' && !product) {
       return (
         <div style={css(frame + 'color:var(--ag-muted);font-size:13px;text-align:center;flex-direction:column;gap:8px;padding:28px 16px;')}>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:#D9A9BE;")}>image</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:26px;color:var(--ag-border);")}>image</span>
           Choose a product below to preview your ad.
         </div>
       );
@@ -632,7 +642,7 @@ function AdPreview({
           <div style={css('position:absolute;inset:0;background:linear-gradient(100deg,rgba(38,6,20,.82) 0%,rgba(74,12,38,.44) 44%,rgba(74,12,38,.02) 82%);')} />
           <div style={css('position:absolute;inset:0;padding:16px 18px;display:flex;flex-direction:column;justify-content:center;color:#fff;')}>
             {tag.trim() && (
-              <div style={css('align-self:flex-start;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#F4D9A6;')}>{tag.trim()}</div>
+              <div style={css('align-self:flex-start;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#F4D9A6;')}>{tag.trim()}</div>
             )}
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;line-height:1.15;margin-top:10px;text-shadow:0 1px 8px rgba(45,8,24,.5);")}>{t}</div>
             {subtext.trim() && <div style={css('font-size:12px;opacity:.92;margin-top:6px;max-width:230px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{subtext.trim()}</div>}
@@ -660,9 +670,9 @@ function AdPreview({
         <div style={css('min-width:0;flex:1;')}>
           <div style={css('display:flex;align-items:center;gap:6px;')}>
             <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{boutique.name}</span>
-            {boutique.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:#3E9BE0;flex:none;")}>verified</span>}
+            {boutique.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-info-text);flex:none;")}>verified</span>}
             <span style={css('flex:none;' + PROMOTED_PILL)}>
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>bolt</span>Promoted
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:12px;")}>bolt</span>Promoted
             </span>
           </div>
           <div style={css('display:flex;align-items:center;gap:5px;margin-top:5px;font-size:12.5px;color:var(--ag-muted);')}>

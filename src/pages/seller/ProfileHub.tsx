@@ -148,18 +148,18 @@ export function ProfileHub() {
 
       {sections.map((sec) => (
         <div key={sec.title} style={css('margin:18px 20px 0;')}>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:0 4px 8px;')}>{sec.title}</div>
+          <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);margin:0 4px 8px;')}>{sec.title}</div>
           <div style={css('background:var(--ag-surface);border-radius:18px;padding:6px;box-shadow:0 12px 30px -20px rgba(107,20,54,.6);')}>
             {sec.rows.map((r, i) => (
               <button key={r.label} onClick={() => navigate(r.to)} style={css(`width:100%;display:flex;align-items:center;gap:13px;padding:13px 12px;border:none;background:none;cursor:pointer;border-bottom:${i < sec.rows.length - 1 ? '1px solid var(--ag-border-soft)' : 'none'};text-align:left;`)}>
-                <span style={css('width:38px;height:38px;flex:none;border-radius:11px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:20px;")}>{r.icon}</span>
+                <span style={css('width:44px;height:44px;flex:none;border-radius:11px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:20px;")}>{r.icon}</span>
                 </span>
                 <span style={css('flex:1;min-width:0;')}>
                   <span style={css('display:block;font-weight:700;font-size:14.5px;')}>{r.label}</span>
-                  {r.sub && <span style={css('display:block;font-size:11.5px;color:var(--ag-muted);font-weight:600;margin-top:1px;')}>{r.sub}</span>}
+                  {r.sub && <span style={css('display:block;font-size:12px;color:var(--ag-muted);font-weight:600;margin-top:1px;')}>{r.sub}</span>}
                 </span>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);")}>chevron_right</span>
               </button>
             ))}
           </div>

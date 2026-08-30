@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useGoBack } from '@/hooks/useGoBack';
+import { LoadError } from '@/components/seller/LoadError';
 import { TONES, fmt, statusStyle } from '@/data/demo';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
@@ -29,8 +31,9 @@ const fmtDate = (at: number) =>
  */
 export function Customers() {
   const navigate = useNavigate();
+  const goBack = useGoBack('/seller/profile');
   const { boutique } = useMyBoutique();
-  const { data: orderRows, loading } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+  const { data: orderRows, loading, error, reload } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
   const [open, setOpen] = useState<string | null>(null);
   // Seeded from `?q=` so a customer picked in the global search lands filtered.
   const [search, setSearch] = useSeededSearch();
@@ -62,7 +65,7 @@ export function Customers() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 10px;display:flex;align-items:center;gap:10px;')}>
-        <button onClick={() => navigate('/seller/profile')} aria-label="Back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+        <button onClick={goBack} aria-label="Back" className="agx-con-icon">
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Customer Orders</h1>
@@ -78,14 +81,21 @@ export function Customers() {
       )}
 
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:4px 20px 0;')}>
-        {!loading && shown.length === 0 && (
+        {!loading && error && (
+          <LoadError
+            title="Couldn’t load your customers"
+            detail="Your buyers and their order history are safe — this page just can’t reach them right now."
+            onRetry={reload}
+          />
+        )}
+        {!loading && !error && shown.length === 0 && (
           <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>{q ? 'No customers match.' : 'No customers yet.'}</div>
         )}
         {shown.map((c) => {
           const isOpen = open === c.key;
           return (
             <div key={c.key} style={css('background:var(--ag-surface);border-radius:16px;padding:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
-              <div onClick={() => setOpen(isOpen ? null : c.key)} style={css('display:flex;gap:11px;align-items:center;cursor:pointer;')}>
+              <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : c.key)} style={css('display:flex;gap:11px;align-items:center;cursor:pointer;width:100%;text-align:left;background:none;border:none;padding:0;font:inherit;color:inherit;')}>
                 <div style={css(`width:48px;height:48px;flex:none;border-radius:14px;background:${TONES[c.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:rgba(42,26,32,.5);`)}>{c.name[0]?.toUpperCase()}</div>
                 <div style={css('flex:1;min-width:0;')}>
                   <div style={css('font-weight:800;font-size:14px;')}>{c.name}</div>
@@ -93,25 +103,25 @@ export function Customers() {
                 </div>
                 <div style={css('text-align:right;flex:none;')}>
                   <div style={css('font-weight:800;color:var(--ag-crimson);font-size:14px;')}>{fmt(c.spent)}</div>
-                  <div style={css('font-size:11px;color:var(--ag-muted-soft);')}>lifetime</div>
+                  <div style={css('font-size:12px;color:var(--ag-muted-soft);')}>lifetime</div>
                 </div>
-                <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:#CBB0BC;transition:transform .2s;transform:rotate(${isOpen ? 180 : 0}deg);`)}>expand_more</span>
-              </div>
+                <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);transition:transform .2s;transform:rotate(${isOpen ? 180 : 0}deg);`)}>expand_more</span>
+              </button>
 
               {isOpen && (
                 <div style={css('margin-top:10px;padding-top:10px;border-top:1px solid var(--ag-border-soft);display:flex;flex-direction:column;gap:8px;')}>
-                  <div style={css('font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ag-muted);')}>Order history</div>
+                  <div style={css('font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ag-muted);')}>Order history</div>
                   {c.orders.map((o) => {
                     const st = statusStyle(o.status);
                     return (
-                      <div key={o.id} onClick={() => navigate(`/seller/orders/${encodeURIComponent(o.id)}`)} style={css('display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;background:var(--ag-bg);cursor:pointer;')}>
+                      <button type="button" className="agx-con-row" key={o.id} onClick={() => navigate(`/seller/orders/${encodeURIComponent(o.id)}`)} style={css('display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;background:var(--ag-bg);cursor:pointer;')}>
                         <div style={css('flex:1;min-width:0;')}>
                           <div style={css('font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{o.item}</div>
-                          <div style={css('font-size:11.5px;color:var(--ag-muted);')}>{o.number} · {o.date}</div>
+                          <div style={css('font-size:12px;color:var(--ag-muted);')}>{o.number} · {o.date}</div>
                         </div>
-                        <span style={css(`font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
+                        <span style={css(`font-size:11px;font-weight:800;padding:2px 8px;border-radius:7px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
                         <div style={css('font-weight:800;color:var(--ag-crimson);font-size:13px;')}>{fmt(o.amount)}</div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

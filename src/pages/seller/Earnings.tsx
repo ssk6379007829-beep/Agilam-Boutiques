@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useGoBack } from '@/hooks/useGoBack';
+import { LoadError } from '@/components/seller/LoadError';
 import { fmt } from '@/data/demo';
 import { useSettings } from '@/data/settings';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
@@ -72,8 +74,9 @@ export function Earnings() {
   const { commission_pct: commissionPct, payout_sla_hours: slaHours } = useSettings();
   const COMMISSION = commissionPct / 100;
   const navigate = useNavigate();
+  const goBack = useGoBack('/seller/profile');
   const { boutique } = useMyBoutique();
-  const { data: orderRows, loading } = useAsync(
+  const { data: orderRows, loading, error, reload } = useAsync(
     () => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])),
     [boutique?.id],
   );
@@ -171,8 +174,8 @@ export function Earnings() {
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 0 12px;display:flex;align-items:center;gap:10px;')}>
         <button
-          onClick={() => navigate('/seller/profile')}
-          aria-label="Go back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+          onClick={goBack}
+          aria-label="Go back" style={css('width:44px;height:44px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
         >
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
@@ -211,10 +214,20 @@ export function Earnings() {
         </div>
       </div>
 
+      {error && (
+        <div style={css('margin-top:14px;')}>
+          <LoadError
+            title="Couldn’t load your earnings"
+            detail="Your money is safe and every payout is still on record — this page just can’t reach the figures right now. Do not treat anything above as a real balance until it loads."
+            onRetry={reload}
+          />
+        </div>
+      )}
+
       <div className="agx-sd-quick" style={css('margin-top:14px;')}>
         {TILES.map((t) => (
           <div key={t.label} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:14px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
-            <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>{t.label}</div>
+            <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;')}>{t.label}</div>
             <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1.1;margin-top:5px;color:${t.color};word-break:break-word;`)}>{t.value}</div>
           </div>
         ))}
@@ -233,15 +246,15 @@ export function Earnings() {
 
           <div style={css('display:flex;gap:14px;flex-wrap:wrap;margin-top:13px;')}>
             <div style={css('flex:1;min-width:130px;')}>
-              <div style={css('font-size:11.5px;color:var(--ag-gold-text);font-weight:700;')}>Cash you collected</div>
+              <div style={css('font-size:12px;color:var(--ag-gold-text);font-weight:700;')}>Cash you collected</div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-gold-text);")}>{fmt(codCash)}</div>
             </div>
             <div style={css('flex:1;min-width:130px;')}>
-              <div style={css('font-size:11.5px;color:var(--ag-gold-text);font-weight:700;')}>Commission owed on it</div>
+              <div style={css('font-size:12px;color:var(--ag-gold-text);font-weight:700;')}>Commission owed on it</div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-bad-text);")}>– {fmt(codCommissionOwed)}</div>
             </div>
             <div style={css('flex:1;min-width:130px;')}>
-              <div style={css('font-size:11.5px;color:var(--ag-gold-text);font-weight:700;')}>Still to collect</div>
+              <div style={css('font-size:12px;color:var(--ag-gold-text);font-weight:700;')}>Still to collect</div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-gold-text);")}>{fmt(codOutstanding)}</div>
             </div>
           </div>
@@ -266,7 +279,7 @@ export function Earnings() {
       {offline.length > 0 && (
         <div style={css('margin-top:14px;background:var(--ag-good-bg);border:1px solid #CFE6D9;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>storefront</span>
-          <span style={css('flex:1;min-width:200px;font-size:13px;font-weight:600;color:#2C6249;line-height:1.5;')}>
+          <span style={css('flex:1;min-width:200px;font-size:13px;font-weight:600;color:var(--ag-good-text);line-height:1.5;')}>
             You also collected <strong>{fmt(offlineCollected)}</strong> from {offline.length} walk-in bill{offline.length > 1 ? 's' : ''} this month. MangaiMart charges no commission on offline sales, so this is yours in full and is not part of the payout above.
           </span>
         </div>
@@ -283,9 +296,9 @@ export function Earnings() {
           <div style={css('display:flex;align-items:flex-end;gap:10px;height:150px;')}>
             {bars.map((b, i) => (
               <div key={i} title={fmt(b.total)} style={css('flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%;')}>
-                <span style={css('font-size:10px;color:var(--ag-muted-soft);font-weight:800;')}>{b.total > 0 ? fmt(b.total) : ''}</span>
+                <span style={css('font-size:11px;color:var(--ag-muted-soft);font-weight:800;')}>{b.total > 0 ? fmt(b.total) : ''}</span>
                 <div style={css(`width:100%;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#E7719F,#D6336C);height:${Math.max(3, Math.round((b.total / peak) * 100))}%;`)} />
-                <span style={css('font-size:10.5px;color:var(--ag-muted-soft);font-weight:700;')}>{b.label}</span>
+                <span style={css('font-size:11px;color:var(--ag-muted-soft);font-weight:700;')}>{b.label}</span>
               </div>
             ))}
           </div>
@@ -321,7 +334,7 @@ export function Earnings() {
             </span>
             <button
               onClick={() => navigate('/seller/onboarding')}
-              style={css('height:40px;padding:0 16px;border:none;border-radius:12px;background:#B02454;color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}
+              style={css('min-height:44px;padding:0 16px;border:none;border-radius:12px;background:#B02454;color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}
             >
               Add bank details
             </button>

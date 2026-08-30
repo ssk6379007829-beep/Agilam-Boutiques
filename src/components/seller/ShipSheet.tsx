@@ -65,7 +65,7 @@ export function ShipSheet({
   const ready = courierName.length > 0 && awb.trim().length > 0 && !busy;
 
   const field = 'width:100%;height:46px;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-bg);color:var(--ag-ink);padding:0 13px;font-size:14px;font-family:inherit;box-sizing:border-box;';
-  const label = 'font-size:11.5px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;margin-bottom:6px;';
+  const label = 'font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;margin-bottom:6px;';
 
   return (
     <div
@@ -172,7 +172,7 @@ export function ShipSheet({
             placeholder="Paste the link your courier gave you"
             style={css(field)}
           />
-          <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:6px;line-height:1.5;')}>
+          <div style={css('font-size:12px;color:var(--ag-muted);margin-top:6px;line-height:1.5;')}>
             {autoLink && !linkTouched
               ? 'Filled in from the courier’s tracking page — edit it if it doesn’t open.'
               : 'Leave blank if your courier has no tracking page. The customer still sees the courier and docket number.'}

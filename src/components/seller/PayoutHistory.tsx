@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { css } from '@/lib/css';
+import { LoadError } from '@/components/seller/LoadError';
 import { fmt } from '@/data/demo';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchBoutiquePayouts, fetchPayoutStatement, type PayoutRecord, type StatementOrder } from '@/data/payouts';
@@ -18,7 +19,7 @@ import { PayoutStatement } from '@/components/payouts/PayoutStatement';
  * dates, and this screen is on a phone.
  */
 export function PayoutHistory({ boutiqueId, slaHours }: { boutiqueId: string | undefined; slaHours: number }) {
-  const { data: payouts, loading } = useAsync(
+  const { data: payouts, loading, error, reload } = useAsync(
     () => (boutiqueId ? fetchBoutiquePayouts(boutiqueId) : Promise.resolve([] as PayoutRecord[])),
     [boutiqueId],
   );
@@ -67,7 +68,14 @@ export function PayoutHistory({ boutiqueId, slaHours }: { boutiqueId: string | u
         <div style={css('margin-top:12px;font-size:13px;color:var(--ag-muted);font-weight:600;')}>Loading your payouts…</div>
       )}
 
-      {!loading && list.length === 0 && (
+      {!loading && error && (
+        <LoadError
+          title="Couldn’t load your payouts"
+          detail="Every settled payout is still on record — this list just can’t reach them right now."
+          onRetry={reload}
+        />
+      )}
+      {!loading && !error && list.length === 0 && (
         <div style={css('margin-top:12px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:18px;text-align:center;')}>
           <div style={css('font-size:13.5px;font-weight:700;')}>No payouts yet</div>
           <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;margin-top:5px;line-height:1.6;')}>
@@ -105,13 +113,13 @@ export function PayoutHistory({ boutiqueId, slaHours }: { boutiqueId: string | u
                       <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:21px;line-height:1.1;")}>
                         {owed ? '– ' : ''}{fmt(Math.abs(Number(p.amount)))}
                       </span>
-                      <span style={css('display:block;margin-top:4px;font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>
+                      <span style={css('display:block;margin-top:4px;font-size:12px;color:var(--ag-muted);font-weight:700;')}>
                         {new Date(p.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         {' · '}{p.orders_count} delivered order{p.orders_count === 1 ? '' : 's'}
                         {p.utr ? ` · ref ${p.utr}` : ''}
                       </span>
                     </span>
-                    <span style={css(`flex:none;font-size:10.5px;font-weight:800;letter-spacing:.03em;padding:4px 9px;border-radius:8px;background:${state.bg};color:${state.colour};`)}>
+                    <span style={css(`flex:none;font-size:11px;font-weight:800;letter-spacing:.03em;padding:4px 9px;border-radius:8px;background:${state.bg};color:${state.colour};`)}>
                       {state.label}
                     </span>
                     <span

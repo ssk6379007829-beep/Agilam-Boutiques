@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { focusFirstInvalid } from '@/lib/focusInvalid';
 import { useAuth } from '@/auth/AuthContext';
 import { FullscreenLoader } from '@/auth/RequireRole';
 import { useToast } from '@/components/ui/Toast';
@@ -513,6 +514,7 @@ export function SellerOnboarding() {
     if (Object.keys(bad).length) {
       setAccountErrors(bad);
       toast('Please fix the highlighted fields');
+      focusFirstInvalid();
       return;
     }
     if (!accountConsent) {
@@ -555,6 +557,7 @@ export function SellerOnboarding() {
     if (Object.keys(stepErrors).length) {
       setErrors(stepErrors);
       toast('Please fix the highlighted fields');
+      focusFirstInvalid();
       return;
     }
     if (!boutique) return;
@@ -629,12 +632,12 @@ export function SellerOnboarding() {
       <div style={css('background:linear-gradient(135deg,#8E1C44 0%,#B02454 52%,#D6336C 100%);color:#fff;position:relative;overflow:hidden;')}>
         <div style={css('position:absolute;top:-90px;right:-50px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(244,217,166,.22),transparent 70%);pointer-events:none;')} />
         <div style={css('max-width:900px;margin:0 auto;padding:clamp(22px,3.5vw,38px) clamp(18px,4vw,32px);position:relative;')}>
-          <div className="agx-eyebrow" style={css('font-size:9.5px;color:#F4D9A6;')}>
+          <div className="agx-eyebrow" style={css('font-size:11px;color:#F4D9A6;')}>
             {editMode ? 'Manage boutique' : isResubmission ? 'Update & resubmit' : step === 0 ? 'Create your boutique' : 'Seller setup'}
           </div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3.2vw,34px);margin-top:6px;line-height:1.15;")}>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3.2vw,34px);margin:6px 0 0;line-height:1.15;")}>
             {editMode ? 'Edit your business details' : isResubmission ? 'Fix the details and resubmit' : step === 0 ? 'Open your boutique on MangaiMart' : 'Set up your boutique'}
-          </div>
+          </h1>
           <div style={css('opacity:.88;font-size:13.5px;margin-top:6px;max-width:520px;')}>
             {editMode
               ? 'Update any section — bank & payout, GST, pickup address, timings and more. Changes save as you go and never need re-approval.'
@@ -672,7 +675,7 @@ export function SellerOnboarding() {
       <div style={css('max-width:900px;margin:0 auto;padding:22px clamp(16px,4vw,32px) 0;')}>
         {isResubmission && step === 1 && (
           <div style={css('background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:16px;padding:14px 16px;margin-bottom:16px;display:flex;gap:11px;')}>
-            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#B9862F;")}>edit_note</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);")}>edit_note</span>
             <div style={css('font-size:13px;color:var(--ag-gold-text);font-weight:600;line-height:1.5;')}>
               Our team asked for a few changes. Update the details below and submit again — everything you already entered is filled in.
             </div>
@@ -681,10 +684,10 @@ export function SellerOnboarding() {
 
         <div style={css('display:flex;align-items:center;gap:12px;margin-bottom:16px;')}>
           <span style={css('width:44px;height:44px;flex:none;border-radius:14px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
-            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:23px;")}>{active.icon}</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:23px;")}>{active.icon}</span>
           </span>
           <div>
-            <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-crimson);')}>Step {active.n + 1} of {ALL_STEPS.length}</div>
+            <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);')}>Step {active.n + 1} of {ALL_STEPS.length}</div>
             <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1.2;margin-top:2px;")}>{active.title}</div>
             <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;')}>{active.sub}</div>
           </div>
@@ -708,7 +711,7 @@ export function SellerOnboarding() {
 
             <div style={css('display:flex;align-items:center;gap:10px;')}>
               <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />
-              <span style={css('font-size:11px;font-weight:700;color:#C0A5B0;')}>OR</span>
+              <span style={css('font-size:12px;font-weight:700;color:var(--ag-muted-soft);')}>OR</span>
               <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />
             </div>
             <button
@@ -747,8 +750,8 @@ export function SellerOnboarding() {
                     <img src={form.logoUrl} alt="Boutique logo" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
                   ) : (
                     <>
-                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>{uploading === 'logo' ? 'progress_activity' : 'add_a_photo'}</span>
-                      <span style={css('font-size:10.5px;color:var(--ag-muted-soft);font-weight:700;')}>Logo *</span>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:24px;")}>{uploading === 'logo' ? 'progress_activity' : 'add_a_photo'}</span>
+                      <span style={css('font-size:11px;color:var(--ag-muted-soft);font-weight:700;')}>Logo *</span>
                     </>
                   )}
                   <input ref={logoInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void pickImage('logo', e.target.files?.[0]); e.target.value = ''; }} />
@@ -761,14 +764,14 @@ export function SellerOnboarding() {
                     <img src={form.coverUrl} alt="Boutique cover" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
                   ) : (
                     <>
-                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>{uploading === 'cover' ? 'progress_activity' : 'wallpaper'}</span>
-                      <span style={css('font-size:10.5px;color:var(--ag-muted-soft);font-weight:700;')}>Cover image</span>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:24px;")}>{uploading === 'cover' ? 'progress_activity' : 'wallpaper'}</span>
+                      <span style={css('font-size:11px;color:var(--ag-muted-soft);font-weight:700;')}>Cover image</span>
                     </>
                   )}
                   <input ref={coverInput} type="file" accept="image/*" style={css('display:none;')} onChange={(e) => { void pickImage('cover', e.target.files?.[0]); e.target.value = ''; }} />
                 </div>
               </div>
-              {errors.logoUrl && <span style={css('display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);')}>{errors.logoUrl}</span>}
+              {errors.logoUrl && <span style={css('display:block;margin-top:4px;font-size:12px;font-weight:700;color:var(--ag-danger-text);')}>{errors.logoUrl}</span>}
             </div>
 
             <Field label="Boutique name *" value={form.name} onChange={(v) => set('name', v)} placeholder="Uzhamagal Boutique" error={errors.name} />
@@ -818,16 +821,16 @@ export function SellerOnboarding() {
               hint={errors.pincode ? undefined : 'Six digits — we fill in the district, state and nearby localities from it.'}
             />
             {pinStatus.kind === 'checking' && (
-              <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-muted);margin-top:-6px;')}>Looking up this pincode…</span>
+              <span style={css('font-size:12px;font-weight:700;color:var(--ag-muted);margin-top:-6px;')}>Looking up this pincode…</span>
             )}
             {pinArea && (
-              <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-good);margin-top:-6px;')}>
+              <span style={css('font-size:12px;font-weight:700;color:var(--ag-good);margin-top:-6px;')}>
                 {pinArea.district ? `${pinArea.district} district` : 'Found'}{pinArea.state ? `, ${pinArea.state}` : ''}
                 {pinArea.places.length > 1 ? ` · ${pinArea.places.length} localities to pick from` : ''}
               </span>
             )}
             {pinStatus.kind === 'unknown' && (
-              <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-muted);margin-top:-6px;')}>
+              <span style={css('font-size:12px;font-weight:700;color:var(--ag-muted);margin-top:-6px;')}>
                 We could not look that pincode up — fill in the city, district and state yourself.
               </span>
             )}
@@ -1039,11 +1042,11 @@ export function SellerOnboarding() {
               {editMode && step === 1 ? 'Cancel' : 'Back'}
             </button>
           )}
-          <button
+          <button className="agx-con-btn"
             type="button"
             onClick={step === 0 ? createAccount : step === 7 ? (editMode ? saveEdits : submit) : saveAndNext}
             disabled={busy || uploading != null}
-            style={css(`flex:1;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:${busy ? 'default' : 'pointer'};opacity:${busy || uploading ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;`)}
+            style={css(`flex:1;height:54px;border:none;border-radius:15px;color:#fff;font-weight:800;font-size:16px;cursor:${busy ? 'default' : 'pointer'};opacity:${busy || uploading ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;`)}
           >
             {uploading
               ? 'Uploading image…'
@@ -1069,7 +1072,7 @@ export function SellerOnboarding() {
 function IfscStatusLine({ status }: { status: IfscStatus }) {
   if (status.kind === 'idle' || status.kind === 'typing') return null;
 
-  const base = 'display:flex;align-items:flex-start;gap:8px;margin-top:-4px;font-size:11.5px;font-weight:700;line-height:1.45;';
+  const base = 'display:flex;align-items:flex-start;gap:8px;margin-top:-4px;font-size:12px;font-weight:700;line-height:1.45;';
 
   if (status.kind === 'checking') {
     return <span style={css(`${base}color:var(--ag-muted);`)}>Checking this IFSC…</span>;
@@ -1158,9 +1161,9 @@ function ReviewStep({
   return (
     <div style={css('display:flex;flex-direction:column;gap:14px;')}>
       {incomplete.length > 0 && (
-        <div style={css('background:var(--ag-surface-2);border:1px solid #F2C9D3;border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
+        <div style={css('background:var(--ag-surface-2);border:1px solid var(--ag-danger-text);border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-danger-text);")}>error</span>
-          <div style={css('font-size:13px;color:#8E2B3C;font-weight:600;line-height:1.5;')}>
+          <div style={css('font-size:13px;color:var(--ag-danger-text);font-weight:600;line-height:1.5;')}>
             {incomplete.length} step{incomplete.length > 1 ? 's are' : ' is'} still incomplete:{' '}
             {incomplete.map((s) => s.title).join(', ')}. Fix {incomplete.length > 1 ? 'them' : 'it'} before submitting.
           </div>
@@ -1192,7 +1195,7 @@ function ReviewStep({
 
       <div style={css('background:var(--ag-good-bg);border:1px solid #CFE6D9;border-radius:16px;padding:14px 16px;display:flex;gap:11px;')}>
         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);")}>verified_user</span>
-        <div style={css('font-size:13px;color:#2C6249;font-weight:600;line-height:1.5;')}>
+        <div style={css('font-size:13px;color:var(--ag-good-text);font-weight:600;line-height:1.5;')}>
           {editMode
             ? 'Edit any section above, then Save changes. Your boutique stays live and your listings are unaffected — no re-approval needed.'
             : 'Our team reviews your boutique — usually within 24 hours. You can keep adding products while you wait; they go live to buyers the moment you are approved.'}

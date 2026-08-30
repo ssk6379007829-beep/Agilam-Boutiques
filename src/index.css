@@ -1600,3 +1600,59 @@ span[style*="Material Symbols Outlined"] {
 
 html:has(.agx-sell-light) { scroll-padding-top: 96px; }
 @media (max-width: 939px) { html:has(.agx-sell-light) { scroll-padding-top: 140px; } }
+
+/* ── The seller CONSOLE's controls ──────────────────────────────────────────
+   Not to be confused with `.agx-sell-*` above, which dresses the public
+   "sell with us" marketing site. These are for `src/pages/seller/` — the
+   logged-in console.
+
+   They exist because the console was built entirely from inline style strings,
+   and a style attribute cannot express `:hover`, `:focus-visible`, `:active` or
+   `:disabled`. The result was 150 buttons with no hover feedback and a disabled
+   state hand-rolled as `opacity` at each call site. Everything below is a
+   token; nothing here is a literal colour, so both themes follow. */
+
+/* The primary action — "Save", "Publish", "Create bill". One per screen. */
+.agx-con-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px;                 /* WCAG 2.5.5 target size */
+  border: none; cursor: pointer;
+  font-family: inherit; font-weight: 800;
+  color: #FFFFFF;                   /* on an opaque crimson fill in both themes */
+  background: linear-gradient(135deg, var(--ag-crimson), var(--ag-deep));
+  transition: filter .18s ease, box-shadow .18s ease;
+}
+.agx-con-btn:hover { filter: brightness(1.07); }
+.agx-con-btn:active { filter: brightness(.95); }
+.agx-con-btn:focus-visible { outline: 2.5px solid var(--ag-crimson); outline-offset: 3px; }
+/* One definition of "disabled", instead of an opacity literal at 8 call sites. */
+.agx-con-btn:disabled,
+.agx-con-btn[aria-disabled="true"] {
+  filter: none; cursor: default; opacity: .55; box-shadow: none;
+}
+
+/* The round-cornered icon button in a page header — almost always "back". */
+.agx-con-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; flex: none;
+  border: none; border-radius: 12px; cursor: pointer;
+  background: var(--ag-surface);
+  box-shadow: 0 6px 18px -12px rgba(107, 20, 54, .6);
+  transition: background-color .18s ease;
+}
+.agx-con-icon:hover { background: var(--ag-surface-2); }
+.agx-con-icon:focus-visible { outline: 2.5px solid var(--ag-crimson); outline-offset: 2px; }
+
+/* A tappable row rendered as a <button> so it is keyboard reachable. The
+   console has several of these (an order row, a conversation, a customer);
+   they need the button reset but should not look like a button. */
+.agx-con-row {
+  display: block; width: 100%; text-align: left;
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; color: inherit; cursor: pointer;
+}
+.agx-con-row:focus-visible { outline: 2.5px solid var(--ag-crimson); outline-offset: 2px; border-radius: 12px; }
+
+/* Any control the console renders should meet the pointer-target minimum even
+   where a call site forgot. Applies to the console only. */
+.agx-con-min { min-width: 44px; min-height: 44px; }
