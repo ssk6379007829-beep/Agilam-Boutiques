@@ -633,6 +633,45 @@ await check('unknown budget rung 404s', '/budget/under-7', [
 ]);
 
 /*
+ * EVERY facet URL the sitemap advertises must resolve to an indexable page.
+ *
+ * The checks above sample one URL per facet family, which is what let this
+ * through: `metaForCategory` resolved a landing page from an unordered
+ * `limit=40` read of the whole products table while `sitemapPagesXml`
+ * enumerated the same URLs from `limit=5000`. Under forty live products the two
+ * agree and every sample passes. Over it they drift apart silently, and the
+ * facets that fell outside the arbitrary forty began serving `noindex` at URLs
+ * the sitemap was still advertising — a soft 404 on exactly the pages that had
+ * just gained enough stock to be worth ranking.
+ *
+ * So this sweeps the whole set rather than sampling it. It is the one assertion
+ * whose cost scales with the catalogue, which is the point: the bug it guards
+ * against also only appears once the catalogue is large enough.
+ */
+{
+  const facetUrls = [...pagesXml.matchAll(
+    /<loc>[^<]*(\/(?:collections|occasions|fabrics|colours|budget)\/[^<]+)<\/loc>/g
+  )].map((m) => m[1]);
+  const noindexed = [];
+  for (const path of facetUrls) {
+    const res = await middleware(new Request(`${origin}${path}`, { method: 'GET' }));
+    const body = res ? await res.text() : '';
+    const robots = (body.match(/<meta name="robots" content="([^"]*)"/) || [])[1] || '';
+    if (robots.includes('noindex')) noindexed.push(path);
+  }
+  results.push(
+    !facetUrls.length
+      ? { label: 'sitemap facets indexable', FAIL: 'no facet URLs in the page sitemap' }
+      : noindexed.length
+        ? {
+            label: 'sitemap facets indexable',
+            FAIL: `${noindexed.length}/${facetUrls.length} advertised as soft 404s: ${noindexed.slice(0, 5).join(', ')}`,
+          }
+        : { label: 'sitemap facets indexable', status: 200, title: `${facetUrls.length} facet urls, all index,follow` }
+  );
+}
+
+/*
  * The preview guard.
  *
  * `isPreviewHost` used to lead with `!!CANONICAL_HOST &&`, so with VITE_SITE_URL
