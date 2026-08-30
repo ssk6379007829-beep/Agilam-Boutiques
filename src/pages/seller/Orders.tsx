@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { LoadError } from '@/components/seller/LoadError';
 import { csvDocument } from '@/lib/csv';
 import { TONES, fmt, statusStyle } from '@/data/demo';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
@@ -36,7 +37,7 @@ export function Orders() {
   const [period, setPeriod] = useState<Period>('All time');
   const [search, setSearch] = useState('');
   const { boutique } = useMyBoutique();
-  const { data: orderRows, loading } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+  const { data: orderRows, loading, error, reload } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
 
   // Keep created_at alongside the display view so the date filter has a real
   // timestamp to work with (the view only carries a short display date).
@@ -90,7 +91,7 @@ export function Orders() {
       <div style={css('padding:6px 20px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
         <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Orders</h1>
         {all.length > 0 && (
-          <button onClick={exportCsv} style={css('display:flex;align-items:center;gap:5px;height:38px;padding:0 13px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:11px;font-weight:800;font-size:12.5px;cursor:pointer;')}>
+          <button onClick={exportCsv} style={css('display:flex;align-items:center;gap:5px;min-height:44px;padding:0 13px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:11px;font-weight:800;font-size:12.5px;cursor:pointer;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>download</span>Export
           </button>
         )}
@@ -153,7 +154,14 @@ export function Orders() {
 
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:0 20px;')}>
         {loading && filtered.length === 0 && <SkeletonRows rows={4} height={92} thumb={false} label="Loading orders…" />}
-        {!loading && filtered.length === 0 && (
+        {!loading && error && (
+          <LoadError
+            title="Couldn’t load your orders"
+            detail="Every order is still recorded — this list just can’t reach them right now. Nothing has been cancelled."
+            onRetry={reload}
+          />
+        )}
+        {!loading && !error && filtered.length === 0 && (
           <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>
             {q || period !== 'All time' || tab !== 'All' ? 'No orders match these filters.' : 'No orders yet.'}
           </div>
@@ -162,12 +170,12 @@ export function Orders() {
           const st = statusStyle(o.status);
           return (
             <div key={o.id} style={css('background:var(--ag-surface);border-radius:16px;padding:13px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
-              <div onClick={() => navigate(`/seller/orders/${encodeURIComponent(o.id)}`)} style={css('cursor:pointer;')}>
+              <button type="button" onClick={() => navigate(`/seller/orders/${encodeURIComponent(o.id)}`)} className="agx-con-row">
                 <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;')}>
                   <span style={css('display:flex;align-items:center;gap:7px;')}>
                     <span style={css('font-weight:800;font-size:13px;color:var(--ag-muted);')}>{o.number}</span>
                     {o.channel === 'offline' && (
-                      <span style={css('font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:var(--ag-purple-bg);color:var(--ag-purple-text);')}>Offline</span>
+                      <span style={css('font-size:11px;font-weight:800;padding:2px 8px;border-radius:7px;background:var(--ag-purple-bg);color:var(--ag-purple-text);')}>Offline</span>
                     )}
                     {o.channel === 'online' && o.paymentMethod && (() => {
                       // Three distinct states, not two: cash still owed, cash
@@ -182,13 +190,13 @@ export function Orders() {
                           ? { bg: 'var(--ag-good-bg)', fg: 'var(--ag-good-text)' }
                           : { bg: 'var(--ag-surface-2)', fg: 'var(--ag-muted)' };
                       return (
-                        <span style={css(`font-size:10px;font-weight:800;padding:2px 8px;border-radius:7px;background:${tone.bg};color:${tone.fg};`)}>
+                        <span style={css(`font-size:11px;font-weight:800;padding:2px 8px;border-radius:7px;background:${tone.bg};color:${tone.fg};`)}>
                           {!o.isCod ? 'Paid' : owed ? `COD · collect ${fmt(o.collectAmount)}` : settled ? 'COD · collected' : 'COD · not collected'}
                         </span>
                       );
                     })()}
                   </span>
-                  <span style={css(`font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
+                  <span style={css(`font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
                 </div>
                 <div style={css('display:flex;gap:11px;align-items:center;margin-top:10px;')}>
                   <ImageSlot
@@ -203,7 +211,7 @@ export function Orders() {
                   </div>
                   <div style={css('font-weight:800;color:var(--ag-crimson);font-size:15px;')}>{fmt(o.amount)}</div>
                 </div>
-              </div>
+              </button>
               <div style={css('display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--ag-border-soft);')}>
                 <button
                   onClick={() => printInvoice(o, boutique?.name ?? 'Your boutique')}

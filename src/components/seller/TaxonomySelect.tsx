@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { css } from '@/lib/css';
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape';
 import { useShop } from '@/state/ShopContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { requestTaxonomy, KIND_LABEL, type TaxonomyKind } from '@/data/taxonomy';
@@ -31,8 +32,8 @@ const SELECT =
   "width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface) url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23B02454' stroke-width='2.5' stroke-linecap='round'><path d='M6 9l6 6 6-6'/></svg>\") no-repeat right 14px center;border-radius:13px;padding:0 40px 0 14px;height:50px;font-size:14px;font-weight:600;color:var(--ag-ink);box-sizing:border-box;font-family:inherit;appearance:none;-webkit-appearance:none;cursor:pointer;";
 const SELECT_ERR = SELECT.replace('var(--ag-border)', 'var(--ag-border)');
 const LABEL = 'display:block;font-size:13px;font-weight:700;color:var(--ag-label);';
-const ERR = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);';
-const HINT = 'display:block;margin-top:5px;font-size:11.5px;font-weight:600;color:var(--ag-muted);line-height:1.5;';
+const ERR = 'display:block;margin-top:4px;font-size:12px;font-weight:700;color:var(--ag-danger-text);';
+const HINT = 'display:block;margin-top:5px;font-size:12px;font-weight:600;color:var(--ag-muted);line-height:1.5;';
 
 const ADD_NEW = '__add_new__';
 
@@ -66,6 +67,7 @@ export function TaxonomySelect({
   const [busy, setBusy] = useState(false);
   // Combobox state (searchable mode only).
   const [open, setOpen] = useState(false);
+  useDismissOnEscape(() => setOpen(false), open);
   const [query, setQuery] = useState('');
 
   const approved = names(kind);
@@ -161,7 +163,7 @@ export function TaxonomySelect({
           <button
             type="button"
             onClick={() => { setOpen((o) => !o); setQuery(''); }}
-            style={css(`${TRIGGER}${error ? 'border-color:#E7A7B4;' : ''}`)}
+            style={css(`${TRIGGER}${error ? 'border-color:var(--ag-danger-text);' : ''}`)}
           >
             <span style={css('display:flex;align-items:center;gap:9px;min-width:0;')}>
               {value ? (
@@ -173,7 +175,7 @@ export function TaxonomySelect({
                 <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>Select {kindLabel}…</span>
               )}
             </span>
-            <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:#B02454;transition:transform .15s;transform:rotate(${open ? 180 : 0}deg);`)}>expand_more</span>
+            <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);transition:transform .15s;transform:rotate(${open ? 180 : 0}deg);`)}>expand_more</span>
           </button>
 
           {open && (
@@ -212,7 +214,7 @@ export function TaxonomySelect({
                         <span style={css('flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--ag-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>
                           {o.name}{o.note ? ` · ${o.note}` : ''}
                         </span>
-                        {o.name === value && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:#D6336C;")}>check</span>}
+                        {o.name === value && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>check</span>}
                       </button>
                     ))
                   )}
@@ -227,7 +229,7 @@ export function TaxonomySelect({
                     onClick={() => { setAdding(true); setDraft(query.trim()); setOpen(false); setQuery(''); }}
                     style={css('width:100%;display:flex;align-items:center;gap:9px;padding:12px;border:none;border-top:1px solid var(--ag-border-soft);background:none;cursor:pointer;font-family:inherit;text-align:left;')}
                   >
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>add_circle</span>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>add_circle</span>
                     <span style={css('font-size:13px;font-weight:800;color:var(--ag-crimson);')}>
                       {query.trim() ? `Request “${query.trim()}”` : `Add a new ${kindLabel}`}
                     </span>
@@ -283,11 +285,11 @@ export function TaxonomySelect({
               placeholder={kind === 'category' ? 'e.g. Dupattas' : kind === 'fabric' ? 'e.g. Tussar Silk' : 'e.g. Sangeet'}
               style={css('flex:1;min-width:0;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:11px;padding:0 12px;height:44px;font-size:14px;font-weight:600;font-family:inherit;color:var(--ag-ink);')}
             />
-            <button
+            <button className="agx-con-btn"
               type="button"
               onClick={submitRequest}
               disabled={busy}
-              style={css(`flex:none;border:none;border-radius:11px;padding:0 18px;height:44px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:${busy ? 'default' : 'pointer'};opacity:${busy ? 0.7 : 1};`)}
+              style={css(`flex:none;border:none;border-radius:11px;padding:0 18px;height:44px;color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:${busy ? 'default' : 'pointer'};opacity:${busy ? 0.7 : 1};`)}
             >
               {busy ? 'Sending…' : 'Request'}
             </button>
@@ -306,14 +308,14 @@ export function TaxonomySelect({
       )}
 
       {isPending && !adding && (
-        <span style={css('display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600;color:var(--ag-warn-text);line-height:1.5;')}>
+        <span style={css('display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:12px;font-weight:600;color:var(--ag-warn-text);line-height:1.5;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;")}>schedule</span>
           Awaiting approval — your product still sells under this name; buyers will be able to browse by it once we approve.
         </span>
       )}
 
       {rejected && !adding && (
-        <span style={css('display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600;color:var(--ag-bad-text);line-height:1.5;')}>
+        <span style={css('display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:12px;font-weight:600;color:var(--ag-bad-text);line-height:1.5;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;")}>cancel</span>
           Not approved{rejected.review_note ? ` — ${rejected.review_note}` : ''}. Please pick the closest option instead.
         </span>

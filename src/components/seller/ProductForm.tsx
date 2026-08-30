@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { css } from '@/lib/css';
+import { focusFirstInvalid } from '@/lib/focusInvalid';
 import { useShop } from '@/state/ShopContext';
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { fetchColourSet, fetchColourSetCandidates, uploadProductImage, type ColourSibling } from '@/data/products';
@@ -147,8 +148,8 @@ const inputStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border
 const inputErrStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface-2);border-radius:13px;padding:0 14px;height:50px;font-size:14px;font-weight:600;';
 const textAreaStyle = 'width:100%;margin-top:6px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:13px;padding:12px 14px;font-size:14px;font-weight:500;font-family:inherit;resize:vertical;min-height:80px;';
 const labelStyle = 'font-size:13px;font-weight:700;color:var(--ag-label);';
-const errStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-danger-text);';
-const hintStyle = 'display:block;margin-top:4px;font-size:11.5px;font-weight:600;color:var(--ag-muted);line-height:1.45;';
+const errStyle = 'display:block;margin-top:4px;font-size:12px;font-weight:700;color:var(--ag-danger-text);';
+const hintStyle = 'display:block;margin-top:4px;font-size:12px;font-weight:600;color:var(--ag-muted);line-height:1.45;';
 
 /**
  * Category, colour, occasion and fabric used to be four free-text boxes. They
@@ -444,6 +445,7 @@ export function ProductForm({
     if (!onSubmit) return;
     if (!validate()) {
       showToast('Please fill all required fields');
+      focusFirstInvalid();
       return;
     }
     onSubmit(cleanProductForm(form));
@@ -464,10 +466,10 @@ export function ProductForm({
             <img src={form.imageUrl} alt="Cover" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />
           ) : (
             <>
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:24px;")}>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:24px;")}>
                 {uploading === 'cover' ? 'progress_activity' : 'add_a_photo'}
               </span>
-              <span style={css('font-size:10px;color:var(--ag-muted-soft);font-weight:700;')}>Cover *</span>
+              <span style={css('font-size:11px;color:var(--ag-muted-soft);font-weight:700;')}>Cover *</span>
             </>
           )}
           {/* Clearing the value lets the same photo be re-picked after a cancelled crop. */}
@@ -488,7 +490,7 @@ export function ProductForm({
                   <span aria-hidden="true" style={css("position:absolute;top:3px;right:3px;font-family:'Material Symbols Outlined';font-size:16px;color:#fff;background:rgba(0,0,0,.45);border-radius:6px;")}>close</span>
                 </>
               ) : (
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6A9BC;font-size:20px;")}>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-border);font-size:20px;")}>
                   {uploading === 'gallery' && !form.images[i] ? 'progress_activity' : 'add'}
                 </span>
               )}
@@ -525,7 +527,7 @@ export function ProductForm({
           />
           {p.key === 'color' && !form.color && colorSuggestions.length > 0 && (
             <div style={css('margin-top:7px;')}>
-              <span style={css('display:block;font-size:11.5px;font-weight:700;color:var(--ag-muted);margin-bottom:6px;')}>
+              <span style={css('display:block;font-size:12px;font-weight:700;color:var(--ag-muted);margin-bottom:6px;')}>
                 {colorSuggestions.length > 1 ? 'Colours we spotted in your photo — tap one' : 'Colour we spotted in your photo — tap to use'}
               </span>
               <div style={css('display:flex;gap:7px;flex-wrap:wrap;')}>
@@ -559,7 +561,7 @@ export function ProductForm({
             Stock *
             <div style={css('margin-top:6px;height:50px;border:1.5px solid var(--ag-border);border-radius:13px;background:var(--ag-surface-2);display:flex;flex-direction:column;align-items:center;justify-content:center;')}>
               <span style={css('font-size:15px;font-weight:800;color:var(--ag-ink);line-height:1.1;')}>{sizeTotal}</span>
-              <span style={css('font-size:10px;font-weight:700;color:var(--ag-muted);')}>set per size below</span>
+              <span style={css('font-size:11px;font-weight:700;color:var(--ag-muted);')}>set per size below</span>
             </div>
           </div>
         ) : (
@@ -574,7 +576,7 @@ export function ProductForm({
         MRP (₹) — optional, shows a discount badge to buyers
         <input value={form.mrp} onChange={(e) => set('mrp', e.target.value)} inputMode="numeric" placeholder="5999" style={css(errors.mrp ? inputErrStyle : inputStyle)} />
         {errors.mrp && <span style={css(errStyle)}>{errors.mrp}</span>}
-        {discountPct != null && <span style={css('display:block;margin-top:4px;font-size:11.5px;font-weight:700;color:var(--ag-good);')}>{discountPct}% off badge will show to buyers</span>}
+        {discountPct != null && <span style={css('display:block;margin-top:4px;font-size:12px;font-weight:700;color:var(--ag-good);')}>{discountPct}% off badge will show to buyers</span>}
       </label>
 
       <label style={css(labelStyle)}>
@@ -611,7 +613,7 @@ export function ProductForm({
           {sizeOptions.map((s) => {
             const on = form.sizes.includes(s);
             return (
-              <span key={s} onClick={() => toggleSize(s)} style={css(`padding:9px 14px;border-radius:11px;border:1.5px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-weight:700;font-size:13px;cursor:pointer;`)}>{s}</span>
+              <button type="button" key={s} aria-pressed={on} onClick={() => toggleSize(s)} style={css(`min-height:44px;font:inherit;cursor:pointer;padding:9px 14px;border-radius:11px;border:1.5px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-weight:700;font-size:13px;cursor:pointer;`)}>{s}</button>
             );
           })}
         </div>
@@ -626,7 +628,7 @@ export function ProductForm({
             <div style={css('display:flex;gap:9px;flex-wrap:wrap;margin-top:11px;')}>
               {sortSizes(form.sizes).map((s) => (
                 <label key={s} style={css('width:74px;flex:none;')}>
-                  <span style={css('display:block;font-size:11.5px;font-weight:800;color:var(--ag-label);text-align:center;')}>{s}</span>
+                  <span style={css('display:block;font-size:12px;font-weight:800;color:var(--ag-label);text-align:center;')}>{s}</span>
                   <input
                     value={form.sizeStock[s] ?? ''}
                     onChange={(e) => setSizeQty(s, e.target.value)}
@@ -641,7 +643,7 @@ export function ProductForm({
 
             {/* Most shops cut the same run of every size — one number, one tap. */}
             <div style={css('display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--ag-border-soft);')}>
-              <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-muted);flex:1;min-width:0;')}>Same number of every size?</span>
+              <span style={css('font-size:12px;font-weight:700;color:var(--ag-muted);flex:1;min-width:0;')}>Same number of every size?</span>
               <input
                 value={bulkQty}
                 onChange={(e) => setBulkQty(e.target.value.replace(/[^0-9]/g, ''))}
@@ -662,7 +664,7 @@ export function ProductForm({
             {/* Only for a piece listed before per-size stock existed: it arrives
                 with sizes and one pooled number, and the form now needs a split. */}
             {pooledOnOpen.current > 0 && sizeTotal === 0 && (
-              <span style={css('display:block;margin-top:10px;font-size:11.5px;font-weight:700;color:var(--ag-info-text);line-height:1.45;')}>
+              <span style={css('display:block;margin-top:10px;font-size:12px;font-weight:700;color:var(--ag-info-text);line-height:1.45;')}>
                 This piece had {pooledOnOpen.current} in stock as one pool. Split that across the sizes you
                 actually have — buyers can then only order a size you can post.
               </span>
@@ -686,7 +688,7 @@ export function ProductForm({
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>palette</span>
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('font-size:13.5px;font-weight:800;color:var(--ag-ink);')}>Colours in this set</div>
-              <div style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);line-height:1.45;')}>
+              <div style={css('font-size:12px;font-weight:600;color:var(--ag-muted);line-height:1.45;')}>
                 {siblings.length > 1
                   ? 'Buyers see these as swatches on the product page and can switch between them.'
                   : 'Stitch this in more than one colour? Add each one — buyers get swatches to switch between them, and each colour keeps its own photos, price and stock.'}
@@ -704,10 +706,10 @@ export function ProductForm({
                       <ImageSlot src={s.image_url ?? undefined} placeholder={s.title} style={css('position:absolute;inset:0;')} />
                     </div>
                     <div style={css('padding:5px 6px 6px;')}>
-                      <div style={css(`font-size:11px;font-weight:800;color:${self ? 'var(--ag-crimson)' : 'var(--ag-ink)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`)}>
+                      <div style={css(`font-size:12px;font-weight:800;color:${self ? 'var(--ag-crimson)' : 'var(--ag-ink)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`)}>
                         {s.color || 'No colour'}
                       </div>
-                      <div style={css('font-size:10.5px;font-weight:700;color:var(--ag-muted);')}>
+                      <div style={css('font-size:11px;font-weight:700;color:var(--ag-muted);')}>
                         {s.stock === 0 ? 'Sold out' : fmt(Number(s.price))}
                       </div>
                     </div>
@@ -749,7 +751,7 @@ export function ProductForm({
               </div>
               <div style={css('max-height:210px;overflow-y:auto;margin-top:8px;display:flex;flex-direction:column;gap:7px;')}>
                 {candidates.length === 0 && (
-                  <span style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);')}>
+                  <span style={css('font-size:12px;font-weight:600;color:var(--ag-muted);')}>
                     Nothing to link — every other piece in your shop is already in a colour set.
                   </span>
                 )}
@@ -761,12 +763,12 @@ export function ProductForm({
                     onClick={() => void linkCandidate(c.id)}
                     style={css(`display:flex;align-items:center;gap:9px;text-align:left;border:1.5px solid var(--ag-border);border-radius:12px;background:var(--ag-surface-2);padding:7px 9px;font-family:inherit;cursor:${linking ? 'default' : 'pointer'};opacity:${linking ? 0.6 : 1};`)}
                   >
-                    <span style={css('width:38px;height:38px;flex:none;border-radius:10px;overflow:hidden;position:relative;display:block;')}>
+                    <span style={css('width:44px;height:44px;flex:none;border-radius:10px;overflow:hidden;position:relative;display:block;')}>
                       <ImageSlot src={c.image_url ?? undefined} placeholder={c.title} style={css('position:absolute;inset:0;')} />
                     </span>
                     <span style={css('flex:1;min-width:0;')}>
                       <span style={css('display:block;font-size:12.5px;font-weight:800;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{c.title}</span>
-                      <span style={css('display:block;font-size:11px;font-weight:700;color:var(--ag-muted);')}>{c.color || 'No colour'} · {fmt(Number(c.price))}</span>
+                      <span style={css('display:block;font-size:12px;font-weight:700;color:var(--ag-muted);')}>{c.color || 'No colour'} · {fmt(Number(c.price))}</span>
                     </span>
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>link</span>
                   </button>
@@ -783,10 +785,10 @@ export function ProductForm({
           nothing but a filled one answers a question they'd otherwise be
           messaged about. */}
       <div style={css('display:flex;align-items:center;gap:9px;margin-top:6px;padding-top:16px;border-top:1px solid var(--ag-border);')}>
-        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:#D6336C;")}>list_alt</span>
+        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>list_alt</span>
         <div>
           <div style={css('font-size:14px;font-weight:800;color:var(--ag-ink);')}>Product page details</div>
-          <div style={css('font-size:11.5px;font-weight:600;color:var(--ag-muted);')}>What buyers read before they decide</div>
+          <div style={css('font-size:12px;font-weight:600;color:var(--ag-muted);')}>What buyers read before they decide</div>
         </div>
       </div>
 
@@ -832,10 +834,10 @@ export function ProductForm({
           onClick={() => set('feedingFriendly', !form.feedingFriendly)}
           style={css('width:100%;display:flex;align-items:center;gap:11px;border:none;background:none;padding:0;cursor:pointer;text-align:left;font-family:inherit;')}
         >
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D6336C;")}>child_care</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>child_care</span>
           <span style={css('flex:1;')}>
             <span style={css('display:block;font-size:13px;font-weight:700;color:var(--ag-label);')}>Feeding friendly</span>
-            <span style={css('display:block;font-size:11.5px;font-weight:600;color:var(--ag-muted);margin-top:2px;')}>Has nursing access — a concealed zip, side slit or overlap</span>
+            <span style={css('display:block;font-size:12px;font-weight:600;color:var(--ag-muted);margin-top:2px;')}>Has nursing access — a concealed zip, side slit or overlap</span>
           </span>
           <span style={css(`flex:none;width:44px;height:26px;border-radius:999px;background:${form.feedingFriendly ? '#D6336C' : 'var(--ag-surface-3)'};position:relative;transition:background .18s;`)}>
             <span style={css(`position:absolute;top:3px;left:${form.feedingFriendly ? 21 : 3}px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .18s;box-shadow:0 1px 3px rgba(0,0,0,.3);`)} />
@@ -923,10 +925,10 @@ export function ProductForm({
 
       {/* One colour among several publishes with the page, not on its own. */}
       {!embedded && (
-        <button
+        <button className="agx-con-btn"
           onClick={submit}
           disabled={busy || uploading != null}
-          style={css(`width:100%;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:${busy || uploading ? 'default' : 'pointer'};opacity:${busy || uploading ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);`)}
+          style={css(`width:100%;height:54px;border:none;border-radius:15px;color:#fff;font-weight:800;font-size:16px;cursor:${busy || uploading ? 'default' : 'pointer'};opacity:${busy || uploading ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);`)}
         >
           {uploading ? 'Uploading photo…' : busy ? 'Saving…' : submitLabel}
         </button>

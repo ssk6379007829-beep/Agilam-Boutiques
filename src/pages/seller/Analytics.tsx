@@ -6,8 +6,13 @@ import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
 import { fetchOrdersForBoutique, fetchCustomersForBoutique } from '@/data/orders';
 import { fetchProductsByBoutique } from '@/data/products';
+import { SkeletonTiles } from '@/components/ui/Skeleton';
+import { LoadError } from '@/components/seller/LoadError';
 
-const CAT_COLORS = ['#D6336C', '#B0863B', '#9B7FC7', '#5FA37E', 'var(--ag-info-text)', 'var(--ag-star)'];
+// Category swatches. These are chart series, not UI chrome — they need to stay
+// distinguishable from each other rather than track the theme, so they are the
+// one place in this file that names a colour directly.
+const CAT_COLORS = ['var(--ag-crimson)', 'var(--ag-gold-text)', 'var(--ag-purple-text)', 'var(--ag-good)', 'var(--ag-info-text)', 'var(--ag-star)'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const compactInr = (n: number) =>
   n >= 100000 ? '₹' + (n / 100000).toFixed(1) + 'L' : n >= 1000 ? '₹' + (n / 1000).toFixed(1) + 'k' : fmt(n);
@@ -51,9 +56,22 @@ export function Analytics() {
   const { boutique } = useMyBoutique();
   const [range, setRange] = useState<Range>('6 Months');
 
-  const { data: orderRows } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
-  const { data: productRows } = useAsync(() => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
-  const { data: customerRows } = useAsync(() => (boutique ? fetchCustomersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+  // Every figure on this page is derived from these three fetches, so a failure
+  // in any of them makes the whole page wrong rather than partially empty —
+  // hence one combined gate below rather than three local ones. Dropping
+  // `error` here is what used to render a confident "₹0 revenue" over a failed
+  // load, which reads as "your sales are gone" rather than "we couldn't ask".
+  const { data: orderRows, loading: ordersLoading, error: ordersError, reload: reloadOrders } =
+    useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+  const { data: productRows, loading: productsLoading, error: productsError, reload: reloadProducts } =
+    useAsync(() => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+  const { data: customerRows, loading: customersLoading, error: customersError, reload: reloadCustomers } =
+    useAsync(() => (boutique ? fetchCustomersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+
+  const loading = ordersLoading || productsLoading || customersLoading;
+  const loadError = ordersError || productsError || customersError;
+  const ready = !loading && !loadError;
+  const retry = () => { reloadOrders(); reloadProducts(); reloadCustomers(); };
 
   const orders = useMemo(() => orderRows ?? [], [orderRows]);
   const products = productRows ?? [];
@@ -120,7 +138,7 @@ export function Analytics() {
   const topCustomers = (customerRows ?? []).slice(0, 3);
 
   const tiles = [
-    { icon: 'account_balance_wallet', tint: 'var(--ag-surface-2)', ic: '#D6336C', value: compactInr(totalRevenue), label: 'Revenue', sub: range },
+    { icon: 'account_balance_wallet', tint: 'var(--ag-surface-2)', ic: 'var(--ag-crimson)', value: compactInr(totalRevenue), label: 'Revenue', sub: range },
     { icon: 'shopping_bag', tint: 'var(--ag-gold-bg)', ic: 'var(--ag-warn-text)', value: String(totalOrders), label: 'Orders', sub: range },
     { icon: 'sync', tint: 'var(--ag-good-bg)', ic: 'var(--ag-good)', value: `${returning}/${uniqueCustomers}`, label: 'Returning customers', sub: 'Two or more orders' },
     { icon: 'visibility', tint: 'var(--ag-info-bg)', ic: 'var(--ag-info-text)', value: String(totalViews), label: 'Product views', sub: 'All time' },
@@ -131,11 +149,11 @@ export function Analytics() {
       {data.map((b, i) => {
         const val = kind === 'revenue' ? b.revenue : b.orders;
         const h = `${Math.max(6, Math.round((val / max) * 100))}%`;
-        const grad = kind === 'revenue' ? 'linear-gradient(180deg,#E14A7E,#B02454)' : 'linear-gradient(180deg,#6FA8DC,var(--ag-info-text))';
+        const grad = kind === 'revenue' ? 'linear-gradient(180deg,var(--ag-crimson),var(--ag-deep))' : 'linear-gradient(180deg,var(--ag-info),var(--ag-info-text))';
         return (
           <div key={`${b.label}-${i}`} style={css('flex:1;min-width:16px;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;')}>
             <div style={css(`width:100%;max-width:42px;height:${h};border-radius:9px 9px 4px 4px;background:${grad};box-shadow:0 10px 22px -12px rgba(176,36,84,.6);`)} />
-            <span style={css('font-size:10.5px;font-weight:800;color:var(--ag-muted);white-space:nowrap;')}>{b.label}</span>
+            <span style={css('font-size:11px;font-weight:800;color:var(--ag-muted);white-space:nowrap;')}>{b.label}</span>
           </div>
         );
       })}
@@ -146,9 +164,19 @@ export function Analytics() {
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('max-width:1240px;margin:0 auto;')}>
         <div style={css('padding:6px 0 4px;')}>
-          <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Business insights</div>
+          <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);')}>Business insights</div>
           <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>Analytics</h1>
         </div>
+
+        {loadError && (
+          <div style={css('margin-top:14px;')}>
+            <LoadError
+              title="Couldn’t load your analytics"
+              detail="Your orders and takings are safe — this page just can’t reach them right now. Nothing here is a real figure until it loads."
+              onRetry={retry}
+            />
+          </div>
+        )}
 
         {/* Time filter */}
         <div className="agx-scroll" style={css('display:flex;gap:7px;overflow-x:auto;padding:12px 0 4px;')}>
@@ -162,6 +190,14 @@ export function Analytics() {
           })}
         </div>
 
+        {loading && (
+          <div style={css('margin-top:14px;')}>
+            <SkeletonTiles count={4} height={128} className="agx-rgrid" />
+          </div>
+        )}
+
+        {ready && (
+          <>
         {/* Stat tiles */}
         <div className="agx-rgrid" style={css('margin-top:14px;')}>
           {tiles.map((t) => (
@@ -169,7 +205,7 @@ export function Analytics() {
               <div style={css(`width:42px;height:42px;border-radius:13px;background:${t.tint};display:flex;align-items:center;justify-content:center;`)}><span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:${t.ic};`)}>{t.icon}</span></div>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:12px;")}>{t.value}</div>
               <div style={css('color:var(--ag-muted);font-size:12.5px;font-weight:700;')}>{t.label}</div>
-              <div style={css('font-size:11.5px;font-weight:800;color:var(--ag-muted);margin-top:6px;')}>{t.sub}</div>
+              <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);margin-top:6px;')}>{t.sub}</div>
             </div>
           ))}
         </div>
@@ -221,7 +257,7 @@ export function Analytics() {
             <div style={css('display:flex;flex-direction:column;gap:4px;margin-top:12px;')}>
               {mostViewed.length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>No views recorded yet.</div>}
               {mostViewed.map((p, i) => (
-                <div key={p.id} onClick={() => navigate(`/seller/products/${p.id}`)} style={css('display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--ag-border-soft);cursor:pointer;')}>
+                <button type="button" className="agx-con-row" key={p.id} onClick={() => navigate(`/seller/products/${p.id}`)} style={css('display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--ag-border-soft);cursor:pointer;')}>
                   <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${TONES[p.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:rgba(42,26,32,.55);`)}>{i + 1}</div>
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
@@ -231,11 +267,11 @@ export function Analytics() {
                     <div style={css('display:flex;align-items:center;gap:4px;font-weight:800;color:var(--ag-info-text);font-size:13px;')}>
                       <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>visibility</span>{p.views_count ?? 0}
                     </div>
-                    <div style={css('display:flex;align-items:center;gap:4px;font-size:11px;color:#D6336C;font-weight:700;margin-top:2px;justify-content:flex-end;')}>
+                    <div style={css('display:flex;align-items:center;gap:4px;font-size:12px;color:var(--ag-crimson);font-weight:700;margin-top:2px;justify-content:flex-end;')}>
                       <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;")}>favorite</span>{p.likes_count ?? 0}
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -258,6 +294,8 @@ export function Analytics() {
             ))}
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

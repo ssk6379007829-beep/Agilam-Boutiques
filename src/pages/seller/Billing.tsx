@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useGoBack } from '@/hooks/useGoBack';
+import { LoadError } from '@/components/seller/LoadError';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
@@ -21,9 +23,10 @@ const cardStyle = 'background:var(--ag-surface);border-radius:16px;padding:14px;
 
 export function Billing() {
   const navigate = useNavigate();
+  const goBack = useGoBack('/seller/dashboard');
   const { showToast } = useShop();
   const { boutique } = useMyBoutique();
-  const { data: products } = useAsync(() => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+  const { data: products, error: productsError, reload: reloadProducts } = useAsync(() => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
 
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -170,7 +173,7 @@ export function Billing() {
     return (
       <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
         <div className="agx-no-print" style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
-          <button onClick={newBill} aria-label="Go back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+          <button onClick={newBill} aria-label="Go back" style={css('width:44px;height:44px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
           </button>
           <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Bill generated</div>
@@ -209,7 +212,7 @@ export function Billing() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
-        <button onClick={() => navigate('/seller/dashboard')} aria-label="Go back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+        <button onClick={goBack} aria-label="Go back" className="agx-con-icon">
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>New Bill</h1>
@@ -221,18 +224,26 @@ export function Billing() {
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search your products…" style={css(inputStyle)} />
           <div style={css('display:flex;flex-direction:column;gap:8px;margin-top:10px;max-height:220px;overflow-y:auto;')}>
             {filtered.map((p) => (
-              <div key={p.id} onClick={() => addProduct(p)} style={css('display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;cursor:pointer;')}>
+              <button type="button" className="agx-con-row" key={p.id} onClick={() => addProduct(p)} style={css('display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;cursor:pointer;')}>
                 <div style={css(`width:40px;height:40px;flex:none;border-radius:10px;background:${TONES[p.tone]};position:relative;overflow:hidden;`)}>
                   <ImageSlot src={p.image_url ?? undefined} placeholder={p.title} style={css('position:absolute;inset:0;')} />
                 </div>
                 <div style={css('flex:1;min-width:0;')}>
                   <div style={css('font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
-                  <div style={css('font-size:11.5px;color:var(--ag-muted);')}>{fmt(Number(p.price))} · {p.stock} in stock</div>
+                  <div style={css('font-size:12px;color:var(--ag-muted);')}>{fmt(Number(p.price))} · {p.stock} in stock</div>
                 </div>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>add_circle</span>
-              </div>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>add_circle</span>
+              </button>
             ))}
-            {filtered.length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;padding:6px 2px;')}>No products found.</div>}
+            {productsError ? (
+              <LoadError
+                title="Couldn’t load your products"
+                detail="Your listings are safe — this picker just can’t reach them. You can still add a custom line below."
+                onRetry={reloadProducts}
+              />
+            ) : filtered.length === 0 ? (
+              <div style={css('color:var(--ag-muted);font-size:13px;padding:6px 2px;')}>No products found.</div>
+            ) : null}
           </div>
         </div>
 
@@ -243,7 +254,7 @@ export function Billing() {
             <input value={custom.price} onChange={(e) => setCustom((c) => ({ ...c, price: e.target.value }))} inputMode="numeric" placeholder="Price" style={css(`${inputStyle}flex:1;min-width:80px;`)} />
             <input value={custom.qty} onChange={(e) => setCustom((c) => ({ ...c, qty: e.target.value }))} inputMode="numeric" placeholder="Qty" style={css(`${inputStyle}width:64px;flex:none;`)} />
           </div>
-          <button onClick={addCustom} style={css('margin-top:10px;width:100%;height:42px;border:1.5px dashed var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;')}>+ Add custom item</button>
+          <button onClick={addCustom} style={css('margin-top:10px;width:100%;min-height:44px;border:1.5px dashed var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;')}>+ Add custom item</button>
         </div>
 
         {cart.length > 0 && (
@@ -254,15 +265,15 @@ export function Billing() {
                 <div key={l.key} style={css('display:flex;align-items:center;gap:10px;')}>
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{l.title}</div>
-                    <div style={css('font-size:11.5px;color:var(--ag-muted);')}>{fmt(l.price)} each</div>
+                    <div style={css('font-size:12px;color:var(--ag-muted);')}>{fmt(l.price)} each</div>
                   </div>
                   <div style={css('display:flex;align-items:center;gap:8px;')}>
-                    <button onClick={() => setQty(l.key, l.qty - 1)} style={css('width:28px;height:28px;border-radius:9px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;')}>−</button>
+                    <button onClick={() => setQty(l.key, l.qty - 1)} style={css('width:44px;height:44px;border-radius:11px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;')}>−</button>
                     <span style={css('font-weight:800;font-size:13px;width:18px;text-align:center;')}>{l.qty}</span>
-                    <button onClick={() => setQty(l.key, l.qty + 1)} style={css('width:28px;height:28px;border-radius:9px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;')}>+</button>
+                    <button onClick={() => setQty(l.key, l.qty + 1)} style={css('width:44px;height:44px;border-radius:11px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;')}>+</button>
                   </div>
                   <span style={css('font-weight:800;font-size:13.5px;color:var(--ag-crimson);width:74px;text-align:right;')}>{fmt(l.price * l.qty)}</span>
-                  <button onClick={() => removeLine(l.key)} style={css('width:28px;height:28px;border:none;background:none;cursor:pointer;')}>
+                  <button onClick={() => removeLine(l.key)} style={css('width:44px;height:44px;border:none;background:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;')}>
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-danger-text);")}>close</span>
                   </button>
                 </div>
@@ -281,7 +292,7 @@ export function Billing() {
             {PAYMENT_METHODS.map((m) => {
               const on = paymentMethod === m;
               return (
-                <span key={m} onClick={() => setPaymentMethod(m)} style={css(`padding:9px 14px;border-radius:11px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-weight:700;font-size:13px;cursor:pointer;`)}>{m}</span>
+                <button type="button" key={m} aria-pressed={on} onClick={() => setPaymentMethod(m)} style={css(`min-height:44px;font:inherit;cursor:pointer;padding:9px 14px;border-radius:11px;border:1.5px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};color:${on ? 'var(--ag-crimson)' : 'var(--ag-ink-2)'};font-weight:700;font-size:13px;cursor:pointer;`)}>{m}</button>
               );
             })}
           </div>
@@ -293,7 +304,7 @@ export function Billing() {
           <div style={css('display:flex;justify-content:space-between;margin-top:8px;font-weight:800;font-size:17px;')}><span>Total</span><span style={css('color:var(--ag-crimson);')}>{fmt(total)}</span></div>
         </div>
 
-        <button onClick={generateBill} disabled={creating} style={css(`width:100%;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:${creating ? 'default' : 'pointer'};opacity:${creating ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);`)}>
+        <button className="agx-con-btn" onClick={generateBill} disabled={creating} style={css(`width:100%;height:54px;border:none;border-radius:15px;color:#fff;font-weight:800;font-size:16px;cursor:${creating ? 'default' : 'pointer'};opacity:${creating ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);`)}>
           {creating ? 'Generating…' : 'Generate Bill'}
         </button>
       </div>

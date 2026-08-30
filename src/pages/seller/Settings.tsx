@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { focusFirstInvalid } from '@/lib/focusInvalid';
+import { useGoBack } from '@/hooks/useGoBack';
 import { useShop } from '@/state/ShopContext';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { updateBoutique, type BoutiquePatch } from '@/data/boutiques';
@@ -43,6 +45,7 @@ const PHONE_RE = /^[6-9][0-9]{9}$/;
 
 export function Settings() {
   const navigate = useNavigate();
+  const goBack = useGoBack('/seller/profile');
   const { showToast } = useShop();
   const { boutique, reload } = useMyBoutique();
   const [form, setForm] = useState<Form>(EMPTY);
@@ -112,6 +115,7 @@ export function Settings() {
     if (badFulfilment) next.fulfilment = badFulfilment;
     if (Object.keys(next).length) {
       setErrors(next);
+      focusFirstInvalid();
       return showToast('Please fix the highlighted fields');
     }
 
@@ -166,8 +170,8 @@ export function Settings() {
       <div style={css('padding:6px 0 14px;display:flex;align-items:center;gap:10px;')}>
         <button
           aria-label="Go back"
-          onClick={() => navigate('/seller/profile')}
-          style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+          onClick={goBack}
+          style={css('width:44px;height:44px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
         >
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
@@ -293,10 +297,10 @@ export function Settings() {
           <Toggle label="Offers & platform updates" description="MangaiMart news, promotions and feature announcements" icon="campaign" on={form.notifyPromotions} onChange={(v) => set('notifyPromotions', v)} />
         </SectionCard>
 
-        <button
+        <button className="agx-con-btn"
           onClick={save}
           disabled={saving || !boutique}
-          style={css(`width:100%;height:54px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);opacity:${saving || !boutique ? 0.6 : 1};font-family:inherit;`)}
+          style={css(`width:100%;height:54px;border:none;border-radius:15px;color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);opacity:${saving || !boutique ? 0.6 : 1};font-family:inherit;`)}
         >
           {saving ? 'Saving…' : 'Save settings'}
         </button>
@@ -306,13 +310,13 @@ export function Settings() {
           style={css('width:100%;display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid var(--ag-surface-3);border-radius:16px;background:var(--ag-surface);color:var(--ag-crimson);cursor:pointer;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);text-align:left;font-family:inherit;')}
         >
           <span style={css('width:40px;height:40px;border-radius:12px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;flex:none;')}>
-            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>swap_horiz</span>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);font-size:22px;")}>swap_horiz</span>
           </span>
           <span style={css('flex:1;')}>
             <span style={css('display:block;font-weight:800;font-size:15px;')}>Switch to Buyer</span>
             <span style={css('display:block;font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>Shop on MangaiMart as a customer</span>
           </span>
-          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#CBB0BC;")}>chevron_right</span>
+          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-muted-soft);")}>chevron_right</span>
         </button>
       </div>
     </div>

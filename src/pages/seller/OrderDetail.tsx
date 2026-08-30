@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useGoBack } from '@/hooks/useGoBack';
+import { LoadError } from '@/components/seller/LoadError';
 import { useShop } from '@/state/ShopContext';
 import { TONES, fmt } from '@/data/demo';
 import { useAsync } from '@/hooks/useAsync';
@@ -21,12 +23,13 @@ import { fetchReturnForOrder, resolveReturnRequest, RETURN_REASON_LABEL } from '
 
 export function OrderDetail() {
   const navigate = useNavigate();
+  const goBack = useGoBack('/seller/orders');
   const { id } = useParams();
   const { showToast } = useShop();
 
   const { boutique } = useMyBoutique();
   const orderId = decodeURIComponent(id ?? '');
-  const { data: row, loading, reload } = useAsync(() => (orderId ? fetchOrder(orderId) : Promise.resolve(null)), [orderId]);
+  const { data: row, loading, error, reload } = useAsync(() => (orderId ? fetchOrder(orderId) : Promise.resolve(null)), [orderId]);
   const [sharing, setSharing] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
   const [shipOpen, setShipOpen] = useState(false);
@@ -86,6 +89,20 @@ export function OrderDetail() {
         <div style={css('margin-top:20px;')}><SkeletonRows rows={3} height={72} /></div>
         <Skeleton w="100%" h={120} radius={18} style="margin-top:16px;" />
       </SkeletonGroup>
+    );
+  }
+
+  // A failed fetch is not a missing order. Saying "not found" here would tell a
+  // seller their order had been deleted, which is both wrong and alarming.
+  if (error) {
+    return (
+      <div style={css('padding:20px;')}>
+        <LoadError
+          title="Couldn’t load this order"
+          detail="The order still exists and nothing about it has changed — this page just can’t reach it right now."
+          onRetry={reload}
+        />
+      </div>
     );
   }
 
@@ -218,11 +235,11 @@ export function OrderDetail() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);display:flex;flex-direction:column;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
-        <button onClick={() => navigate('/seller/orders')} aria-label="Go back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+        <button onClick={goBack} aria-label="Go back" className="agx-con-icon">
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;")}>Order {o.number}</div>
+          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;margin:0;")}>Order {o.number}</h1>
           <div style={css('font-size:12px;color:var(--ag-muted);')}>Placed {o.date} · {o.status}</div>
         </div>
       </div>
@@ -288,10 +305,10 @@ export function OrderDetail() {
                   >
                     Can't accept
                   </button>
-                  <button
+                  <button className="agx-con-btn"
                     disabled={returnBusy}
                     onClick={() => void answerReturn('approved')}
-                    style={css('flex:1;height:44px;border:none;border-radius:12px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;')}
+                    style={css('flex:1;height:44px;border:none;border-radius:12px;color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;')}
                   >
                     Approve return
                   </button>
@@ -332,8 +349,8 @@ export function OrderDetail() {
                 )}
               </div>
             </div>
-            <button onClick={() => navigate('/seller/messages')} style={css('width:38px;height:38px;border-radius:11px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;")}>chat</span>
+            <button onClick={() => navigate('/seller/messages')} style={css('width:44px;height:44px;border-radius:11px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>chat</span>
             </button>
           </div>
           {/* The delivery address lives on the order (guest checkout keeps no
@@ -342,7 +359,7 @@ export function OrderDetail() {
             <div style={css('margin-top:12px;padding:11px 12px;border-radius:12px;background:var(--ag-bg);display:flex;gap:9px;align-items:flex-start;')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>home_pin</span>
               <div style={css('flex:1;min-width:0;')}>
-                <div style={css('font-size:11px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>DELIVER TO</div>
+                <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>DELIVER TO</div>
                 <div style={css('font-size:13px;color:var(--ag-ink);margin-top:3px;line-height:1.45;')}>
                   {[o.address, o.city, o.pincode ? `PIN ${o.pincode}` : null].filter(Boolean).join(', ')}
                 </div>
@@ -469,7 +486,7 @@ export function OrderDetail() {
               <button
                 onClick={() => { void navigator.clipboard?.writeText(shipment.awb); showToast('Tracking number copied'); }}
                 aria-label="Copy tracking number"
-                style={css('width:38px;height:38px;flex:none;border-radius:11px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+                style={css('width:44px;height:44px;flex:none;border-radius:11px;border:none;background:var(--ag-surface-2);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
               >
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>content_copy</span>
               </button>
@@ -542,7 +559,7 @@ export function OrderDetail() {
             )}
             {confirmReject ? (
               <div style={css('background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:14px;padding:13px 15px;')}>
-                <div style={css('font-size:13px;font-weight:700;color:#8A2A34;line-height:1.5;')}>
+                <div style={css('font-size:13px;font-weight:700;color:var(--ag-danger-text);line-height:1.5;')}>
                   Reject this order? This can’t be undone and the payment is refunded. The stock returns to your catalogue.
                 </div>
                 <div style={css('display:flex;gap:10px;margin-top:11px;')}>
@@ -556,14 +573,14 @@ export function OrderDetail() {
                   <button onClick={() => setConfirmReject(true)} style={css('flex:1;height:52px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);border-radius:14px;font-weight:800;cursor:pointer;font-family:inherit;')}>Reject</button>
                 )}
                 {forward && (
-                  <button
+                  <button className="agx-con-btn"
                     onClick={() => {
                       // Shipping is the one step that needs data first — the
                       // sheet collects it and does the transition itself.
                       if (forward.status === 'shipped') setShipOpen(true);
                       else setStatus(forward.status, forward.msg);
                     }}
-                    style={css('flex:1.4;height:52px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}
+                    style={css('flex:1.4;height:52px;border:none;border-radius:14px;color:#fff;font-weight:800;cursor:pointer;font-family:inherit;')}
                   >
                     {forward.label}
                   </button>

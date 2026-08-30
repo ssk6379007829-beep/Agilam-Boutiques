@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape';
+import { LoadError } from '@/components/seller/LoadError';
 import { errMessage } from '@/lib/errMessage';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useShop } from '@/state/ShopContext';
@@ -16,7 +18,7 @@ export function MyProducts() {
   const navigate = useNavigate();
   const { showToast } = useShop();
   const { boutique } = useMyBoutique();
-  const { data: rows, loading, reload } = useAsync(() => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+  const { data: rows, loading, error, reload } = useAsync(() => (boutique ? fetchProductsByBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
   const products = rows ?? [];
 
   // Until the shop is approved, RLS hides every one of these products from
@@ -26,6 +28,7 @@ export function MyProducts() {
   const pendingReview = !!boutique && boutique.status !== 'approved';
 
   const [editing, setEditing] = useState<ProductWithBoutique | null>(null);
+  useDismissOnEscape(() => closeEdit(), editing !== null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -191,7 +194,7 @@ export function MyProducts() {
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;justify-content:space-between;')}>
         <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>My Products</h1>
-        <button onClick={() => navigate('/seller/add-product')} style={css('background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:12px;padding:9px 14px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;')}>
+        <button className="agx-con-btn" onClick={() => navigate('/seller/add-product')} style={css('color:#fff;border:none;border-radius:12px;padding:9px 14px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>Add
         </button>
       </div>
@@ -202,12 +205,12 @@ export function MyProducts() {
             onClick={() => navigate('/seller/verification')}
             style={css('width:100%;text-align:left;background:var(--ag-info-bg);border:1px solid #CFDDF0;border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:11px;cursor:pointer;font-family:inherit;')}
           >
-            <span style={css('width:38px;height:38px;flex:none;border-radius:12px;background:var(--ag-surface);display:flex;align-items:center;justify-content:center;')}>
+            <span style={css('width:44px;height:44px;flex:none;border-radius:12px;background:var(--ag-surface);display:flex;align-items:center;justify-content:center;')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:21px;color:var(--ag-info-text);")}>visibility_off</span>
             </span>
             <span style={css('flex:1;min-width:0;')}>
               <span style={css('display:block;font-weight:800;font-size:13px;color:var(--ag-info-text);')}>Not visible to buyers yet</span>
-              <span style={css('display:block;font-size:11.5px;font-weight:600;color:#4E688F;margin-top:2px;line-height:1.45;')}>Your shop is {BOUTIQUE_STATUS_LABEL[boutique!.status].toLowerCase()}. These products publish to buyers the moment your boutique is approved.</span>
+              <span style={css('display:block;font-size:12px;font-weight:600;color:var(--ag-info-text);margin-top:2px;line-height:1.45;')}>Your shop is {BOUTIQUE_STATUS_LABEL[boutique!.status].toLowerCase()}. These products publish to buyers the moment your boutique is approved.</span>
             </span>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-info-text);")}>chevron_right</span>
           </button>
@@ -215,7 +218,14 @@ export function MyProducts() {
       )}
 
       <div style={css('display:flex;flex-direction:column;gap:10px;padding:4px 20px 0;')}>
-        {!loading && products.length === 0 && (
+        {!loading && error && (
+          <LoadError
+            title="Couldn’t load your products"
+            detail="Your listings are safe and still visible to buyers — this page just can’t reach them right now."
+            onRetry={reload}
+          />
+        )}
+        {!loading && !error && products.length === 0 && (
           <div style={css('color:var(--ag-muted);font-size:14px;padding:8px 2px;')}>No products yet — tap Add to list your first piece.</div>
         )}
         {products.map((p) => {
@@ -234,11 +244,11 @@ export function MyProducts() {
                   <div style={css('font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
                   <div style={css('font-size:12px;color:var(--ag-muted);')}>{p.category} · {fmt(Number(p.price))}</div>
                   <span style={css('display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:4px;')}>
-                    <span style={css(`font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:7px;background:${st.bg};color:${st.fg};`)}>{st.label}</span>
+                    <span style={css(`font-size:11px;font-weight:800;padding:2px 8px;border-radius:7px;background:${st.bg};color:${st.fg};`)}>{st.label}</span>
                     {/* Counted from the shop's own catalogue, already loaded — a
                         set never spans two boutiques, so this is the whole set. */}
                     {colourCount(p) > 1 && (
-                      <span style={css('font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:7px;background:var(--ag-surface-2);color:var(--ag-crimson);')}>
+                      <span style={css('font-size:11px;font-weight:800;padding:2px 8px;border-radius:7px;background:var(--ag-surface-2);color:var(--ag-crimson);')}>
                         {colourCount(p)} colours
                       </span>
                     )}
@@ -248,14 +258,14 @@ export function MyProducts() {
                   onClick={(e) => { e.stopPropagation(); void addColour(p, formValuesOf(p)); }}
                   aria-label={`Add another colour of ${p.title}`}
                   title="Add another colour"
-                  style={css('width:36px;height:36px;flex:none;border-radius:11px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+                  style={css('width:44px;height:44px;flex:none;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
                 >
                   <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>palette</span>
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); openEdit(p); }}
                   aria-label={`Edit ${p.title}`}
-                  style={css('width:36px;height:36px;flex:none;border-radius:11px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
+                  style={css('width:44px;height:44px;flex:none;border-radius:12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}
                 >
                   <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>edit</span>
                 </button>
@@ -264,7 +274,7 @@ export function MyProducts() {
               {/* Performance at a glance — the buyer-side signals for this piece. */}
               <div style={css('display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--ag-border-soft);')}>
                 {metricsOf(p).map((m) => (
-                  <span key={m.label} title={m.label} style={css('display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:800;color:var(--ag-ink-2);')}>
+                  <span key={m.label} title={m.label} style={css('display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;color:var(--ag-ink-2);')}>
                     <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${m.ic};`)}>{m.icon}</span>
                     {m.value}
                   </span>
@@ -284,7 +294,7 @@ export function MyProducts() {
           <div onClick={(e) => e.stopPropagation()} style={css('width:100%;max-width:520px;margin:auto;background:var(--ag-bg);border-radius:22px;padding:18px 20px 24px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);display:flex;flex-direction:column;max-height:calc(100dvh - 40px);')}>
             <div style={css('flex:none;display:flex;align-items:center;justify-content:space-between;')}>
               <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;")}>Edit product</div>
-              <button onClick={closeEdit} style={css('width:36px;height:36px;border-radius:11px;border:none;background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+              <button onClick={closeEdit} style={css('width:44px;height:44px;border-radius:12px;border:none;background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>close</span>
               </button>
             </div>

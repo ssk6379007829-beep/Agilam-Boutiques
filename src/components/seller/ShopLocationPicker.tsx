@@ -79,7 +79,7 @@ export function ShopLocationPicker({
       {note && (
         <span
           role="status"
-          style={css(`display:flex;gap:6px;font-size:11.5px;font-weight:700;color:${noteColor};line-height:1.55;margin-top:-6px;`)}
+          style={css(`display:flex;gap:6px;font-size:12px;font-weight:700;color:${noteColor};line-height:1.55;margin-top:-6px;`)}
         >
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;")}>
             {note.tone === 'good' ? 'check_circle' : note.tone === 'warn' ? 'info' : 'error'}

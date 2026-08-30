@@ -116,7 +116,7 @@ export function FulfilmentCard({
       {/* Zero returns is a legitimate choice and a common one for custom work,
           so it is stated plainly rather than discouraged — but the seller has to
           know that faults are still their responsibility either way. */}
-      <div style={css('display:flex;gap:8px;padding:11px 13px;border-radius:12px;background:var(--ag-surface-2);font-size:11.5px;font-weight:600;color:var(--ag-ink-2);line-height:1.6;')}>
+      <div style={css('display:flex;gap:8px;padding:11px 13px;border-radius:12px;background:var(--ag-surface-2);font-size:12px;font-weight:600;color:var(--ag-ink-2);line-height:1.6;')}>
         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);flex:none;")}>info</span>
         <span>
           <strong style={css('font-weight:800;')}>Buyers will see:</strong> “{dispatchLabel(preview)}”.
@@ -125,7 +125,7 @@ export function FulfilmentCard({
         </span>
       </div>
 
-      {error && <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-danger-text);')}>{error}</span>}
+      {error && <span style={css('font-size:12px;font-weight:700;color:var(--ag-danger-text);')}>{error}</span>}
     </div>
   );
 }

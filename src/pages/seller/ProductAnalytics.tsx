@@ -1,5 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useGoBack } from '@/hooks/useGoBack';
+import { LoadError } from '@/components/seller/LoadError';
 import { TONES, fmt } from '@/data/demo';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
@@ -27,21 +29,34 @@ const fmtDate = (iso: string | null | undefined) => {
 
 export function ProductAnalytics() {
   const navigate = useNavigate();
+  const goBack = useGoBack('/seller/products');
   const { id } = useParams();
   const { boutique } = useMyBoutique();
 
-  const { data: product, loading } = useAsync(() => (id ? fetchProduct(id) : Promise.resolve(null)), [id]);
-  const { data: orderRows } = useAsync(
+  const { data: product, loading, error, reload } = useAsync(() => (id ? fetchProduct(id) : Promise.resolve(null)), [id]);
+  const { data: orderRows, error: ordersError, reload: reloadOrders } = useAsync(
     () => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])),
     [boutique?.id],
   );
+
+  if (error) {
+    return (
+      <div style={css('padding:20px;')}>
+        <LoadError
+          title="Couldn’t load this piece"
+          detail="The listing is still live and unchanged — this page just can’t reach its figures right now."
+          onRetry={reload}
+        />
+      </div>
+    );
+  }
 
   if (!loading && !product) {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--ag-muted);')}>
         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-border);")}>search_off</span>
         <div style={css('font-size:15px;')}>Product not found.</div>
-        <button onClick={() => navigate('/seller/products')} style={css('height:44px;padding:0 18px;border:none;border-radius:12px;background:#B02454;color:#fff;font-weight:800;cursor:pointer;')}>
+        <button onClick={() => navigate('/seller/products')} style={css('height:44px;padding:0 18px;border:none;border-radius:12px;background:var(--ag-deep);color:#fff;font-weight:800;cursor:pointer;')}>
           Back to products
         </button>
       </div>
@@ -86,16 +101,28 @@ export function ProductAnalytics() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;gap:10px;')}>
-        <button onClick={() => navigate('/seller/products')} aria-label="Back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+        <button onClick={goBack} aria-label="Back" className="agx-con-icon">
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Product analytics</div>
+        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:0;")}>Product analytics</h1>
       </div>
 
       {loading && !p && (
         <div style={css('padding:0 20px;')}>
           <SkeletonRows rows={1} height={78} label="Loading analytics…" />
           <div style={css('margin-top:14px;')}><SkeletonTiles count={4} /></div>
+        </div>
+      )}
+
+      {/* The piece itself loaded, but its sales history did not. Say so, rather
+          than letting "0 sold · ₹0" stand as if it were the answer. */}
+      {ordersError && (
+        <div style={css('padding:0 20px 14px;')}>
+          <LoadError
+            title="Couldn’t load this piece’s sales"
+            detail="Its orders are still recorded — this page just can’t reach them. The sold and revenue figures below are not real until it loads."
+            onRetry={reloadOrders}
+          />
         </div>
       )}
 
@@ -109,9 +136,9 @@ export function ProductAnalytics() {
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('font-weight:800;font-size:15px;color:var(--ag-ink);')}>{p.title}</div>
               <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:1px;')}>{p.category} · {fmt(Number(p.price))}</div>
-              <span style={css(`display:inline-block;margin-top:6px;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:8px;background:${stockTag.bg};color:${stockTag.fg};`)}>{stockTag.label}</span>
+              <span style={css(`display:inline-block;margin-top:6px;font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;background:${stockTag.bg};color:${stockTag.fg};`)}>{stockTag.label}</span>
             </div>
-            <button onClick={() => navigate('/seller/products')} aria-label="Edit" style={css('width:38px;height:38px;flex:none;border-radius:11px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
+            <button onClick={() => navigate('/seller/products')} aria-label="Edit" style={css('width:44px;height:44px;flex:none;border-radius:11px;border:1.5px solid var(--ag-border);background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>edit</span>
             </button>
           </div>
@@ -120,7 +147,7 @@ export function ProductAnalytics() {
           <div className="agx-sd-stats" style={css('margin-top:14px;')}>
             {tiles.map((t) => (
               <div key={t.label} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:15px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
-                <span style={css(`width:38px;height:38px;border-radius:12px;background:${t.tint};display:flex;align-items:center;justify-content:center;`)}>
+                <span style={css(`width:44px;height:44px;border-radius:12px;background:${t.tint};display:flex;align-items:center;justify-content:center;`)}>
                   <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${t.ic};`)}>{t.icon}</span>
                 </span>
                 <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:11px;color:var(--ag-ink);word-break:break-word;")}>{t.value}</div>

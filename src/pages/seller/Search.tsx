@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { css } from '@/lib/css';
+import { useGoBack } from '@/hooks/useGoBack';
 import { useAuth } from '@/auth/AuthContext';
 import { GlobalSearchBox } from '@/components/search/GlobalSearchBox';
 import { SearchResultsView } from '@/components/search/SearchResultsView';
@@ -20,7 +21,7 @@ import { SELLER_SOURCES } from '@/lib/search/sellerSources';
  * over the same eight sources, straight against the database.
  */
 export function Search() {
-  const navigate = useNavigate();
+  const goBack = useGoBack('/seller/dashboard');
   const [params] = useSearchParams();
   const { profile } = useAuth();
   const ctx = useMemo(() => ({ ownerId: profile?.id ?? null }), [profile?.id]);
@@ -28,12 +29,15 @@ export function Search() {
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
+      {/* The search box is the page's visible title; screen readers still need a
+          real heading to land on. */}
+      <h1 className="agx-visually-hidden">Search your boutique</h1>
       <div style={css('padding:6px 20px 8px;display:flex;align-items:center;gap:10px;')}>
         <button
-          onClick={() => navigate(-1)}
+          onClick={goBack}
           aria-label="Back"
           style={css(
-            'width:42px;height:42px;flex:none;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;',
+            'width:44px;height:44px;flex:none;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;',
           )}
         >
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
