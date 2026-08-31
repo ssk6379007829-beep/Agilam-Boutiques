@@ -53,6 +53,22 @@ const CORS = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * The `From` header, always carrying a display name.
+ *
+ * `EMAIL_FROM` is set in three separate places — Vercel, Supabase secrets and
+ * the local `.env` — and nothing kept them in step, so a bare `noreply@` in any
+ * one of them made that path's mail arrive from a raw address while everything
+ * else arrived from "MangaiMart". Normalising here means the header is right
+ * whatever the var says. A value that already contains `<` is left alone:
+ * someone chose that display name deliberately. Mirrors `senderFrom()` in
+ * api/_email.js.
+ */
+const senderFrom = (raw: string | undefined, brand = 'MangaiMart') => {
+  const value = (raw ?? '').trim() || 'noreply@mangaimart.com';
+  return value.includes('<') ? value : `${brand} <${value}>`;
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -191,7 +207,7 @@ function sixDigitCode(): string {
  */
 async function sendCode(to: string, code: string, purpose: 'enroll' | 'challenge'): Promise<string | null> {
   const key = Deno.env.get('RESEND_API_KEY');
-  const from = Deno.env.get('EMAIL_FROM') ?? 'MangaiMart <noreply@mangaimart.com>';
+  const from = senderFrom(Deno.env.get('EMAIL_FROM'));
 
   if (!key) {
     // Dev and preview projects have no mail provider. Say so plainly rather

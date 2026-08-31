@@ -25,10 +25,33 @@
  */
 
 const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
-const fromEmail = process.env.EMAIL_FROM || process.env.VITE_EMAIL_FROM || 'noreply@mangaimart.com';
 export const appUrl = (process.env.APP_URL || process.env.VITE_APP_URL || 'https://mangaimart.com').replace(/\/$/, '');
 
 const BRAND = 'MangaiMart';
+
+/**
+ * The `From` header, always carrying a display name.
+ *
+ * `EMAIL_FROM` is set in three separate places — Vercel, Supabase secrets and
+ * the local `.env` — and nothing kept them in step. A bare `noreply@` in any one
+ * of them makes that path's mail arrive from the raw address while everything
+ * else arrives from "MangaiMart", which is exactly the inconsistency a phishing
+ * filter (and a person) notices. Normalising HERE means the header is right
+ * whatever the var says, so getting it wrong in one console is no longer a way
+ * to ship anonymous-looking mail.
+ *
+ * A value that already contains `<` is left alone: someone deliberately chose
+ * that display name, and `REPORT_FROM`'s "MangaiMart Reports <reports@…>" is a
+ * live example of a good one we must not overwrite. This is a normaliser, not
+ * an address parser — a malformed value passes through and Resend rejects it,
+ * which is a far better failure than silently mangling a working header.
+ */
+export function senderFrom(raw, brand = BRAND, fallbackAddress = 'noreply@mangaimart.com') {
+  const value = String(raw ?? '').trim() || fallbackAddress;
+  return value.includes('<') ? value : `${brand} <${value}>`;
+}
+
+const fromEmail = senderFrom(process.env.EMAIL_FROM || process.env.VITE_EMAIL_FROM);
 
 /**
  * The wordmark, centred at the top of every message we send.

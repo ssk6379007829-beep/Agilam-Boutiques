@@ -51,6 +51,23 @@ const APP_URL = (Deno.env.get('APP_URL') ?? 'https://mangaimart.com').replace(/\
 const SUPPORT_EMAIL = 'support@mangaimart.com';
 
 /**
+ * The `From` header, always carrying a display name.
+ *
+ * `EMAIL_FROM` is set in three separate places — Vercel, Supabase secrets and
+ * the local `.env` — and nothing kept them in step, so a bare `noreply@` in any
+ * one of them made that path's mail arrive from a raw address while everything
+ * else arrived from "MangaiMart". Normalising here means the header is right
+ * whatever the var says. A value that already contains `<` is left alone:
+ * someone chose that display name deliberately. Mirrors `senderFrom()` in
+ * api/_email.js.
+ */
+const senderFrom = (raw: string | undefined, brand = 'MangaiMart') => {
+  const value = (raw ?? '').trim() || 'noreply@mangaimart.com';
+  return value.includes('<') ? value : `${brand} <${value}>`;
+};
+
+
+/**
  * The wordmark, centred at the top of every message. Pinned to the production
  * origin rather than derived from APP_URL — that is localhost in a dev
  * environment, and a localhost logo is a broken image in every inbox it reaches.
@@ -511,7 +528,7 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: 'Email provider is not configured on this Supabase project' }, 200);
   }
 
-  const from = Deno.env.get('EMAIL_FROM') ?? `${BRAND} <noreply@mangaimart.com>`;
+  const from = senderFrom(Deno.env.get('EMAIL_FROM'));
   const marketing = MARKETING_TEMPLATES.includes(template);
 
   // Both the footer link and the List-Unsubscribe header point at the public

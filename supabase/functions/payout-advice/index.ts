@@ -40,6 +40,22 @@ const BRAND = 'MangaiMart';
 const APP_URL = (Deno.env.get('APP_URL') ?? 'https://mangaimart.com').replace(/\/$/, '');
 
 /**
+ * The `From` header, always carrying a display name.
+ *
+ * `EMAIL_FROM` is set in three separate places — Vercel, Supabase secrets and
+ * the local `.env` — and nothing kept them in step, so a bare `noreply@` in any
+ * one of them made that path's mail arrive from a raw address while everything
+ * else arrived from "MangaiMart". Normalising here means the header is right
+ * whatever the var says. A value that already contains `<` is left alone:
+ * someone chose that display name deliberately. Mirrors `senderFrom()` in
+ * api/_email.js.
+ */
+const senderFrom = (raw: string | undefined, brand = 'MangaiMart') => {
+  const value = (raw ?? '').trim() || 'noreply@mangaimart.com';
+  return value.includes('<') ? value : `${brand} <${value}>`;
+};
+
+/**
  * The wordmark. Pinned to the production origin rather than built from APP_URL,
  * because APP_URL is localhost in a dev environment and a localhost logo is a
  * broken image in the seller's inbox. PNG, not WebP — Outlook cannot decode it.
@@ -275,7 +291,7 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${resendApiKey}` },
       body: JSON.stringify({
-        from: Deno.env.get('EMAIL_FROM') ?? 'noreply@mangaimart.com',
+        from: senderFrom(Deno.env.get('EMAIL_FROM')),
         to: [to],
         subject: owed ? `Your ${BRAND} payout statement` : `${inr(amount)} paid to you — ${BRAND}`,
         html,

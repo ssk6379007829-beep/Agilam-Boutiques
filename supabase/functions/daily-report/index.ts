@@ -57,9 +57,26 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
  * admin on the list it would silently drop the report for everyone else.
  * `reports@` rather than `noreply@` because a reply here should reach a human.
  */
-const REPORT_FROM = Deno.env.get('REPORT_FROM')
-  ?? Deno.env.get('EMAIL_FROM')
-  ?? 'MangaiMart Reports <reports@mangaimart.com>';
+/**
+ * The `From` header, always carrying a display name.
+ *
+ * `EMAIL_FROM` is set in three separate places — Vercel, Supabase secrets and
+ * the local `.env` — and nothing kept them in step, so a bare `noreply@` in any
+ * one of them made that path's mail arrive from a raw address while everything
+ * else arrived from "MangaiMart". Normalising here means the header is right
+ * whatever the var says. A value that already contains `<` is left alone:
+ * someone chose that display name deliberately. Mirrors `senderFrom()` in
+ * api/_email.js.
+ */
+const senderFrom = (raw: string | undefined, brand = 'MangaiMart Reports') => {
+  const value = (raw ?? '').trim() || 'noreply@mangaimart.com';
+  return value.includes('<') ? value : `${brand} <${value}>`;
+};
+
+const REPORT_FROM = senderFrom(
+  Deno.env.get('REPORT_FROM') ?? Deno.env.get('EMAIL_FROM') ?? 'reports@mangaimart.com',
+  'MangaiMart Reports',
+);
 /**
  * Which site this report is ABOUT — always a real origin, never a dev server.
  * A localhost value (copied in from the repo .env by habit) would probe nothing
