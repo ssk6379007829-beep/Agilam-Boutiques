@@ -29,9 +29,11 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0103`. Writing
-   a migration file does NOT put it in the database — the user runs it in Supabase.
-   Never report a schema change as live; say "migration 00XX must be applied".
+1. **Migrations are numbered and applied by hand.** The next one is `0107`. Writing
+   a migration file does NOT put it in the database — the user runs it in Supabase,
+   or asks the assistant to apply it over the Supabase MCP (`0105`/`0106` went in
+   that way on 2026-08-31; never apply one unasked).
+   Never report a schema change as live unless you checked the object is there.
    (`0068a`/`0068b`, `0077a`/`0077b` and `0078a`/`0078b` are pairs that each
    shipped under one number; apply a before b. All are idempotent. Two unrelated
    files both claim `0101` — `_daily_digest_payout_parity` and
@@ -39,11 +41,21 @@ deployed to Vercel.
    **`0102` must be applied after `0100`, and re-applied if `0100` ever is** — 0100
    restores an `is_admin()` that knows nothing about the email second factor, and
    would lock out every admin using it, silently.
-   **Never run `supabase db push` against this project.** `schema_migrations` has
-   no record of the hand-applied history, so a push replays the ENTIRE series
-   over the live database — it did exactly that on 2026-08-19, reaching 0076
-   before a duplicate-version collision stopped it. Nothing broke only because
-   the files are idempotent.
+   **Before any `create or replace function`, read the live definition first**
+   (`select pg_get_functiondef(oid) from pg_proc …`). A migration that reproduces
+   "the body from 00XX" is reverting every later edit to that function, silently.
+   `0105` was written against `0028`'s `handle_new_user()` after `0030` had
+   superseded it, and would have dropped 0030's `exception when others` guard —
+   turning any profile-insert error into a failed signup. Caught 2026-08-31;
+   `0088` exists because the same thing was NOT caught earlier.
+   **Never run `supabase db push` against this project.** `schema_migrations`
+   records only part of the hand-applied history — `0001`–`0092` are there (minus
+   the paired numbers `0068`/`0077`/`0078`), `0093`–`0104` are absent entirely,
+   and anything applied over MCP lands under a TIMESTAMP version rather than its
+   number. So the table can never answer "is 00XX applied?" — check for the object
+   — and a push replays the ENTIRE series over the live database. It did exactly
+   that on 2026-08-19, reaching 0076 before a duplicate-version collision stopped
+   it. Nothing broke only because the files are idempotent.
 2. **Pricing is mirrored and must stay in step.** `src/lib/pricing.ts` (client) and
    `api/_pricing.js` (server) derive the same numbers, and `api/place-order.js`
    asserts the Razorpay payment matches to the paise. Change both together or

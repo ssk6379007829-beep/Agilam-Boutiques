@@ -10,6 +10,7 @@ import { resolveDisplayName } from '@/lib/displayName';
 import { KNOWN_CITIES } from '@/lib/cities';
 import { usePincodeLookup } from '@/hooks/usePincodeLookup';
 import { isMapsLink } from '@/lib/geolocate';
+import { GST_RE } from '@/lib/gst';
 import { adminPath } from '@/lib/adminPath';
 import { ShopLocationPicker } from '@/components/seller/ShopLocationPicker';
 import { DeliveryRateCard, describeReach, zoneRatesToForm, zoneRatesToPatch, type ZoneRateForm } from '@/components/seller/DeliveryRateCard';
@@ -98,7 +99,6 @@ const PIN_RE = /^[1-9][0-9]{5}$/;
 const PHONE_RE = /^[6-9][0-9]{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-const GST_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$/;
 
 type Form = {
   name: string; ownerName: string; description: string; logoUrl: string; coverUrl: string;
