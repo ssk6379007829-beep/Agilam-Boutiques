@@ -22,7 +22,8 @@
 -- webhook there means one hook covers all of them and it reads the role, name
 -- and email the app actually uses rather than raw signup metadata.
 --
--- Additive and idempotent. Requires 0028 (handle_new_user).
+-- Additive and idempotent. Requires 0030 (handle_new_user) — NOT 0028: 0030
+-- superseded it with an exception guard that must be preserved below.
 
 -- ── 1) The send marker ───────────────────────────────────────────────────────
 --
@@ -87,8 +88,9 @@ update profiles
 --     all; without this the function would be woken for every guest who opens
 --     the storefront, only to skip.
 --
--- Everything else in this function is unchanged from 0028 — reproduced in full
--- because `create or replace` has no way to patch one branch.
+-- Everything else in this function is unchanged from 0030 (the live definition,
+-- which superseded 0028) — reproduced in full because `create or replace` has no
+-- way to patch one branch.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -114,6 +116,12 @@ begin
     case when is_guest or by_admin or new.email is null then now() else null end
   )
   on conflict (id) do nothing;
+  return new;
+exception when others then
+  -- 0030's guard, kept verbatim: never let a profile write break account
+  -- creation. Dropping it here would turn any insert error — including one
+  -- caused by the new column above — into a failed signup.
+  raise warning 'handle_new_user: could not create profile for %: %', new.id, sqlerrm;
   return new;
 end;
 $$;
