@@ -1125,6 +1125,24 @@ export interface Database {
         }[];
       };
       /**
+       * Other boutiques sharing this one's phone, email, bank account or UPI
+       * (migration 0106). Those columns are off the public grant precisely so
+       * they cannot be compared client-side, so the comparison happens in the
+       * database and only the verdict is returned — never the colliding value.
+       * Admin-only: anyone else gets an empty set.
+       */
+      boutique_duplicate_signals: {
+        Args: { bid: string };
+        Returns: {
+          other_id: string;
+          other_name: string;
+          other_status: string;
+          other_city: string | null;
+          other_submitted_at: string | null;
+          matched_fields: string[];
+        }[];
+      };
+      /**
        * Settle a boutique's outstanding balance (migration 0025). SECURITY
        * DEFINER; recomputes the amount from the boutique's unsettled orders,
        * stamps them, and returns the inserted `payouts` row.

@@ -1,13 +1,10 @@
 import crypto from 'node:crypto';
 import { serviceClient } from './_supabase.js';
-import { loginPathForRole, sendAccessEmail } from './_accessEmail.js';
-import { esc, layout } from './_email.js';
+import { sendAccessEmail } from './_accessEmail.js';
+import { sendAdminWelcomeEmail } from './_welcomeEmail.js';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
-const fromEmail = process.env.EMAIL_FROM || process.env.VITE_EMAIL_FROM || 'noreply@mangaimart.com';
-const appUrl = (process.env.APP_URL || process.env.VITE_APP_URL || 'http://localhost:5173').replace(/\/$/, '');
 
 // Built lazily (null when env is missing) so a misconfigured deploy returns a
 // clean 500 from the handler instead of throwing at import time, which crashes
@@ -63,127 +60,6 @@ function generateTempPassword() {
     password += chars.charAt(crypto.randomInt(chars.length));
   }
   return password;
-}
-
-function buildLoginUrl(role, email) {
-  const path = loginPathForRole(role);
-  return `${appUrl}${path}?email=${encodeURIComponent(email)}`;
-}
-
-function buildAccountCreationEmail({ email, fullName, role, tempPassword, loginUrl }) {
-  const roleLabel = {
-    buyer: 'Buyer Account',
-    seller: 'Boutique Seller',
-    admin: 'Admin Panel',
-    staff: 'Staff Console',
-  }[role];
-
-  const roleDetail = {
-    buyer: 'Curated fashion discovery, wishlists, and seamless checkout.',
-    seller: 'Boutique tools for catalog management, orders, and growth.',
-    admin: 'Operational visibility, approvals, and platform controls.',
-    staff: 'Orders, deliveries, approvals and moderation. Payouts, refunds and platform settings stay with the owner.',
-  }[role];
-
-  // Credentials, next steps and the shared brand shell. This used to be ~100
-  // lines of bespoke gradient HTML that looked like a different company from
-  // every other message we send; it now goes through layout() in _email.js, so
-  // the centred wordmark, heading and button follow the rest of the mail
-  // automatically and there is one design to maintain instead of two.
-  const credentials = `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #EFDCE4;border-radius:14px;background:#FFFAFC;">
-      <tr><td style="padding:16px 18px;">
-        <div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#9D556F;font-weight:700;margin-bottom:10px;">Your sign-in details</div>
-        <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#775D66;margin-bottom:3px;">Email</div>
-        <div style="font-family:Arial,Helvetica,sans-serif;font-size:14.5px;color:#241019;font-weight:700;word-break:break-word;margin-bottom:12px;">${esc(email)}</div>
-        <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#775D66;margin-bottom:5px;">Temporary password</div>
-        <div style="display:inline-block;padding:10px 14px;border-radius:10px;background:#FFFFFF;border:1px solid #EDD5DF;font-family:'Courier New',Courier,monospace;font-size:17px;letter-spacing:.1em;color:#651B36;font-weight:700;">${esc(tempPassword)}</div>
-      </td></tr>
-    </table>`;
-
-  const steps = ['Open your account with the button below.', 'Sign in with the temporary password above.', 'Change it to something only you know, and finish your profile.']
-    .map(
-      (step, i) =>
-        `<tr>
-          <td width="30" valign="top" style="padding:0 0 10px;">
-            <div style="width:22px;height:22px;border-radius:999px;background:#B02454;color:#FFFFFF;text-align:center;line-height:22px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;">${i + 1}</div>
-          </td>
-          <td style="padding:1px 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#4B3840;">${esc(step)}</td>
-        </tr>`,
-    )
-    .join('');
-
-  return {
-    to: email,
-    subject: `Welcome to MangaiMart — your ${roleLabel.toLowerCase()} is ready`,
-    html: layout({
-      heading: `Welcome, ${fullName}`,
-      intro: `Your ${roleLabel} has been created by the MangaiMart team. ${roleDetail}`,
-      bodyHtml:
-        credentials +
-        `<div style="margin:22px 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#241019;">Next steps</div>` +
-        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${steps}</table>`,
-      ctaLabel: 'Access your account',
-      ctaHref: loginUrl,
-      footerNote:
-        'The temporary password is single-use in spirit — please change it the first time you sign in. If you were not expecting this invitation, contact support@mangaimart.com before signing in.',
-      tagline: 'This is a message about your MangaiMart account, not marketing.',
-    }),
-    text: [
-      `Welcome to MangaiMart, ${fullName}!`,
-      '',
-      `Your ${roleLabel} has been created.`,
-      roleDetail,
-      '',
-      'LOGIN CREDENTIALS',
-      `Email: ${email}`,
-      `Temporary Password: ${tempPassword}`,
-      '',
-      'NEXT STEPS',
-      '1. Open your account using the login link below.',
-      '2. Sign in with your temporary password.',
-      '3. Change your password and complete your profile.',
-      '',
-      `Log in at ${loginUrl}`,
-    ].join('\n'),
-  };
-}
-
-async function sendEmail({ to, subject, html, text }) {
-  if (!resendApiKey) {
-    if (process.env.NODE_ENV === 'production') {
-      return { success: false, error: 'Email provider is not configured' };
-    }
-    console.log('[DEV EMAIL]', { to, subject });
-    return { success: true };
-  }
-
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${resendApiKey}`,
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to,
-        subject,
-        html,
-        text,
-        reply_to: 'support@mangaimart.com',
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Email send failed');
-    }
-
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown email error' };
-  }
 }
 
 async function authenticateAdmin(req) {
@@ -402,14 +278,6 @@ export default async function handler(req, res) {
     }
 
     const tempPassword = generateTempPassword();
-    const loginUrl = buildLoginUrl(role, normalizedEmail);
-    const emailData = buildAccountCreationEmail({
-      email: normalizedEmail,
-      fullName: normalizedName,
-      role,
-      tempPassword,
-      loginUrl,
-    });
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,
@@ -420,6 +288,7 @@ export default async function handler(req, res) {
         phone: normalizedPhone,
         city: normalizedCity,
         role,
+        created_by_admin: true,
       },
     });
 
@@ -454,17 +323,26 @@ export default async function handler(req, res) {
     // for the user existing — so a missing/failing email provider must not roll
     // back a good account. We report whether the mail went out and always return
     // the temp password so the admin can relay the credentials by hand.
-    const emailResult = await sendEmail(emailData);
-    if (!emailResult.success) {
-      console.error('[EMAIL_ERROR]', emailResult.error);
-    }
+    //
+    // One deliberate change from the private sender this replaced: with no
+    // RESEND_API_KEY, that one returned SUCCESS in development while sending
+    // nothing. The shared sender reports the failure honestly, so a dev machine
+    // now shows the same "could not be sent — share the password manually"
+    // banner the admin would see in production. That banner is the truth in
+    // both places, and it is the one that reveals the password on screen.
+    const emailResult = await sendAdminWelcomeEmail({
+      email: normalizedEmail,
+      fullName: normalizedName,
+      role,
+      tempPassword,
+    });
 
     return res.status(201).json({
       success: true,
       userId: authUser.user.id,
-      emailSent: emailResult.success,
+      emailSent: emailResult.ok,
       tempPassword,
-      message: emailResult.success
+      message: emailResult.ok
         ? `User created and welcome email sent to ${normalizedEmail}`
         : `User created, but the welcome email could not be sent. Share the temporary password manually.`,
     });

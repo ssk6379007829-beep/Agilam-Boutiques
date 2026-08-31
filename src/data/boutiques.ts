@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { uploadImage } from '@/lib/uploadImage';
 import { normalizeCity } from '@/lib/cities';
 import type { BoutiqueRow, BoutiquePrivate, BoutiqueStatus } from './types';
+import type { DuplicateSignal } from '@/lib/boutiqueReview';
 
 /**
  * The columns anon/authenticated are allowed to SELECT.
@@ -402,4 +403,66 @@ export async function setBoutiqueStatus(id: string, status: BoutiqueStatus, note
 export async function setBoutiqueFeatured(id: string, featured: boolean) {
   const { error } = await supabase.from('boutiques').update({ featured }).eq('id', id);
   if (error) throw error;
+}
+
+/**
+ * Other boutiques that share this one's phone, email, bank account or UPI.
+ *
+ * Those four columns are deliberately not readable in bulk — 0021 and 0073 took
+ * them off the column grant because the anon key ships in the browser bundle —
+ * so the comparison happens inside `boutique_duplicate_signals()` (migration
+ * 0106) and only the verdict comes back. The colliding values never cross the
+ * wire; an admin who wants the number opens that boutique and reads it from
+ * `boutique_private` like any other.
+ *
+ * Degrades to an empty list rather than throwing. Until 0106 is applied the
+ * approval queue still shows every duplicate it can see for itself (shop name,
+ * address, pincode, map pin), and losing the private ones must not take the
+ * whole review drawer down with it — the same reasoning as `selectBoutiques`'s
+ * optional column groups above. `applied` says which of the two happened, so the
+ * drawer can say "not checked" instead of implying "nothing found".
+ */
+export async function fetchBoutiqueDuplicates(
+  id: string,
+): Promise<{ applied: boolean; signals: DuplicateSignal[] }> {
+  const { data, error } = await supabase.rpc('boutique_duplicate_signals', { bid: id });
+  if (error) {
+    // PGRST202 = no such function in the schema cache, i.e. 0106 is not applied.
+    if (error.code === 'PGRST202' || /function .*boutique_duplicate_signals/i.test(error.message ?? '')) {
+      console.warn('[approvals] duplicate signals unavailable — apply migration 0106.');
+      return { applied: false, signals: [] };
+    }
+    console.error('boutique duplicates: read failed:', error.message);
+    return { applied: false, signals: [] };
+  }
+  return { applied: true, signals: (data ?? []) as DuplicateSignal[] };
+}
+
+/**
+ * How many live products each of these boutiques has loaded.
+ *
+ * Scoped to the ids on screen rather than counting the whole catalogue: the
+ * queue only ever asks about boutiques awaiting a decision, which is a handful
+ * of rows, and an unbounded count would grow with the marketplace for no reason.
+ *
+ * Returns a Map so a missing id reads as "not counted" rather than as zero —
+ * they mean different things to the reviewer.
+ */
+export async function fetchProductCounts(ids: readonly string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (!ids.length) return counts;
+  const { data, error } = await supabase
+    .from('products')
+    .select('boutique_id')
+    .in('boutique_id', ids as string[])
+    .is('deleted_at', null);
+  if (error) {
+    console.error('product counts: read failed:', error.message);
+    return counts;
+  }
+  for (const id of ids) counts.set(id, 0);
+  for (const row of (data ?? []) as { boutique_id: string }[]) {
+    counts.set(row.boutique_id, (counts.get(row.boutique_id) ?? 0) + 1);
+  }
+  return counts;
 }
