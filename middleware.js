@@ -1265,15 +1265,58 @@ const budgetCeiling = (slug) => {
 const facetValue = (p, kind) =>
   kind === "category" ? p.category : kind === "occasion" ? p.occasion : kind === "fabric" ? p.fabric : p.color;
 
+/** The column each facet actually filters on. `budget` has none — it uses `price`. */
+const FACET_COLUMN = { category: "category", occasion: "occasion", fabric: "fabric", colour: "color" };
+
+/**
+ * A slug, turned back into something Postgres can match.
+ *
+ * A slug cannot be reversed exactly: `slugify` lowercases, strips accents and
+ * collapses every run of non-alphanumerics to one hyphen, so `Raw Silk`,
+ * `raw-silk` and `Loomed  Cotton` all arrive here having lost the spelling the
+ * seller typed. What survives is the alphanumeric runs and their order, which is
+ * enough for an `ilike`: each hyphen becomes PostgREST's `*` wildcard, and a
+ * trailing one covers the 60-character cap `slugify` applies to long terms.
+ *
+ * The pattern is therefore deliberately LOOSE — `cotton*` also matches "Cotton
+ * Blend" — and `metaForCategory` still runs the exact `slugify(value) === slug`
+ * comparison over what comes back. The point of doing it in SQL first is not
+ * precision, it is that the row limit then applies to THIS facet's products
+ * instead of to the table.
+ */
+const facetPattern = (slug) => `${slug.replace(/-/g, "*")}*`;
+
+/**
+ * ── Why this reads the facet, and not the table ──────────────────────────
+ *
+ * This used to fetch `limit=40` with no `order=` and filter the facet out in
+ * JavaScript. Below forty live products that is indistinguishable from correct.
+ * Above it, the forty rows Postgres happens to return are an arbitrary window,
+ * and any facet whose stock falls outside it produced an EMPTY match — which
+ * lands on `notFoundMeta()` and serves the page `noindex`.
+ *
+ * `sitemapPagesXml` enumerates these same URLs from a `limit=5000` read, so the
+ * two disagreed the moment the catalogue crossed forty: the sitemap advertising
+ * a category page that the middleware answered as a soft 404. Silently, and
+ * only ever on the pages that had just gained enough stock to matter.
+ *
+ * Filtering in SQL is what makes the limit mean "the first 200 of this facet"
+ * rather than "this facet, if it happens to be in the first 40 of the table".
+ */
 async function metaForCategory(kind, slug, origin) {
   const ceiling = kind === "budget" ? budgetCeiling(slug) : null;
   if (kind === "budget" && ceiling === null) return notFoundMeta();
+  const filter = kind === "budget"
+    ? `price=lte.${ceiling}`
+    : `${FACET_COLUMN[kind]}=ilike.${encodeURIComponent(facetPattern(slug))}`;
   const attempt = await dbProductsTry(
-    (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&limit=40`
+    (cols) => `products?select=${cols}&status=eq.active&deleted_at=is.null&${filter}&order=created_at.desc&limit=200`
   );
   if (!attempt.ok) return null;
-  const items = attempt.rows.filter((p) => {
-    if (kind === "budget") return typeof p.price === "number" && p.price <= ceiling;
+  // `budget` filtered exactly in SQL; the rest matched a loose pattern, so the
+  // exact comparison still runs — over this facet's own rows now, rather than
+  // over whatever the table happened to hand back first.
+  const items = kind === "budget" ? attempt.rows : attempt.rows.filter((p) => {
     const value = facetValue(p, kind);
     return value && slugify(value) === slug;
   });
