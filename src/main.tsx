@@ -21,7 +21,8 @@ import './index.css';
 // user ever sees one.
 installStaleChunkRecovery();
 
-// Deter casual copy/save of catalogue text and imagery (see the module).
+// Deter casual saving of catalogue imagery — right-click and drag-out only.
+// Text selection and copy are deliberately left alone (see the module).
 installContentProtection();
 
 function ConfigErrorScreen({ message }: { message: string }) {

@@ -1086,26 +1086,26 @@ body:has(.agx-pdp-root) .agx-fab-bag { bottom: calc(96px + env(safe-area-inset-b
 
 /* ------------------------------------------------------------------
    Content protection.
-   Deter casual copy/save of catalogue text and imagery: no text
-   selection, no image drag, no long-press save. This is a deterrent
-   only (DevTools / screenshots still work), but it stops right-click-
-   save and select-copy across the app.
+   Deter casual saving of imagery: no image drag, no long-press save.
+   A deterrent only (DevTools / screenshots still work), but it stops
+   the right-click-save and drag-to-desktop paths across the app.
 
-   Form fields are explicitly re-enabled so shoppers and sellers can
-   still type, select, and paste in inputs/textareas. `contenteditable`
-   is covered for any rich fields. */
+   Text selection is NOT blocked (2026-08-31). It used to be — `body`
+   carried `user-select:none` and the copy/cut events were cancelled —
+   and it made the consoles hostile to work in: an order id, a payment
+   reference, a UTR, a customer's email or an error string could be
+   read but never copied, because none of them live in an input. The
+   selection ban cost real work and deterred nobody who could press
+   Ctrl+U. Right-click and image drag stay blocked; they are what the
+   catalogue photos actually need.
+
+   `-webkit-touch-callout` is still off, to suppress iOS's long-press
+   "Save Image" sheet — but it is restored on form fields, because on
+   iOS that same sheet is how you paste. */
 body {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
   -webkit-touch-callout: none;   /* iOS long-press "Save Image" menu */
 }
 input, textarea, select, [contenteditable="true"], [contenteditable=""] {
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-  user-select: text;
   -webkit-touch-callout: default;
 }
 /* Images can't be dragged out to the desktop / another tab. */
