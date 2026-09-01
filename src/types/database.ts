@@ -66,6 +66,50 @@ export interface Database {
         Update: never;
         Relationships: [];
       };
+      /**
+       * One row per browser tab session (migration 0107) — the durable half of
+       * "who is on our site". Realtime presence answers "right now" and keeps
+       * nothing; this is what survives the tab closing.
+       *
+       * Insert/Update are `never` on purpose: both tables are RLS-enabled with
+       * no write policy at all, and every write goes through `track_visit()`.
+       */
+      site_visits: {
+        Row: {
+          id: string;
+          visitor_id: string;
+          user_id: string | null;
+          role: string;
+          name: string | null;
+          location: string | null;
+          device: string | null;
+          referrer: string | null;
+          entry_path: string | null;
+          last_path: string | null;
+          page_count: number;
+          started_at: string;
+          last_seen_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      /** One row per page within a visit, with its dwell time (migration 0107). */
+      site_visit_pages: {
+        Row: {
+          id: number;
+          visit_id: string;
+          path: string;
+          label: string | null;
+          section: string | null;
+          entered_at: string;
+          left_at: string;
+          seconds: number;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -1349,6 +1393,45 @@ export interface Database {
       mfa_email_status: {
         Args: Record<string, never>;
         Returns: { email: string; verified: boolean; session_verified: boolean }[];
+      };
+      /**
+       * The only way anything is written to `site_visits` (migration 0107).
+       * Called by every tab on navigation and on a heartbeat; the server works
+       * out whether that means a new visit, a new page, or more seconds on the
+       * current one. `user_id` is stamped from the JWT, never passed in.
+       */
+      track_visit: {
+        Args: {
+          p_visit_id: string;
+          p_visitor_id: string;
+          p_role: string;
+          p_name: string;
+          p_location: string;
+          p_path: string;
+          p_label: string;
+          p_section: string;
+          p_device?: string;
+          p_referrer?: string;
+        };
+        Returns: void;
+      };
+      /** Visit totals over a window, counted in Postgres. Admin-only (0107). */
+      visit_stats: {
+        Args: { p_since: string };
+        Returns: {
+          visits: number;
+          visitors: number;
+          signed_in: number;
+          guests: number;
+          page_views: number;
+          avg_seconds: number;
+          avg_pages: number;
+        }[];
+      };
+      /** Retention for the visit tables — run by hand, admin-only (0107). */
+      purge_old_visits: {
+        Args: { p_days?: number };
+        Returns: number;
       };
     };
     Enums: Record<string, never>;

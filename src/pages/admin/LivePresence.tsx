@@ -38,6 +38,27 @@ const relative = (iso: string, now: number) => {
   return `${Math.floor(s / 3600)}h ago`;
 };
 
+/**
+ * How long this session has been open — `onlineSince` is the earliest beat the
+ * presence channel still holds for them.
+ *
+ * This is the honest number for a live roster and it has one limit worth
+ * knowing: presence lives in the channel, so a visitor who drops off the
+ * network and comes back reads as a fresh arrival. The durable answer, which
+ * survives that and outlives the tab entirely, is the Visitors page.
+ */
+const duration = (iso: string, now: number) => {
+  const s = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ${s % 60}s`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+};
+
+/** Wall-clock arrival, in the admin's own timezone. */
+const arrived = (iso: string) =>
+  new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+
 export function LivePresence() {
   const [users, setUsers] = useState<OnlineUser[]>([]);
   const [now, setNow] = useState(Date.now());
@@ -107,6 +128,12 @@ export function LivePresence() {
                           <span style={css('overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{u.location}</span>
                         </div>
                       )}
+                      <div style={css(`display:flex;align-items:center;gap:5px;font-size:11.5px;color:${T.muted};margin-top:2px;`)}>
+                        <Icon name="schedule" size={14} color="var(--ag-muted-soft)" />
+                        <span style={css('overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>
+                          on site {duration(u.onlineSince, now)} · from {arrived(u.onlineSince)}
+                        </span>
+                      </div>
                       <div style={css('font-size:11px;color:var(--ag-good);font-weight:700;margin-top:2px;')}>{relative(u.at, now)}</div>
                     </div>
                   </div>

@@ -26,6 +26,7 @@ const NAV = [
   { label: 'Catalogue', icon: 'sell', to: adminPath('catalogue'), title: 'Catalogue Vocabulary', sub: 'Categories, occasions and fabrics buyers browse by' },
   { label: 'Boutiques', icon: 'storefront', to: adminPath('boutiques'), title: 'Boutiques', sub: 'All boutiques on the platform' },
   { label: 'Users', icon: 'group', to: adminPath('users'), title: 'Users', sub: 'Accounts, and Customer 360° buyer history' },
+  { label: 'Visitors', icon: 'travel_explore', to: adminPath('visitors'), title: 'Visitors', sub: 'Who is on the site now, and who has been' },
   { label: 'Products', icon: 'shopping_bag', to: adminPath('products'), title: 'Products', sub: 'Moderation and inventory' },
   { label: 'Reviews', icon: 'reviews', to: adminPath('reviews'), title: 'Reviews', sub: 'Moderate product & boutique reviews' },
   { label: 'Orders', icon: 'receipt_long', to: adminPath('orders'), title: 'Orders', sub: 'Fulfillment and refunds' },

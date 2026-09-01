@@ -176,6 +176,7 @@ const AdminSettings = lazyNamed(() => import('@/pages/admin/Settings'), 'Setting
 const AdminProfile = lazyNamed(() => import('@/pages/admin/Profile'), 'Profile');
 const StaffHome = lazyNamed(() => import('@/pages/admin/StaffHome'), 'StaffHome');
 const AdminCustomers = lazyNamed(() => import('@/pages/admin/Customers'), 'Customers');
+const Visitors = lazyNamed(() => import('@/pages/admin/Visitors'), 'Visitors');
 
 /** The console root itself — sends each role to the landing page it can open. */
 function ConsoleHome() {
@@ -438,6 +439,10 @@ export default function App() {
         <Route path="catalogue" element={<Catalogue />} />
         <Route path="boutiques" element={<BoutiquesTable />} />
         <Route path="users" element={<Users />} />
+        {/* Live presence plus the persisted visit history from 0107. The same
+            live panel is embedded at the top of Users; this is where the
+            history that outlives those open tabs lives. */}
+        <Route path="visitors" element={<Visitors />} />
         <Route path="products" element={<ProductsAdmin />} />
         <Route path="orders" element={<OrdersAdmin />} />
         {/* Courier tracking's admin side (0063): disputes that freeze a payout,
