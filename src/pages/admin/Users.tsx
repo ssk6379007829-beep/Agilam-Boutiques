@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import {
   DataTable,
@@ -37,7 +38,7 @@ import {
 } from '@/data/adminUsers';
 import { useAsync } from '@/hooks/useAsync';
 import { useDebounced } from '@/hooks/useDebounced';
-import { LivePresence } from '@/pages/admin/LivePresence';
+import { adminPath } from '@/lib/adminPath';
 import { css } from '@/lib/css';
 import { fmtInr } from '@/lib/tokens';
 import { useShop } from '@/state/ShopContext';
@@ -427,7 +428,21 @@ function UserDirectory() {
 
   return (
     <div>
-      <LivePresence />
+      {/* The live "who is on the site now" panel used to sit here. It moved to
+          Visitors, which pairs it with the visit history that outlives those
+          open tabs — this page is account management, and the roster was
+          answering a different question above every search box. The link stays
+          so its absence reads as a move rather than a regression to anyone used
+          to finding it here. `adminPath` because the console's base segment is
+          a deploy-time secret: a hardcoded /admin/... would be a dead link. */}
+      <Link
+        to={adminPath('visitors')}
+        style={css(`display:inline-flex;align-items:center;gap:6px;margin-bottom:16px;font-size:12.5px;font-weight:700;color:${T.accent};text-decoration:none;`)}
+      >
+        <Icon name="travel_explore" size={16} />
+        See who is on the site right now
+        <Icon name="chevron_right" size={16} />
+      </Link>
 
       <div className="agx-adm-toolbar" style={css('display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;')}>
         <SearchInput
