@@ -4,7 +4,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
 import { logAdminAction } from '@/data/activityLog';
-import { broadcast, fetchAudienceSizes, type Audience } from '@/data/broadcast';
+import { broadcast, fetchAudienceSizes, notifyUsers, type Audience } from '@/data/broadcast';
 import { imageUrl } from '@/lib/imageUrl';
 import { fmtInr } from '@/lib/tokens';
 import {
@@ -157,17 +157,17 @@ export function EmailBroadcast() {
   const meta = TEMPLATES.find((t) => t.key === template)!;
   const marketing = MARKETING_TEMPLATES.includes(template);
 
-  // The bell fans out by ROLE and has no notion of "these four people", so a
-  // hand-picked send is email's alone. That is the one rule that still takes a
-  // channel away here.
+  // Both channels are open on every audience. The bell used to be unavailable
+  // on a hand-picked send because `broadcast_notification` fans out by ROLE and
+  // raises on anything else; 0109's `notify_users` is the version that can name
+  // people, and `sendBellNow` below picks between the two.
   //
   // Email was admins-only until now, enforced by is_admin() inside the Edge
   // Function. Staff send it too (owner's decision, 2026-09-03) — a deliberate
   // widening of the boundary 0089 drew: the gate moved to is_staff() there, and
   // migration 0108 widens the history policy to match. BOTH have to be live or
   // a staff session still gets 403 from an undeployed function.
-  const bellAllowed = audience !== 'selected';
-  const bellOn = sendBell && bellAllowed;
+  const bellOn = sendBell;
   const emailOn = sendEmail;
 
   // Reach is template-dependent: a marketing send skips everyone who unsubscribed,
@@ -194,7 +194,10 @@ export function EmailBroadcast() {
   // and it is shown before the send, not discovered afterwards.
   const skippedPicked = marketing ? people.filter((p) => p.marketing_opt_out).length : 0;
   const recipients = audience === 'selected' ? people.length - skippedPicked : (reach?.[audience] ?? 0);
-  const bellReach = bellAllowed ? (bellSizes?.[audience as Audience] ?? 0) : 0;
+  // Everyone picked gets the bell, including anyone the EMAIL half skips: the
+  // marketing opt-out is a rule about email, and `recipients` above is the only
+  // count that should ever subtract it.
+  const bellReach = audience === 'selected' ? people.length : (bellSizes?.[audience as Audience] ?? 0);
   // Every channel that is on has to have somebody at the other end of it.
   const written = subject.trim().length > 0 && body.trim().length > 0;
   const canSend =
@@ -222,9 +225,10 @@ export function EmailBroadcast() {
     ctaUrl: ctaUrl.trim(),
     productIds: picked.map((p) => p.id),
     recipientIds: audience === 'selected' ? people.map((p) => p.id) : [],
-    // `bellAllowed` has already forced this off for a hand-picked send, so the
-    // switch is the whole answer by the time it gets here.
-    alsoNotify: bellOn,
+    // The server-side mirror only knows role audiences — `broadcast_notification`
+    // raises on anything else. A hand-picked bell goes out from `send` instead,
+    // through `notify_users`.
+    alsoNotify: bellOn && audience !== 'selected',
     test,
   });
 
@@ -238,6 +242,24 @@ export function EmailBroadcast() {
     setBusy(false);
     showToast(res.ok ? 'Test sent to your own address — check your inbox' : res.error || 'Test failed', 'error');
   };
+
+  /** The bell text, sliced exactly as the Edge Function slices it server-side. */
+  const bellTitle = () => (heading.trim() || subject.trim()).slice(0, 80);
+  const bellBody = () => body.trim().slice(0, 280);
+
+  /**
+   * Fire the bell, from whichever RPC suits the audience.
+   *
+   * `broadcast_notification` fans out by role and cannot name people; 0109's
+   * `notify_users` names people and cannot fan out. One call site, so the rest
+   * of this component never has to care which of the two it is using. The button
+   * URL rides along as the notification's tap target — `bellLink` in the data
+   * layer drops anything that is not a single-slash path.
+   */
+  const sendBellNow = () =>
+    audience === 'selected'
+      ? notifyUsers(people.map((p) => p.id), bellTitle(), bellBody(), ctaUrl)
+      : broadcast(audience as Audience, bellTitle(), bellBody(), ctaUrl);
 
   /** Clear the composer after a send on either channel. */
   const resetComposer = () => {
@@ -263,11 +285,7 @@ export function EmailBroadcast() {
     // building. The slicing mirrors what the function applies server-side, so
     // the bell text is identical whichever path produced it.
     if (!emailOn) {
-      const res = await broadcast(
-        audience as Audience,
-        (heading.trim() || subject.trim()).slice(0, 80),
-        body.trim().slice(0, 280),
-      );
+      const res = await sendBellNow();
       setBusy(false);
       setConfirm(false);
       if (!res.ok) {
@@ -281,9 +299,26 @@ export function EmailBroadcast() {
         entity_type: 'notification',
         meta: { audience, sent: res.sent },
       });
-      showToast(`Broadcast sent to ${res.sent} ${res.sent === 1 ? 'person' : 'people'}`);
+      showToast(`Notification sent to ${res.sent} ${res.sent === 1 ? 'person' : 'people'}`);
       resetComposer();
       return;
+    }
+
+    // A hand-picked send cannot mirror the bell inside the Edge Function, so its
+    // bell half goes out from here — BEFORE the email, on purpose. The bell is
+    // instant and in practice forgettable; the email cannot be recalled. Doing
+    // the reversible half first means a bell failure can still abort the send
+    // with nothing irreversible having happened.
+    let pickedBellSent = 0;
+    if (bellOn && audience === 'selected') {
+      const bellRes = await sendBellNow();
+      if (!bellRes.ok) {
+        setBusy(false);
+        setConfirm(false);
+        showToast(`${bellRes.error} Nothing was emailed.`, 'error');
+        return;
+      }
+      pickedBellSent = bellRes.sent;
     }
 
     const res = await sendEmailBroadcast(payload(false));
@@ -303,10 +338,11 @@ export function EmailBroadcast() {
       meta: { audience, template, subject: subject.trim(), sent: res.sent, failed: res.failed },
     });
 
+    const bellNote = res.alsoNotified || pickedBellSent > 0 ? ' + notification bell' : '';
     showToast(
       res.failed > 0
         ? `Sent to ${res.sent}, ${res.failed} failed`
-        : `Emailed ${res.sent} ${res.sent === 1 ? 'person' : 'people'}${res.alsoNotified ? ' + notification bell' : ''}`,
+        : `Emailed ${res.sent} ${res.sent === 1 ? 'person' : 'people'}${bellNote}`,
       // The broadcast went out either way, so this is never an error — but a
       // partial failure is something the admin has to follow up on.
       res.failed > 0 ? 'warning' : 'success',
@@ -600,13 +636,9 @@ export function EmailBroadcast() {
             <ChannelSwitch
               icon="notifications"
               title="Notification bell"
-              sub={
-                bellAllowed
-                  ? `${bellReach} in-app · uses the heading and first 280 characters`
-                  : 'Reaches whole audiences, so it cannot run on hand-picked people'
-              }
+              sub={`${bellReach} in-app · uses the heading and first 280 characters`}
               on={bellOn}
-              disabled={!bellAllowed}
+              disabled={false}
               onToggle={() => setSendBell((v) => !v)}
             />
             <ChannelSwitch
@@ -739,9 +771,8 @@ export function EmailBroadcast() {
                     .filter((p) => !(marketing && p.marketing_opt_out))
                     .map((p) => p.full_name || p.email)
                     .join(', ')}.`
-                : bellOn
-                  ? ` It also appears in ${bellReach} notification bell${bellReach === 1 ? '' : 's'}.`
-                  : '')
+                : '') +
+              (bellOn ? ` It also appears in ${bellReach} notification bell${bellReach === 1 ? '' : 's'}.` : '')
         }
         confirmLabel="Send now"
         busy={busy}

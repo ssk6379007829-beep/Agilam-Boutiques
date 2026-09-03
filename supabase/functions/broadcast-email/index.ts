@@ -623,10 +623,17 @@ Deno.serve(async (req) => {
   // hides the checkbox to match.
   let alsoNotified = false;
   if (alsoNotify && !isTest && audience !== 'selected') {
+    // The RAW button path, not `ctaUrl` — safeUrl() has already turned a relative
+    // path into an absolute APP_URL one, and `notifications.link` only accepts a
+    // same-origin path (0109 enforces the same `^/[^/]` shape in SQL, and
+    // NotificationsInbox applies it again on the way out). An absolute button URL
+    // therefore lands as a plain, untappable notification.
+    const rawCta = String(raw.ctaUrl ?? '').trim();
     const { error: notifyErr } = await asCaller.rpc('broadcast_notification', {
       p_audience: audience,
       p_title: heading.slice(0, 80),
       p_body: bodyText.slice(0, 280),
+      p_link: /^\/[^/]/.test(rawCta) ? rawCta : null,
     });
     alsoNotified = !notifyErr;
     if (notifyErr) console.error('[broadcast-email bell mirror failed]', notifyErr.message);

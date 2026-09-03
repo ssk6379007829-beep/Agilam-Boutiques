@@ -944,7 +944,20 @@ export interface Database {
       };
       /** Admin fans a single notification out to a whole audience (migration 0048). */
       broadcast_notification: {
-        Args: { p_audience: string; p_title: string; p_body: string };
+        Args: { p_audience: string; p_title: string; p_body: string; p_link?: string | null };
+        Returns: number;
+      };
+      /**
+       * The notification bell for a hand-picked list (migration 0109).
+       *
+       * The sibling of `broadcast_notification`, which fans out by role and
+       * raises on any audience it does not recognise. This one names people, and
+       * is the only one of the two that may reach an admin or staff account —
+       * 0050 restricts blasts, not named recipients. Capped at 50 to match the
+       * hand-picked email path.
+       */
+      notify_users: {
+        Args: { p_user_ids: string[]; p_title: string; p_body: string; p_link?: string | null };
         Returns: number;
       };
       /**
