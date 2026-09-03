@@ -228,7 +228,12 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
             />
             <div style={css('color:var(--ag-muted);font-size:11px;margin-top:6px;')}>Add up to {MAX_REVIEW_IMAGES} photos of the piece as delivered.</div>
           </div>
-          {error && <div style={css('color:#C0344A;font-size:12.5px;font-weight:700;')}>{error}</div>}
+          {error && (
+            <div role="alert" style={css('display:flex;align-items:center;gap:6px;color:var(--ag-danger-text);font-size:12.5px;font-weight:700;')}>
+              <span aria-hidden="true" translate="no" style={css("font-family:'Material Symbols Outlined';font-size:16px;flex:none;")}>error</span>
+              {error}
+            </div>
+          )}
           <div style={css('display:flex;gap:9px;')}>
             <button
               onClick={onSubmit}

@@ -120,7 +120,7 @@ export function Ads() {
       showToast('Campaign approved');
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not approve');
+      showToast(e instanceof Error ? e.message : 'Could not approve', 'error');
     } finally {
       setBusyId(null);
     }
@@ -133,7 +133,7 @@ export function Ads() {
       showToast('Campaign paused');
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not pause');
+      showToast(e instanceof Error ? e.message : 'Could not pause', 'error');
     } finally {
       setBusyId(null);
     }
@@ -148,7 +148,7 @@ export function Ads() {
       showToast('Rejected and refunded');
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not refund');
+      showToast(e instanceof Error ? e.message : 'Could not refund', 'error');
     } finally {
       setBusyId(null);
     }
@@ -159,7 +159,7 @@ export function Ads() {
   const doRework = async (c: AdCampaignAdmin) => {
     const reason = window.prompt(`Send "${c.boutique?.name ?? 'this ad'}" back for changes.\n\nWhat should the seller fix? (shown to them):`, '');
     if (reason === null) return;
-    if (!reason.trim()) { showToast('Add a short note so the seller knows what to change'); return; }
+    if (!reason.trim()) { showToast('Add a short note so the seller knows what to change', 'warning'); return; }
     setBusyId(c.id);
     try {
       await requestChanges(c.id, reason.trim());
@@ -167,7 +167,7 @@ export function Ads() {
       setPreview(null);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not send back');
+      showToast(e instanceof Error ? e.message : 'Could not send back', 'error');
     } finally {
       setBusyId(null);
     }
@@ -429,12 +429,12 @@ function AdComposer({ placements, onClose, onCreated }: { placements: AdPlacemen
     image || (subjectType === 'boutique' ? boutique?.logo_url || '' : selectedProduct?.image_url || '');
 
   const pickImage = async (file: File) => {
-    if (!boutiqueId) { showToast('Pick a boutique first — the image is filed under it'); return; }
+    if (!boutiqueId) { showToast('Pick a boutique first — the image is filed under it', 'warning'); return; }
     setUploading(true);
     try {
       setImage(await uploadProductImage(boutiqueId, file));
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not upload the image');
+      showToast(e instanceof Error ? e.message : 'Could not upload the image', 'error');
     } finally {
       setUploading(false);
     }
@@ -455,9 +455,9 @@ function AdComposer({ placements, onClose, onCreated }: { placements: AdPlacemen
   } as AdCampaignAdmin;
 
   const publish = async () => {
-    if (!boutiqueId) { showToast('Choose the boutique this ad is for'); return; }
-    if (!placementCode) { showToast('Choose where the ad runs'); return; }
-    if (needsProduct && !productId) { showToast('Choose the product to promote'); return; }
+    if (!boutiqueId) { showToast('Choose the boutique this ad is for', 'warning'); return; }
+    if (!placementCode) { showToast('Choose where the ad runs', 'warning'); return; }
+    if (needsProduct && !productId) { showToast('Choose the product to promote', 'warning'); return; }
     setBusy(true);
     try {
       await adminCreateCampaign({
@@ -474,10 +474,13 @@ function AdComposer({ placements, onClose, onCreated }: { placements: AdPlacemen
         start_date: startDate,
         go_live: goLive,
       });
-      showToast(goLive ? 'Ad published — it is live now' : `Ad scheduled for ${startDate}`);
+      showToast(
+        goLive ? 'Ad published — it is live now' : `Ad scheduled for ${startDate}`,
+        goLive ? 'success' : 'info',
+      );
       onCreated();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not create the ad');
+      showToast(e instanceof Error ? e.message : 'Could not create the ad', 'error');
     } finally {
       setBusy(false);
     }
@@ -699,7 +702,7 @@ function AdEditor({ campaign, onClose, onSaved }: { campaign: AdCampaignAdmin; o
     try {
       setImage(await uploadProductImage(boutiqueId, file));
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not upload the image');
+      showToast(e instanceof Error ? e.message : 'Could not upload the image', 'error');
     } finally {
       setUploading(false);
     }
@@ -731,14 +734,14 @@ function AdEditor({ campaign, onClose, onSaved }: { campaign: AdCampaignAdmin; o
   });
 
   const save = async () => {
-    if (needsProduct && !productId) { showToast('Choose a product for this ad'); return; }
+    if (needsProduct && !productId) { showToast('Choose a product for this ad', 'warning'); return; }
     setBusy(true);
     try {
       await adminEditCreative(campaign.id, creative());
       showToast('Ad updated');
       onSaved();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save');
+      showToast(e instanceof Error ? e.message : 'Could not save', 'error');
     } finally {
       setBusy(false);
     }
@@ -957,7 +960,7 @@ function RateCard({ placements, onSaved }: { placements: AdPlacement[]; onSaved:
     // home hero — the most valuable slot on the site — set to ₹0 for exactly
     // this reason. To take a placement off sale, untick Active.
     if (d.active && Number(d.daily_rate) < MIN_DAILY_RATE) {
-      showToast(`${p.name}: an active placement must cost at least ₹${MIN_DAILY_RATE}/day. Untick Active to take it off sale.`);
+      showToast(`${p.name}: an active placement must cost at least ₹${MIN_DAILY_RATE}/day. Untick Active to take it off sale.`, 'warning');
       return;
     }
     setBusy(p.code);
@@ -966,7 +969,7 @@ function RateCard({ placements, onSaved }: { placements: AdPlacement[]; onSaved:
       showToast(`${p.name} updated`);
       onSaved();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save');
+      showToast(e instanceof Error ? e.message : 'Could not save', 'error');
     } finally {
       setBusy(null);
     }

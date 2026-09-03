@@ -98,7 +98,7 @@ export function Settings() {
   }, [boutique]);
 
   const save = async () => {
-    if (!boutique) return showToast('No boutique linked to this account yet');
+    if (!boutique) return showToast('No boutique linked to this account yet', 'warning');
 
     const next: Partial<Record<keyof Form, string>> = {};
     // The map pin is required here for the same reason it is in the setup wizard
@@ -116,7 +116,7 @@ export function Settings() {
     if (Object.keys(next).length) {
       setErrors(next);
       focusFirstInvalid();
-      return showToast('Please fix the highlighted fields');
+      return showToast('Please fix the highlighted fields', 'warning');
     }
 
     const patch: BoutiquePatch = {
@@ -153,13 +153,13 @@ export function Settings() {
         try {
           await saveParcelDefaults(boutique.id, parcel);
         } catch (e) {
-          showToast(e instanceof Error ? e.message : 'Parcel defaults could not be saved');
+          showToast(e instanceof Error ? e.message : 'Parcel defaults could not be saved', 'error');
         }
       }
       reload();
       showToast('Settings saved');
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save your settings');
+      showToast(e instanceof Error ? e.message : 'Could not save your settings', 'error');
     } finally {
       setSaving(false);
     }

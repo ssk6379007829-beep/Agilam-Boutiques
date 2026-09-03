@@ -389,7 +389,7 @@ export function ChatView({
       // Realtime echoes the inserted row back; no optimistic append needed.
     } catch (e) {
       setDraft(text);
-      showToast(e instanceof Error ? e.message : 'Could not send');
+      showToast(e instanceof Error ? e.message : 'Could not send', 'error');
     } finally {
       setSending(false);
       inputRef.current?.focus();

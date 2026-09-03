@@ -119,7 +119,7 @@ export function AddProduct() {
 
   const publish = async () => {
     if (!boutique) {
-      showToast('No boutique found for this account');
+      showToast('No boutique found for this account', 'warning');
       return;
     }
 
@@ -138,7 +138,7 @@ export function AddProduct() {
       // Open the colour that's short of something, or nothing explains the
       // refusal — the card hiding the error may well be collapsed.
       if (firstBad !== 'main') setOpenKey(firstBad);
-      showToast(firstBad === 'main' ? 'Please fill all required fields' : 'One of the colours needs a bit more');
+      showToast(firstBad === 'main' ? 'Please fill all required fields' : 'One of the colours needs a bit more', 'warning');
       return;
     }
 
@@ -156,7 +156,7 @@ export function AddProduct() {
       );
       navigate('/seller/products');
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not publish product');
+      showToast(e instanceof Error ? e.message : 'Could not publish product', 'error');
     } finally {
       setSaving(false);
     }

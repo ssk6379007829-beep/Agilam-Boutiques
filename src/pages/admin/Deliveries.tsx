@@ -72,7 +72,7 @@ export function Deliveries() {
       showToast(on ? 'Switched on' : 'Switched off');
       reloadSwitches();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save that switch');
+      showToast(e instanceof Error ? e.message : 'Could not save that switch', 'error');
     }
   };
 
@@ -81,14 +81,17 @@ export function Deliveries() {
     setRegistering(true);
     try {
       const r = await registerShiprocketPickup(shop.id);
-      showToast(r.alreadyRegistered ? 'Already registered' : `Registered as ${r.nickname}`);
+      showToast(
+        r.alreadyRegistered ? 'Already registered' : `Registered as ${r.nickname}`,
+        r.alreadyRegistered ? 'info' : 'success',
+      );
       // Reflect it in the open drawer so the admin sees the nickname land,
       // rather than having to close and reopen the row.
       setShop((s) => (s ? { ...s, shiprocket_pickup_location: r.nickname, shiprocket_pickup_error: null } : s));
       reloadShops();
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Could not register this pickup address';
-      showToast(message);
+      showToast(message, 'error');
       setShop((s) => (s ? { ...s, shiprocket_pickup_error: message } : s));
     } finally {
       setRegistering(false);
@@ -107,7 +110,7 @@ export function Deliveries() {
       setShop(null);
       reloadShops();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save this boutique');
+      showToast(e instanceof Error ? e.message : 'Could not save this boutique', 'error');
     } finally {
       setBusy(false);
     }
@@ -122,7 +125,7 @@ export function Deliveries() {
       setResolving(null);
       reloadDisputes();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not close this dispute');
+      showToast(e instanceof Error ? e.message : 'Could not close this dispute', 'error');
     } finally {
       setBusy(false);
     }
@@ -137,7 +140,7 @@ export function Deliveries() {
       setEditing(null);
       reloadCouriers();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save this courier');
+      showToast(e instanceof Error ? e.message : 'Could not save this courier', 'error');
     } finally {
       setBusy(false);
     }

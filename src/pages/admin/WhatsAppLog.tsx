@@ -277,7 +277,7 @@ function OrderUpdatesCard() {
     setSaving(false);
     if (!res.ok) {
       setOn(!next);              // put the switch back where the database has it
-      showToast(res.error);
+      showToast(res.error, 'error');
       return;
     }
     showToast(next ? 'WhatsApp order updates ON' : 'WhatsApp order updates OFF');
@@ -425,7 +425,7 @@ function Conversation({ thread, onBack }: { thread: WaThread; onBack: () => void
 
   const reveal = async () => {
     const n = await revealMsisdn(thread.thread_key);
-    if (!n) { showToast('Could not read that number'); return; }
+    if (!n) { showToast('Could not read that number', 'error'); return; }
     setFull(n);
     // Deliberately audited: a reveal is the one action here that exposes a
     // customer's personal data, so it should be attributable afterwards.

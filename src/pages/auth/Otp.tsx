@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { AuthModal } from '@/components/auth/AuthModal';
-import { useToast } from '@/components/ui/Toast';
+import { useShop } from '@/state/ShopContext';
 
 /**
  * "Verify your number" artboard from the design, shown in the shared auth popup.
@@ -15,7 +15,7 @@ import { useToast } from '@/components/ui/Toast';
 export function Otp() {
   const navigate = useNavigate();
   const { role = 'buyer' } = useParams();
-  const toast = useToast();
+  const { showToast } = useShop();
   const [digits, setDigits] = useState(['4', '9', '', '', '', '']);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -60,14 +60,14 @@ export function Otp() {
       </div>
 
       <button
-        onClick={() => toast(filled ? 'Phone verification is not wired up yet' : 'Enter all 6 digits')}
+        onClick={() => showToast(filled ? 'Phone verification is not wired up yet' : 'Enter all 6 digits', 'warning')}
         style={css('width:100%;height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}
       >
         Verify &amp; Continue
       </button>
 
       <div style={css('text-align:center;font-size:14px;color:var(--ag-muted);')}>
-        Didn&apos;t get the code? <a href="#" onClick={(e) => { e.preventDefault(); toast('Code resent'); }} style={css('font-weight:700;')}>Resend</a>
+        Didn&apos;t get the code? <a href="#" onClick={(e) => { e.preventDefault(); showToast('Code resent', 'info'); }} style={css('font-weight:700;')}>Resend</a>
       </div>
     </AuthModal>
   );

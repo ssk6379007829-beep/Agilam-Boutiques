@@ -77,7 +77,7 @@ export function Settings() {
     const { updated_at: _u, razorpay_account: _r, coming_soon: _c, ...patch } = form;
     const res = await saveSettings(patch, profile?.id);
     setSaving(false);
-    if (!res.ok) { showToast(res.error); return; }
+    if (!res.ok) { showToast(res.error, 'error'); return; }
     void logAdminAction({ actor_id: profile?.id, actor_name: profile?.full_name ?? 'Admin', action: 'settings.update', entity_type: 'settings' });
     showToast('Settings saved');
   };
@@ -224,7 +224,7 @@ function ComingSoonCard({ initial }: { initial: boolean }) {
     const res = await setComingSoon(next, profile?.id);
     setBusy(false);
     setConfirming(false);
-    if (!res.ok) { showToast(res.error); return; }
+    if (!res.ok) { showToast(res.error, 'error'); return; }
     setOn(next);
     showToast(next ? 'Site hidden — visitors now see the coming-soon page' : 'Site is live again');
     void logAdminAction({
@@ -347,7 +347,7 @@ function PaymentAccountCard({ initial }: { initial: RazorpayAccount }) {
     const res = await setRazorpayAccount(next, profile?.id);
     setBusy(false);
     setPending(null);
-    if (!res.ok) { showToast(res.error); return; }
+    if (!res.ok) { showToast(res.error, 'error'); return; }
     setAccount(next);
     // `meta` carries both ends of the move: "payments were switched" is not much
     // use to whoever reconciles the day's takings across two dashboards.

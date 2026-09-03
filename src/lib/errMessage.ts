@@ -6,7 +6,7 @@
  * instance (see PostgrestBuilder.processResponse: it is `JSON.parse(body)`; only
  * `.throwOnError()` wraps it in the PostgrestError class). So the very common
  *
- *     catch (e) { showToast(e instanceof Error ? e.message : 'Something failed') }
+ *     catch (e) { showToast(e instanceof Error ? e.message : 'Something failed', 'error') }
  *
  * always takes the fallback branch for a database error, and the one thing worth
  * reading — "record \"new\" has no field \"name\"", "new row violates row-level

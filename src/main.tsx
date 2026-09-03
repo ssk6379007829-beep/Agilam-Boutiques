@@ -8,7 +8,7 @@ import { CatalogProvider } from '@/state/CatalogContext';
 import { TaxonomyProvider } from '@/state/TaxonomyContext';
 import { ShopProvider } from '@/state/ShopContext';
 import { NotificationProvider } from '@/state/NotificationContext';
-import { ToastProvider } from '@/components/ui/Toast';
+import { Toaster } from '@/components/ui/Toaster';
 import { UpdateNotice } from '@/components/layout/UpdateNotice';
 import { supabaseConfigError } from '@/lib/supabase';
 import { installStaleChunkRecovery } from '@/lib/appUpdate';
@@ -55,13 +55,16 @@ createRoot(document.getElementById('root')!).render(
               <TaxonomyProvider>
                 <ShopProvider>
                   <NotificationProvider>
-                    <ToastProvider>
-                      <App />
-                      {/* Offers the new build; never takes the page away mid-task. */}
-                      <UpdateNotice />
-                      {/* Vercel Web Analytics — no-ops outside a Vercel deployment. */}
-                      <Analytics />
-                    </ToastProvider>
+                    <App />
+                    {/* The single toast renderer, mounted at the root rather
+                        than inside a layout: the auth screens and the admin
+                        login render outside both AppShell and AdminLayout, so
+                        a renderer in either would drop their messages. */}
+                    <Toaster />
+                    {/* Offers the new build; never takes the page away mid-task. */}
+                    <UpdateNotice />
+                    {/* Vercel Web Analytics — no-ops outside a Vercel deployment. */}
+                    <Analytics />
                   </NotificationProvider>
                 </ShopProvider>
               </TaxonomyProvider>

@@ -27,7 +27,6 @@
  */
 import { useState } from 'react';
 import { css } from '@/lib/css';
-import { useToast } from '@/components/ui/Toast';
 import { useCatalog } from '@/state/CatalogContext';
 import { shopFulfilment } from '@/lib/fulfilment';
 import { uploadImage } from '@/lib/uploadImage';
@@ -37,6 +36,7 @@ import {
   RETURN_REASON_LABEL,
   type ReturnReason,
 } from '@/data/returns';
+import { useShop } from '@/state/ShopContext';
 
 const REASONS: ReturnReason[] = [
   'damaged',
@@ -63,7 +63,7 @@ export function ReturnRequestSheet({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const showToast = useToast();
+  const { showToast } = useShop();
   const { boutiqueById } = useCatalog();
   const { returnWindowDays: windowDays } = shopFulfilment(boutiqueById(boutiqueId));
   const [reason, setReason] = useState<ReturnReason | null>(null);
@@ -79,7 +79,7 @@ export function ReturnRequestSheet({
   const addPhotos = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const room = MAX_PHOTOS - photos.length;
-    if (room <= 0) return showToast(`You can add up to ${MAX_PHOTOS} photos`);
+    if (room <= 0) return showToast(`You can add up to ${MAX_PHOTOS} photos`, 'warning');
     setUploading(true);
     try {
       const picked = Array.from(files).slice(0, room);
@@ -88,19 +88,19 @@ export function ReturnRequestSheet({
       );
       setPhotos((p) => [...p, ...urls]);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not upload that photo');
+      showToast(e instanceof Error ? e.message : 'Could not upload that photo', 'error');
     } finally {
       setUploading(false);
     }
   };
 
   const submit = async () => {
-    if (!reason) return showToast('Pick a reason');
+    if (!reason) return showToast('Pick a reason', 'warning');
     // Photographs are what let a boutique settle a fault claim without an
     // argument, so they are required for one — and pointless for "changed my
     // mind", where there is nothing to show.
     if (isFaultReason(reason) && photos.length === 0) {
-      return showToast('Please add at least one photo of the problem');
+      return showToast('Please add at least one photo of the problem', 'warning');
     }
     setBusy(true);
     try {
@@ -109,7 +109,7 @@ export function ReturnRequestSheet({
       onDone();
     } catch (e) {
       // The server's messages are written to be read by the buyer.
-      showToast(e instanceof Error ? e.message : 'Could not raise this return');
+      showToast(e instanceof Error ? e.message : 'Could not raise this return', 'error');
     } finally {
       setBusy(false);
     }

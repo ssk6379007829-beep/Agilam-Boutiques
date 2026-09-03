@@ -54,7 +54,7 @@ export function BoutiquesTable() {
       showToast(msg);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Update failed');
+      showToast(e instanceof Error ? e.message : 'Update failed', 'error');
     }
   };
 

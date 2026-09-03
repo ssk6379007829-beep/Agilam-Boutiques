@@ -48,13 +48,13 @@ export function Billing() {
       const stock = p.stock;
       if (existing) {
         if (existing.qty >= stock) {
-          showToast('No more stock left');
+          showToast('No more stock left', 'warning');
           return c;
         }
         return c.map((l) => (l.product_id === p.id ? { ...l, qty: l.qty + 1 } : l));
       }
       if (stock <= 0) {
-        showToast('Out of stock');
+        showToast('Out of stock', 'warning');
         return c;
       }
       return [...c, { key: p.id, product_id: p.id, title: p.title, price: Number(p.price), qty: 1, stock }];
@@ -71,7 +71,7 @@ export function Billing() {
 
   const addCustom = () => {
     if (!custom.title.trim() || !custom.price.trim() || Number(custom.price) <= 0) {
-      showToast('Enter an item name and price');
+      showToast('Enter an item name and price', 'warning');
       return;
     }
     setCart((c) => [...c, {
@@ -92,11 +92,11 @@ export function Billing() {
   const generateBill = async () => {
     if (!boutique) return;
     if (cart.length === 0) {
-      showToast('Add at least one item');
+      showToast('Add at least one item', 'warning');
       return;
     }
     if (!buyerName.trim() || !buyerPhone.trim()) {
-      showToast('Enter the buyer’s name and phone number');
+      showToast('Enter the buyer’s name and phone number', 'warning');
       return;
     }
     setCreating(true);
@@ -112,7 +112,7 @@ export function Billing() {
       setReceipt(result);
       showToast('Bill generated');
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not generate the bill');
+      showToast(e instanceof Error ? e.message : 'Could not generate the bill', 'error');
     } finally {
       setCreating(false);
     }
@@ -154,7 +154,7 @@ export function Billing() {
       }
     } catch (e) {
       pendingTab?.close();
-      showToast(e instanceof Error ? e.message : 'Could not generate the bill image');
+      showToast(e instanceof Error ? e.message : 'Could not generate the bill image', 'error');
     } finally {
       setSharing(false);
     }
@@ -165,7 +165,7 @@ export function Billing() {
     try {
       await downloadBillPdf(receiptRef.current, `Bill-${receipt.order_number}.pdf`);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not generate the PDF');
+      showToast(e instanceof Error ? e.message : 'Could not generate the PDF', 'error');
     }
   };
 

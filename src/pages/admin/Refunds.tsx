@@ -73,7 +73,7 @@ export function Refunds() {
       ? await clearLegacyRefundFlag(target.id)
       : await refundOrder(target.id, 'Refunded from the Refunds console');
     setBusy(false);
-    if (!res.ok) { showToast(res.error ?? 'Failed'); return; }
+    if (!res.ok) { showToast(res.error ?? 'Failed', 'error'); return; }
     void logAdminAction({
       actor_id: profile?.id, actor_name: profile?.full_name ?? 'Admin',
       action: reversing ? 'order.refund_reverse' : 'order.refund', entity_type: 'order', entity_id: target.order_number,

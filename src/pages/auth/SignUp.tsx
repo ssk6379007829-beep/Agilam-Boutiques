@@ -7,7 +7,7 @@ import { safeNext } from '@/auth/SignInGate';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { ConsentCheckbox, CONSENT_REQUIRED } from '@/components/legal/Consent';
-import { useToast } from '@/components/ui/Toast';
+import { useShop } from '@/state/ShopContext';
 
 const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);';
 const labelStyle = 'font-size:13px;font-weight:700;color:var(--ag-label);';
@@ -18,7 +18,7 @@ export function SignUp() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { signUpWithPassword } = useAuth();
-  const toast = useToast();
+  const { showToast } = useShop();
 
   // Set when the buyer got here from the checkout sign-in gate (see
   // @/auth/SignInGate) — they finish the account and carry on to their order.
@@ -46,10 +46,10 @@ export function SignUp() {
 
   async function handleSignUp() {
     const trimmedEmail = email.trim();
-    if (!fullName.trim()) return toast('Enter your full name');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return toast('Enter a valid email address');
-    if (password.length < 6) return toast('Password must be at least 6 characters');
-    if (!consent) return toast(CONSENT_REQUIRED);
+    if (!fullName.trim()) return showToast('Enter your full name', 'warning');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return showToast('Enter a valid email address', 'warning');
+    if (password.length < 6) return showToast('Password must be at least 6 characters', 'warning');
+    if (!consent) return showToast(CONSENT_REQUIRED);
 
     setSending(true);
     try {
@@ -59,13 +59,13 @@ export function SignUp() {
         city,
       });
       if (confirmationRequired) {
-        toast('Check your email to confirm your account, then sign in');
+        showToast('Check your email to confirm your account, then sign in', 'info');
         navigate(signInHref);
       } else {
         navigate(next ?? homeFor(newRole), { replace: true });
       }
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not create account');
+      showToast(e instanceof Error ? e.message : 'Could not create account', 'error');
     } finally {
       setSending(false);
     }

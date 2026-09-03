@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { css } from '@/lib/css';
-import { useToast } from '@/components/ui/Toast';
 import {
   backupCodesRemaining,
   generateBackupCodes,
@@ -17,6 +16,7 @@ import {
   type MfaMethods,
   type MfaState,
 } from '@/lib/mfa';
+import { useShop } from '@/state/ShopContext';
 
 /**
  * The two-factor screen: register a second factor, or enter a code to unlock
@@ -117,7 +117,7 @@ function CodeField({
 
 /** The one-time reveal of the backup codes. There is no second chance to read them. */
 function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void }) {
-  const toast = useToast();
+  const { showToast } = useShop();
   const [confirmed, setConfirmed] = useState(false);
 
   return (
@@ -139,8 +139,8 @@ function BackupCodes({ codes, onDone }: { codes: string[]; onDone: () => void })
           type="button"
           onClick={() => {
             navigator.clipboard?.writeText(codes.join('\n')).then(
-              () => toast('Backup codes copied'),
-              () => toast('Could not copy — write them down instead'),
+              () => showToast('Backup codes copied'),
+              () => showToast('Could not copy — write them down instead', 'error'),
             );
           }}
           style={css('flex:1;height:46px;border:1.5px solid var(--ag-border);border-radius:14px;background:var(--ag-surface);color:var(--ag-ink);font-size:14px;font-weight:700;cursor:pointer;')}
@@ -227,7 +227,7 @@ type Step =
   | 'backup';
 
 export function MfaGate({ onVerified }: { onVerified: () => void }) {
-  const toast = useToast();
+  const { showToast } = useShop();
   const [state, setState] = useState<MfaState | 'loading'>('loading');
   const [methods, setMethods] = useState<MfaMethods | null>(null);
   const [step, setStep] = useState<Step>('loading');
@@ -281,7 +281,7 @@ export function MfaGate({ onVerified }: { onVerified: () => void }) {
         setStep('email-code');
         setCode('');
       } catch (e) {
-        toast(e instanceof Error ? e.message : 'Could not send a code');
+        showToast(e instanceof Error ? e.message : 'Could not send a code', 'error');
         // A failed send on the enrolment path leaves the address form as the
         // only sensible place to be — the address may well be what was wrong.
         if (to) setStep('email-address');
@@ -289,7 +289,7 @@ export function MfaGate({ onVerified }: { onVerified: () => void }) {
         setBusy(false);
       }
     },
-    [toast],
+    [showToast],
   );
 
   // Auto-send when an email-only account lands on the code screen. Guarded by a
@@ -324,7 +324,7 @@ export function MfaGate({ onVerified }: { onVerified: () => void }) {
         else onVerified();
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'That code did not work');
+      showToast(err instanceof Error ? err.message : 'That code did not work', 'error');
       setCode('');
     } finally {
       setBusy(false);
@@ -349,7 +349,7 @@ export function MfaGate({ onVerified }: { onVerified: () => void }) {
         onVerified();
       }
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'That code did not work');
+      showToast(err instanceof Error ? err.message : 'That code did not work', 'error');
       setCode('');
     } finally {
       setBusy(false);
@@ -368,7 +368,7 @@ export function MfaGate({ onVerified }: { onVerified: () => void }) {
     setBusy(true);
     try {
       await redeemBackupCode(backupCode);
-      toast('Two-factor cleared — set up a new method now');
+      showToast('Two-factor cleared — set up a new method now');
       setBackupCode('');
       setCode('');
       autoSent.current = false;
@@ -376,7 +376,7 @@ export function MfaGate({ onVerified }: { onVerified: () => void }) {
       setStep('loading');
       await load();
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'That code is not valid');
+      showToast(err instanceof Error ? err.message : 'That code is not valid', 'error');
     } finally {
       setBusy(false);
     }
@@ -389,7 +389,7 @@ export function MfaGate({ onVerified }: { onVerified: () => void }) {
       setCode('');
       setStep('app-enroll');
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not start setup');
+      showToast(e instanceof Error ? e.message : 'Could not start setup', 'error');
     } finally {
       setBusy(false);
     }

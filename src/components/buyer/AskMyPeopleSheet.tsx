@@ -23,7 +23,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
-import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/auth/AuthContext';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
@@ -43,10 +42,9 @@ export function AskMyPeopleSheet({
   initialProductIds?: string[];
   onClose: () => void;
 }) {
-  const showToast = useToast();
   const navigate = useNavigate();
   const { session } = useAuth();
-  const { wishlist } = useShop();
+  const { showToast, wishlist } = useShop();
   const { products: PRODUCTS } = useCatalog();
 
   const [picked, setPicked] = useState<string[]>(initialProductIds);
@@ -103,7 +101,7 @@ export function AskMyPeopleSheet({
     setPicked((cur) => {
       if (cur.includes(id)) return cur.filter((x) => x !== id);
       if (cur.length >= MAX_BOARD_ITEMS) {
-        showToast(`You can ask about up to ${MAX_BOARD_ITEMS} pieces`);
+        showToast(`You can ask about up to ${MAX_BOARD_ITEMS} pieces`, 'warning');
         return cur;
       }
       return [...cur, id];
@@ -111,7 +109,7 @@ export function AskMyPeopleSheet({
   };
 
   const submit = async () => {
-    if (picked.length === 0) return showToast('Pick at least one piece');
+    if (picked.length === 0) return showToast('Pick at least one piece', 'warning');
     setBusy(true);
     try {
       const result = await createBoard({
@@ -121,7 +119,7 @@ export function AskMyPeopleSheet({
       });
       setMade(result);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not make that shortlist');
+      showToast(e instanceof Error ? e.message : 'Could not make that shortlist', 'error');
     } finally {
       setBusy(false);
     }
@@ -139,7 +137,7 @@ export function AskMyPeopleSheet({
       image: pickedProducts[0]?.image,
     });
     if (result === 'copied') showToast('Link copied — paste it in your family group');
-    if (result === 'failed') showToast('Could not open sharing — copy the link instead');
+    if (result === 'failed') showToast('Could not open sharing — copy the link instead', 'error');
   };
 
   const copyLink = async () => {
@@ -147,7 +145,7 @@ export function AskMyPeopleSheet({
       await navigator.clipboard.writeText(shareUrl);
       showToast('Link copied');
     } catch {
-      showToast('Could not copy — select the link and copy it');
+      showToast('Could not copy — select the link and copy it', 'error');
     }
   };
 

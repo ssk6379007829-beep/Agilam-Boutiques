@@ -95,7 +95,7 @@ export function Expenses() {
       }
       setEditing((e) => (e ? { ...e, input: { ...e.input, proofs: [...e.input.proofs, ...paths] } } : e));
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not upload the proof');
+      showToast(e instanceof Error ? e.message : 'Could not upload the proof', 'error');
     } finally {
       setUploading(false);
     }
@@ -129,7 +129,7 @@ export function Expenses() {
       setEditing(null);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save the expense');
+      showToast(e instanceof Error ? e.message : 'Could not save the expense', 'error');
     } finally {
       setBusy(false);
     }
@@ -149,7 +149,7 @@ export function Expenses() {
       setConfirm(null);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not delete the expense');
+      showToast(e instanceof Error ? e.message : 'Could not delete the expense', 'error');
     } finally {
       setBusy(false);
     }

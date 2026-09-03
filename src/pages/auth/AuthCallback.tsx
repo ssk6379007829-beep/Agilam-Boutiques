@@ -5,7 +5,7 @@ import { FullscreenLoader } from '@/auth/RequireRole';
 import { fetchMyBoutique } from '@/data/boutiques';
 import { readPendingOAuthRole, readPendingOAuthNext, clearPendingOAuthRole } from '@/lib/authMethods';
 import { safeNext } from '@/auth/SignInGate';
-import { useToast } from '@/components/ui/Toast';
+import { useShop } from '@/state/ShopContext';
 
 /**
  * Landing route for Google OAuth. Supabase exchanges the code for a session on
@@ -16,7 +16,7 @@ import { useToast } from '@/components/ui/Toast';
 export function AuthCallback() {
   const navigate = useNavigate();
   const { session, loading, claimRole } = useAuth();
-  const toast = useToast();
+  const { showToast } = useShop();
   const ran = useRef(false);
 
   useEffect(() => {
@@ -30,7 +30,9 @@ export function AuthCallback() {
         notice = sessionStorage.getItem('agx-auth-notice') || '';
         sessionStorage.removeItem('agx-auth-notice');
       } catch { /* storage unavailable */ }
-      if (notice) toast(notice);
+      // The only thing ever written here is AuthContext's DISABLED_MESSAGE —
+      // a blocked or deleted account. That is a refusal, not a notice.
+      if (notice) showToast(notice, 'error');
       navigate('/', { replace: true });
       return;
     }
@@ -54,7 +56,7 @@ export function AuthCallback() {
         navigate(next ?? '/profile', { replace: true });
       }
     })();
-  }, [session, loading, claimRole, navigate, toast]);
+  }, [session, loading, claimRole, navigate, showToast]);
 
   return <FullscreenLoader />;
 }

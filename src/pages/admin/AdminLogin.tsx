@@ -7,7 +7,7 @@ import { adminPath } from '@/lib/adminPath';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
-import { useToast } from '@/components/ui/Toast';
+import { useShop } from '@/state/ShopContext';
 
 const fieldStyle = 'width:100%;margin-top:7px;border:1.5px solid var(--ag-border);background:var(--ag-surface);border-radius:14px;padding:0 15px;height:52px;font-size:15px;font-weight:600;color:var(--ag-ink);';
 
@@ -15,7 +15,7 @@ export function AdminLogin() {
   const { adminSignIn, signOut, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const toast = useToast();
+  const { showToast } = useShop();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -37,12 +37,12 @@ export function AdminLogin() {
       // Overview, which is the revenue screen and not theirs.
       if (!isConsoleRole(role)) {
         await signOut();
-        toast('This account does not have admin access.');
+        showToast('This account does not have admin access.', 'warning');
         return;
       }
       navigate(homeFor(role), { replace: true });
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Sign in failed');
+      showToast(e instanceof Error ? e.message : 'Sign in failed', 'error');
     } finally {
       setBusy(false);
     }

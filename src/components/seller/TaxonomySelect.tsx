@@ -129,7 +129,7 @@ export function TaxonomySelect({
   const submitRequest = async () => {
     const name = draft.trim();
     if (name.length < 2) {
-      showToast('Enter at least two characters');
+      showToast('Enter at least two characters', 'warning');
       return;
     }
     setBusy(true);
@@ -145,7 +145,7 @@ export function TaxonomySelect({
       );
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not send the request');
+      showToast(e instanceof Error ? e.message : 'Could not send the request', 'error');
     } finally {
       setBusy(false);
     }

@@ -4,7 +4,6 @@ import { css } from '@/lib/css';
 import { focusFirstInvalid } from '@/lib/focusInvalid';
 import { useAuth } from '@/auth/AuthContext';
 import { FullscreenLoader } from '@/auth/RequireRole';
-import { useToast } from '@/components/ui/Toast';
 import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
 import { resolveDisplayName } from '@/lib/displayName';
 import { KNOWN_CITIES } from '@/lib/cities';
@@ -33,6 +32,7 @@ import {
   type BoutiquePatch,
 } from '@/data/boutiques';
 import { WORKING_DAYS, type BoutiqueRow } from '@/data/types';
+import { useShop } from '@/state/ShopContext';
 
 /**
  * Boutique registration — creating the seller's login and the seven steps a
@@ -280,7 +280,7 @@ function toPatch(f: Form): BoutiquePatch {
 export function SellerOnboarding() {
   const navigate = useNavigate();
   const { session, profile, loading: authLoading, signUpWithPassword, signOut, claimRole } = useAuth();
-  const toast = useToast();
+  const { showToast } = useShop();
 
   // A buyer who has ever opened a chat carries an anonymous Supabase session
   // (see ensureBuyerIdentity), so a session alone does not mean a real login —
@@ -427,7 +427,7 @@ export function SellerOnboarding() {
         // Resume on the step after the last completed one, capped at review.
         setStep(Math.min(7, Math.max(1, (row.onboarding_step ?? 0) + 1)));
       } catch (e) {
-        if (!cancelled) toast(e instanceof Error ? e.message : 'Could not load your boutique');
+        if (!cancelled) showToast(e instanceof Error ? e.message : 'Could not load your boutique', 'error');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -450,7 +450,7 @@ export function SellerOnboarding() {
       const url = await uploadBoutiqueImage(boutique.id, kind, file, boutique.name);
       set(kind === 'logo' ? 'logoUrl' : 'coverUrl', url);
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Image upload failed');
+      showToast(e instanceof Error ? e.message : 'Image upload failed', 'error');
     } finally {
       setUploading(null);
     }
@@ -513,12 +513,12 @@ export function SellerOnboarding() {
     const bad = validateAccount(account);
     if (Object.keys(bad).length) {
       setAccountErrors(bad);
-      toast('Please fix the highlighted fields');
+      showToast('Please fix the highlighted fields', 'warning');
       focusFirstInvalid();
       return;
     }
     if (!accountConsent) {
-      toast(CONSENT_REQUIRED);
+      showToast(CONSENT_REQUIRED);
       return;
     }
     setBusy(true);
@@ -532,12 +532,12 @@ export function SellerOnboarding() {
         role: 'seller',
       });
       if (confirmationRequired) {
-        toast('Check your email to confirm your account, then sign in to finish setting up');
+        showToast('Check your email to confirm your account, then sign in to finish setting up', 'info');
         navigate('/auth/signin/seller', { replace: true });
       }
       // Otherwise there is a session now and the loader takes over.
     } catch (e) {
-      toast(e instanceof Error ? friendlyAuthError(e.message) : 'Could not create your account');
+      showToast(e instanceof Error ? friendlyAuthError(e.message) : 'Could not create your account', 'error');
     } finally {
       setBusy(false);
     }
@@ -548,7 +548,7 @@ export function SellerOnboarding() {
       if (session?.user?.is_anonymous) await signOut();
       await signInWithGoogle('seller');
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Google sign-in failed');
+      showToast(e instanceof Error ? e.message : 'Google sign-in failed', 'error');
     }
   };
 
@@ -556,7 +556,7 @@ export function SellerOnboarding() {
     const stepErrors = validateStep(step, form, ifscKnownBad);
     if (Object.keys(stepErrors).length) {
       setErrors(stepErrors);
-      toast('Please fix the highlighted fields');
+      showToast('Please fix the highlighted fields', 'warning');
       focusFirstInvalid();
       return;
     }
@@ -569,7 +569,7 @@ export function SellerOnboarding() {
       setBoutique({ ...boutique, onboarding_step: reached });
       goTo(step + 1);
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not save this step');
+      showToast(e instanceof Error ? e.message : 'Could not save this step', 'error');
     } finally {
       setBusy(false);
     }
@@ -581,17 +581,17 @@ export function SellerOnboarding() {
   const saveEdits = async () => {
     if (!boutique) return;
     if (incomplete.length) {
-      toast(`Finish ${incomplete[0].title} first`);
+      showToast(`Finish ${incomplete[0].title} first`, 'warning');
       goTo(incomplete[0].n);
       return;
     }
     setBusy(true);
     try {
       await updateBoutique(boutique.id, toPatch(form));
-      toast('Business details updated');
+      showToast('Business details updated');
       navigate('/seller/profile');
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not save your changes');
+      showToast(e instanceof Error ? e.message : 'Could not save your changes', 'error');
     } finally {
       setBusy(false);
     }
@@ -600,12 +600,12 @@ export function SellerOnboarding() {
   const submit = async () => {
     if (!boutique) return;
     if (incomplete.length) {
-      toast(`Finish step ${incomplete[0].n} first`);
+      showToast(`Finish step ${incomplete[0].n} first`, 'warning');
       goTo(incomplete[0].n);
       return;
     }
     if (!sellerConsent) {
-      toast(CONSENT_REQUIRED);
+      showToast(CONSENT_REQUIRED);
       return;
     }
     setBusy(true);
@@ -613,7 +613,7 @@ export function SellerOnboarding() {
       await submitBoutiqueForReview(boutique.id, toPatch(form));
       navigate('/seller/verification', { replace: true });
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not submit your application');
+      showToast(e instanceof Error ? e.message : 'Could not submit your application', 'error');
     } finally {
       setBusy(false);
     }

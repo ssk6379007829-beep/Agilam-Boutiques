@@ -163,7 +163,7 @@ export function Payments() {
   const doSettle = async () => {
     if (!confirm) return;
     if (needsReference(confirm.net) && !note.trim()) {
-      showToast('Enter the bank reference / UTR before marking this paid');
+      showToast('Enter the bank reference / UTR before marking this paid', 'warning');
       return;
     }
     setBusy(true);
@@ -185,7 +185,7 @@ export function Payments() {
       reload();
       reloadHistory();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not settle this payout');
+      showToast(e instanceof Error ? e.message : 'Could not settle this payout', 'error');
     } finally {
       setBusy(false);
     }
@@ -220,6 +220,7 @@ export function Payments() {
         done > 0
           ? `Recorded ${done} of ${list.length}, then failed: ${e instanceof Error ? e.message : 'unknown error'}`
           : e instanceof Error ? e.message : 'Could not record these payouts',
+        'error',
       );
       reload();
       reloadHistory();

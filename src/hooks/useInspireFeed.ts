@@ -304,7 +304,7 @@ export function useInspireFeed(opts: { followingOnly?: boolean; filters?: FeedFi
         setRanked((prev) =>
           prev.map((p) => (p.id === productId ? { ...p, likes_count: Math.max(0, (p.likes_count ?? 0) + (next ? -1 : 1)) } : p)),
         );
-        showToast("Couldn't register that — check your connection");
+        showToast("Couldn't register that — check your connection", 'error');
       });
   }, [likes, showToast]);
 

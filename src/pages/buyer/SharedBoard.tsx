@@ -24,7 +24,6 @@ import { usePageMeta } from '@/lib/pageMeta';
 import { routes } from '@/lib/seo';
 import { Icon } from '@/components/ui/Icon';
 import { ImageSlot } from '@/components/ui/ImageSlot';
-import { useToast } from '@/components/ui/Toast';
 import { TONES, fmt } from '@/data/demo';
 import {
   fetchSharedBoard,
@@ -37,10 +36,11 @@ import {
   type Verdict,
 } from '@/data/shortlists';
 import { voterKey, voterName, rememberVoterName } from '@/lib/voterIdentity';
+import { useShop } from '@/state/ShopContext';
 
 export function SharedBoard() {
   const { token = '' } = useParams();
-  const showToast = useToast();
+  const { showToast } = useShop();
   const me = useMemo(() => voterKey(), []);
 
   const [data, setData] = useState<SharedBoardData | null>(null);
@@ -97,7 +97,7 @@ export function SharedBoard() {
   const requireName = (): string | null => {
     const clean = name.trim();
     if (!clean) {
-      showToast('Add your name first so she knows who voted');
+      showToast('Add your name first so she knows who voted', 'warning');
       nameRef.current?.focus();
       nameRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       return null;
@@ -117,7 +117,7 @@ export function SharedBoard() {
       await load();
       setOpenNote(null);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save that vote');
+      showToast(e instanceof Error ? e.message : 'Could not save that vote', 'error');
     } finally {
       setBusyItem(null);
     }
@@ -132,7 +132,7 @@ export function SharedBoard() {
       setComment('');
       await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not post that');
+      showToast(e instanceof Error ? e.message : 'Could not post that', 'error');
     } finally {
       setPosting(false);
     }
