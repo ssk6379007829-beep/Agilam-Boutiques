@@ -4,6 +4,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
 import { logAdminAction } from '@/data/activityLog';
+import { broadcast, fetchAudienceSizes, type Audience } from '@/data/broadcast';
 import { imageUrl } from '@/lib/imageUrl';
 import { fmtInr } from '@/lib/tokens';
 import {
@@ -142,7 +143,13 @@ export function EmailBroadcast() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [people, setPeople] = useState<EmailPerson[]>([]);
   const [personSearch, setPersonSearch] = useState('');
-  const [alsoNotify, setAlsoNotify] = useState(true);
+  // One composer, one Send, both channels. These were two tabs with two
+  // composers until the same announcement started being written twice, once
+  // for the inbox and once for the bell, with the wording drifting between
+  // them. Both default to on: the common case is that a broadcast should
+  // reach people who read email AND people who never open it.
+  const [sendBell, setSendBell] = useState(true);
+  const [sendEmail, setSendEmail] = useState(true);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
@@ -150,9 +157,26 @@ export function EmailBroadcast() {
   const meta = TEMPLATES.find((t) => t.key === template)!;
   const marketing = MARKETING_TEMPLATES.includes(template);
 
+  // The bell fans out by ROLE and has no notion of "these four people", so a
+  // hand-picked send is email's alone. That is the one rule that still takes a
+  // channel away here.
+  //
+  // Email was admins-only until now, enforced by is_admin() inside the Edge
+  // Function. Staff send it too (owner's decision, 2026-09-03) — a deliberate
+  // widening of the boundary 0089 drew: the gate moved to is_staff() there, and
+  // migration 0108 widens the history policy to match. BOTH have to be live or
+  // a staff session still gets 403 from an undeployed function.
+  const bellAllowed = audience !== 'selected';
+  const bellOn = sendBell && bellAllowed;
+  const emailOn = sendEmail;
+
   // Reach is template-dependent: a marketing send skips everyone who unsubscribed,
   // a service update does not. Refetched when that distinction changes.
   const { data: reach } = useAsync(() => fetchEmailReach(marketing), [marketing]);
+  // The channels do not reach the same people: email needs an address on file
+  // and skips marketing unsubscribes, the bell needs neither. Both counts are
+  // shown rather than one blended number that would be wrong for both.
+  const { data: bellSizes } = useAsync(() => fetchAudienceSizes(), []);
   const { data: history } = useAsync(() => fetchEmailBroadcastHistory(), [historyKey]);
   const { data: pickable, loading: picking } = useAsync(
     () => (pickerOpen ? fetchPickableProducts(productSearch) : Promise.resolve([])),
@@ -170,7 +194,11 @@ export function EmailBroadcast() {
   // and it is shown before the send, not discovered afterwards.
   const skippedPicked = marketing ? people.filter((p) => p.marketing_opt_out).length : 0;
   const recipients = audience === 'selected' ? people.length - skippedPicked : (reach?.[audience] ?? 0);
-  const canSend = subject.trim().length > 0 && body.trim().length > 0 && recipients > 0;
+  const bellReach = bellAllowed ? (bellSizes?.[audience as Audience] ?? 0) : 0;
+  // Every channel that is on has to have somebody at the other end of it.
+  const written = subject.trim().length > 0 && body.trim().length > 0;
+  const canSend =
+    written && ((emailOn && recipients > 0) || (bellOn && bellReach > 0));
 
   /** Fill the composer with this template's sample so nobody starts from a blank page. */
   const useSample = () => {
@@ -194,9 +222,9 @@ export function EmailBroadcast() {
     ctaUrl: ctaUrl.trim(),
     productIds: picked.map((p) => p.id),
     recipientIds: audience === 'selected' ? people.map((p) => p.id) : [],
-    // The bell fans out by role and has no notion of "these four people", so the
-    // mirror is off for a hand-picked send however the checkbox was left.
-    alsoNotify: alsoNotify && audience !== 'selected',
+    // `bellAllowed` has already forced this off for a hand-picked send, so the
+    // switch is the whole answer by the time it gets here.
+    alsoNotify: bellOn,
     test,
   });
 
@@ -211,8 +239,53 @@ export function EmailBroadcast() {
     showToast(res.ok ? 'Test sent to your own address — check your inbox' : res.error || 'Test failed', 'error');
   };
 
+  /** Clear the composer after a send on either channel. */
+  const resetComposer = () => {
+    setSubject('');
+    setHeading('');
+    setPreheader('');
+    setBody('');
+    setCtaLabel('');
+    setCtaUrl('');
+    setPicked([]);
+    setPeople([]);
+    setPersonSearch('');
+    setHistoryKey((k) => k + 1);
+  };
+
   const send = async () => {
     setBusy(true);
+
+    // Bell without email is the one combination that does not go through the
+    // Edge Function at all. Routing it through a send with no email channel
+    // would write a row to `email_broadcasts` describing an email that never
+    // existed, and that table is the record of what actually left the
+    // building. The slicing mirrors what the function applies server-side, so
+    // the bell text is identical whichever path produced it.
+    if (!emailOn) {
+      const res = await broadcast(
+        audience as Audience,
+        (heading.trim() || subject.trim()).slice(0, 80),
+        body.trim().slice(0, 280),
+      );
+      setBusy(false);
+      setConfirm(false);
+      if (!res.ok) {
+        showToast(res.error, 'error');
+        return;
+      }
+      void logAdminAction({
+        actor_id: profile?.id,
+        actor_name: profile?.full_name ?? 'Admin',
+        action: 'broadcast.send',
+        entity_type: 'notification',
+        meta: { audience, sent: res.sent },
+      });
+      showToast(`Broadcast sent to ${res.sent} ${res.sent === 1 ? 'person' : 'people'}`);
+      resetComposer();
+      return;
+    }
+
     const res = await sendEmailBroadcast(payload(false));
     setBusy(false);
     setConfirm(false);
@@ -238,16 +311,7 @@ export function EmailBroadcast() {
       // partial failure is something the admin has to follow up on.
       res.failed > 0 ? 'warning' : 'success',
     );
-    setSubject('');
-    setHeading('');
-    setPreheader('');
-    setBody('');
-    setCtaLabel('');
-    setCtaUrl('');
-    setPicked([]);
-    setPeople([]);
-    setPersonSearch('');
-    setHistoryKey((k) => k + 1);
+    resetComposer();
   };
 
   const field = `width:100%;border:1.5px solid ${T.field};border-radius:12px;background:var(--ag-surface);font-size:14px;font-family:inherit;color:var(--ag-ink);padding:12px 14px;box-sizing:border-box;`;
@@ -267,11 +331,18 @@ export function EmailBroadcast() {
 
       <div className="agx-adm-split" style={css('align-items:start;')}>
         <Card>
-          <div style={css('font-weight:800;font-size:15px;margin-bottom:4px;')}>Compose email</div>
+          <div style={css('font-weight:800;font-size:15px;margin-bottom:4px;')}>Compose broadcast</div>
           <div style={css(`font-size:12.5px;color:${T.muted};margin-bottom:14px;line-height:1.5;`)}>
-            This lands in a real inbox and cannot be recalled. Send yourself a test first.
+            {emailOn
+              ? 'This lands in a real inbox and cannot be recalled. Send yourself a test first.'
+              : 'This appears in the notification bell the moment people next open the app. It cannot be recalled.'}
           </div>
 
+          {/* Template, preview text and the button shape the EMAIL and nothing
+              else. On a bell-only send they would be controls that do nothing,
+              so they come out of the form rather than sit there inert. */}
+          {emailOn && (
+          <>
           <div style={css(label + 'margin-top:0;')}>Template</div>
           <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;')}>
             {TEMPLATES.map((t) => {
@@ -299,6 +370,8 @@ export function EmailBroadcast() {
             </span>
             <GhostButton icon="auto_fix_high" onClick={useSample}>Use example</GhostButton>
           </div>
+          </>
+          )}
 
           <div style={css(label)}>Audience</div>
           <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;')}>
@@ -417,10 +490,14 @@ export function EmailBroadcast() {
           <div style={css(label)}>Subject line</div>
           <input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={120} placeholder={meta.sample.subject} style={css(field)} />
 
-          <div style={css(label)}>Preview text <span style={css('text-transform:none;letter-spacing:0;font-weight:600;')}>— the grey line after the subject in the inbox</span></div>
-          <input value={preheader} onChange={(e) => setPreheader(e.target.value)} maxLength={140} placeholder="Optional. Defaults to the start of your message." style={css(field)} />
+          {emailOn && (
+            <>
+              <div style={css(label)}>Preview text <span style={css('text-transform:none;letter-spacing:0;font-weight:600;')}>— the grey line after the subject in the inbox</span></div>
+              <input value={preheader} onChange={(e) => setPreheader(e.target.value)} maxLength={140} placeholder="Optional. Defaults to the start of your message." style={css(field)} />
+            </>
+          )}
 
-          <div style={css(label)}>Heading <span style={css('text-transform:none;letter-spacing:0;font-weight:600;')}>— the big line inside the email</span></div>
+          <div style={css(label)}>Heading <span style={css('text-transform:none;letter-spacing:0;font-weight:600;')}>— {emailOn ? 'the big line inside the email' : 'the notification title'}</span></div>
           <input value={heading} onChange={(e) => setHeading(e.target.value)} maxLength={90} placeholder={subject.trim() || meta.sample.heading} style={css(field)} />
 
           <div style={css(label)}>Message</div>
@@ -437,7 +514,7 @@ export function EmailBroadcast() {
             <span>{body.length}/1600</span>
           </div>
 
-          {template === 'arrivals' && (
+          {emailOn && template === 'arrivals' && (
             <>
               <div style={css(label)}>Products <span style={css('text-transform:none;letter-spacing:0;font-weight:600;')}>— up to 6, shown with photo and price</span></div>
               {picked.length > 0 && (
@@ -502,68 +579,122 @@ export function EmailBroadcast() {
             </>
           )}
 
-          <div style={css(label)}>Button</div>
-          <div style={css('display:grid;grid-template-columns:1fr 1.4fr;gap:10px;')}>
-            <input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} maxLength={30} placeholder="Shop now" style={css(field)} />
-            <input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} placeholder="/collections or https://…" style={css(field)} />
-          </div>
-          <div style={css(`font-size:11.5px;color:${T.muted};margin-top:6px;`)}>
-            Leave both blank for an email with no button. A path like <code>/new-arrivals</code> becomes a full link.
-          </div>
-
-          {audience !== 'selected' && (
-          <label style={css(`display:flex;align-items:center;gap:10px;margin-top:18px;cursor:pointer;padding:12px 14px;border:1.5px solid ${T.field};border-radius:12px;`)}>
-            <input type="checkbox" checked={alsoNotify} onChange={(e) => setAlsoNotify(e.target.checked)} style={css('width:17px;height:17px;accent-color:var(--ag-crimson);cursor:pointer;')} />
-            <span style={css('font-size:13px;font-weight:600;line-height:1.5;')}>
-              Also post this to the notification bell
-              <span style={css(`display:block;font-size:11.5px;color:${T.muted};font-weight:500;`)}>
-                Uses the heading and the first 280 characters. Reaches people who never open email.
-              </span>
-            </span>
-          </label>
+          {emailOn && (
+            <>
+              <div style={css(label)}>Button</div>
+              <div style={css('display:grid;grid-template-columns:1fr 1.4fr;gap:10px;')}>
+                <input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} maxLength={30} placeholder="Shop now" style={css(field)} />
+                <input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} placeholder="/collections or https://…" style={css(field)} />
+              </div>
+              <div style={css(`font-size:11.5px;color:${T.muted};margin-top:6px;`)}>
+                Leave both blank for an email with no button. A path like <code>/new-arrivals</code> becomes a full link.
+              </div>
+            </>
           )}
 
+          {/* One Send, both channels — this row is the whole point of the merge.
+              The counts differ on purpose: email needs an address on file and a
+              marketing template skips unsubscribes, the bell needs neither. */}
+          <div style={css(label)}>Send on</div>
+          <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;')}>
+            <ChannelSwitch
+              icon="notifications"
+              title="Notification bell"
+              sub={
+                bellAllowed
+                  ? `${bellReach} in-app · uses the heading and first 280 characters`
+                  : 'Reaches whole audiences, so it cannot run on hand-picked people'
+              }
+              on={bellOn}
+              disabled={!bellAllowed}
+              onToggle={() => setSendBell((v) => !v)}
+            />
+            <ChannelSwitch
+              icon="mail"
+              title="Email"
+              sub={`${recipients} inbox${recipients === 1 ? '' : 'es'}${marketing ? ' · skips unsubscribes' : ''}`}
+              on={emailOn}
+              disabled={false}
+              onToggle={() => setSendEmail((v) => !v)}
+            />
+          </div>
+
           <div style={css('display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap;')}>
-            <GhostButton icon="outgoing_mail" onClick={sendTest} disabled={busy}>Send test to me</GhostButton>
+            {/* The test is an email to yourself. There is no bell equivalent
+                that would tell you anything the preview does not. */}
+            {emailOn && (
+              <GhostButton icon="outgoing_mail" onClick={sendTest} disabled={busy}>Send test to me</GhostButton>
+            )}
             <GhostButton tone="primary" icon="send" onClick={() => setConfirm(true)} disabled={!canSend || busy}>
-              Send to {recipients}
+              Send broadcast
             </GhostButton>
           </div>
           {!canSend && (
             <div style={css(`font-size:11.5px;color:${T.muted};margin-top:8px;text-align:right;`)}>
-              {recipients > 0
-                ? 'Add a subject and a message to send.'
-                : audience === 'selected'
-                  ? people.length === 0
-                    ? 'Search for someone to email.'
-                    : 'Everyone you picked has unsubscribed from marketing.'
-                  : 'Nobody in this audience has an email address on file.'}
+              {!bellOn && !emailOn
+                ? 'Pick at least one channel to send on.'
+                : !written
+                  ? 'Add a subject and a message to send.'
+                  : audience === 'selected'
+                    ? people.length === 0
+                      ? 'Search for someone to email.'
+                      : 'Everyone you picked has unsubscribed from marketing.'
+                    : 'Nobody in this audience can be reached on the channels you picked.'}
             </div>
           )}
         </Card>
 
         <div>
-          <Card>
-            <div style={css('font-weight:800;font-size:15px;margin-bottom:14px;')}>Preview</div>
-            <EmailPreview
-              template={template}
-              subject={subject}
-              preheader={preheader}
-              heading={heading}
-              body={body}
-              ctaLabel={ctaLabel}
-              products={picked}
-              marketing={marketing}
-            />
-            <div style={css('margin-top:14px;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;background:var(--ag-info-bg);')}>
-              <Icon name="info" size={19} color="var(--ag-info-text)" />
-              <span style={css('font-size:12.5px;font-weight:600;color:var(--ag-info-text);line-height:1.5;')}>
-                Approximate — the real email is built by the sending function. Use <b>Send test to me</b> to see exactly what lands.
-              </span>
-            </div>
-          </Card>
+          {/* A preview per channel that is actually going out. Showing an email
+              mock-up for a bell-only send would be worse than showing nothing. */}
+          {bellOn && (
+            <>
+              <Card>
+                <div style={css('font-weight:800;font-size:15px;margin-bottom:14px;')}>Notification bell</div>
+                <div style={css('border:1.5px solid var(--ag-border-soft);border-radius:16px;padding:14px;display:flex;gap:12px;align-items:flex-start;background:var(--ag-surface-2);')}>
+                  <div style={css('width:40px;height:40px;border-radius:12px;background:var(--ag-surface);display:flex;align-items:center;justify-content:center;flex:none;')}>
+                    <Icon name="campaign" size={22} color="var(--ag-crimson)" />
+                  </div>
+                  <div style={css('min-width:0;')}>
+                    <div style={css('font-weight:800;font-size:14px;')}>
+                      {(heading.trim() || subject.trim()).slice(0, 80) || 'Notification title'}
+                    </div>
+                    <div style={css('font-size:13px;color:var(--ag-label);margin-top:3px;line-height:1.5;')}>
+                      {body.trim().slice(0, 280) || 'Your message appears here as buyers and sellers will see it in their notification bell.'}
+                    </div>
+                    <div style={css(`font-size:11px;color:${T.muted};margin-top:6px;`)}>just now</div>
+                  </div>
+                </div>
+              </Card>
+              <div style={css('height:14px;')} />
+            </>
+          )}
 
-          <div style={css('height:14px;')} />
+          {emailOn && (
+            <>
+              <Card>
+                <div style={css('font-weight:800;font-size:15px;margin-bottom:14px;')}>Email</div>
+                <EmailPreview
+                  template={template}
+                  subject={subject}
+                  preheader={preheader}
+                  heading={heading}
+                  body={body}
+                  ctaLabel={ctaLabel}
+                  products={picked}
+                  marketing={marketing}
+                />
+                <div style={css('margin-top:14px;display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;background:var(--ag-info-bg);')}>
+                  <Icon name="info" size={19} color="var(--ag-info-text)" />
+                  <span style={css('font-size:12.5px;font-weight:600;color:var(--ag-info-text);line-height:1.5;')}>
+                    Approximate — the real email is built by the sending function. Use <b>Send test to me</b> to see exactly what lands.
+                  </span>
+                </div>
+              </Card>
+
+              <div style={css('height:14px;')} />
+            </>
+          )}
 
           <Card>
             <div style={css('font-weight:800;font-size:15px;margin-bottom:12px;')}>Recently sent</div>
@@ -592,21 +723,25 @@ export function EmailBroadcast() {
       <ConfirmDialog
         open={confirm}
         title={
-          audience === 'selected'
-            ? `Email ${recipients} ${recipients === 1 ? 'person' : 'people'}?`
-            : `Email ${recipients} ${audience === 'all' ? 'people' : audience + 's'}?`
+          !emailOn
+            ? `Notify ${bellReach} ${audience === 'all' ? 'people' : audience + 's'}?`
+            : audience === 'selected'
+              ? `Email ${recipients} ${recipients === 1 ? 'person' : 'people'}?`
+              : `Email ${recipients} ${audience === 'all' ? 'people' : audience + 's'}?`
         }
         message={
-          `"${subject.trim()}" goes to ${recipients} inbox${recipients === 1 ? '' : 'es'} now. ` +
-          'Email cannot be recalled, edited or deleted once sent.' +
-          (audience === 'selected'
-            ? ` Recipients: ${people
-                .filter((p) => !(marketing && p.marketing_opt_out))
-                .map((p) => p.full_name || p.email)
-                .join(', ')}.`
-            : alsoNotify
-              ? ' It will also appear in their notification bell.'
-              : '')
+          !emailOn
+            ? `"${(heading.trim() || subject.trim()).slice(0, 80)}" appears in ${bellReach} notification bell${bellReach === 1 ? '' : 's'} immediately, and cannot be recalled.`
+            : `"${subject.trim()}" goes to ${recipients} inbox${recipients === 1 ? '' : 'es'} now. ` +
+              'Email cannot be recalled, edited or deleted once sent.' +
+              (audience === 'selected'
+                ? ` Recipients: ${people
+                    .filter((p) => !(marketing && p.marketing_opt_out))
+                    .map((p) => p.full_name || p.email)
+                    .join(', ')}.`
+                : bellOn
+                  ? ` It also appears in ${bellReach} notification bell${bellReach === 1 ? '' : 's'}.`
+                  : '')
         }
         confirmLabel="Send now"
         busy={busy}
@@ -614,6 +749,50 @@ export function EmailBroadcast() {
         onCancel={() => setConfirm(false)}
       />
     </>
+  );
+}
+
+/**
+ * One channel switch in the "Send on" row.
+ *
+ * A blocked channel still renders, with the reason where its count would be,
+ * rather than vanishing. A row that silently loses a switch leaves someone
+ * wondering why their broadcast only went to one place.
+ */
+function ChannelSwitch({
+  icon, title, sub, on, disabled, onToggle,
+}: {
+  icon: string;
+  title: string;
+  sub: string;
+  on: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <label
+      style={css(
+        `display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;` +
+          `border:1.5px solid ${on ? 'var(--ag-crimson)' : T.field};` +
+          `background:${on ? 'var(--ag-bad-bg)' : 'var(--ag-surface)'};` +
+          `cursor:${disabled ? 'not-allowed' : 'pointer'};opacity:${disabled ? '.55' : '1'};`,
+      )}
+    >
+      <input
+        type="checkbox"
+        checked={on}
+        disabled={disabled}
+        onChange={onToggle}
+        style={css('width:17px;height:17px;accent-color:var(--ag-crimson);margin-top:2px;cursor:inherit;flex:none;')}
+      />
+      <span style={css('min-width:0;')}>
+        <span style={css('display:flex;align-items:center;gap:6px;font-size:13px;font-weight:800;')}>
+          <Icon name={icon} size={16} color={on ? 'var(--ag-crimson)' : T.muted} />
+          {title}
+        </span>
+        <span style={css(`display:block;font-size:11.5px;color:${T.muted};font-weight:500;margin-top:3px;line-height:1.45;`)}>{sub}</span>
+      </span>
+    </label>
   );
 }
 

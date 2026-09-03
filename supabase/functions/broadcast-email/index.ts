@@ -10,11 +10,21 @@
  * function that has to answer a browser inside its timeout.
  *
  * WHO MAY CALL IT
- * Admins only — checked with `is_admin()` against the CALLER'S OWN JWT, never
- * anything in the body. Note this is stricter than the in-app bell broadcast,
- * which 0086 deliberately widened to staff: sending a notification an employee
- * can see the effect of is part of their job, while mailing the entire customer
- * base is unrecallable and goes out under the company's sending domain.
+ * Admins and staff — checked with `is_staff()` against the CALLER'S OWN JWT,
+ * never anything in the body. `is_staff()` is true for role 'admin' as well as
+ * 'staff', and additionally insists the account is live and the session has
+ * passed a second factor, so it is a narrower test than the name suggests.
+ *
+ * This was `is_admin()` until 2026-09-03. 0089 drew the line at admin because
+ * mailing the entire customer base is unrecallable and goes out under the
+ * company's sending domain, unlike the in-app bell that 0086 widened to staff.
+ * The owner moved it when the two composers were merged into one screen: an
+ * employee who may already announce something to every buyer inside the app may
+ * announce the same thing by email. Widening WHO may send did not widen WHAT a
+ * send may do — the consent rules, the unsubscribe headers and the
+ * `email_broadcasts` record are unchanged and bind every caller equally.
+ * Migration 0108 widens the history policy to match, so a staff sender can see
+ * whether their own send worked.
  *
  * CONSENT
  * The three marketing templates skip anyone with `marketing_opt_out` (0089) and
@@ -371,9 +381,10 @@ Deno.serve(async (req) => {
     { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } },
   );
 
-  // Admin, not staff. See the header comment.
-  const { data: isAdmin, error: adminErr } = await asCaller.rpc('is_admin');
-  if (adminErr || isAdmin !== true) return json({ error: 'Admin only' }, 403);
+  // Admin or staff. See the header comment: is_staff() covers both roles and
+  // carries the live-account and verified-session checks with it.
+  const { data: allowed, error: gateErr } = await asCaller.rpc('is_staff');
+  if (gateErr || allowed !== true) return json({ error: 'Console access required' }, 403);
 
   let raw: Record<string, unknown>;
   try {
