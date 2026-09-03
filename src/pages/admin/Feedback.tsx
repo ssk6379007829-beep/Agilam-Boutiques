@@ -190,8 +190,11 @@ export function Feedback() {
       </Card>
 
       {error && (
-        <Card style="padding:12px 16px;margin-bottom:14px;border-color:#C0455E;">
-          <div style={css('font-size:13px;color:#C0455E;')}>{error}</div>
+        <Card style="padding:12px 16px;margin-bottom:14px;border-color:var(--ag-danger-text);background:var(--ag-bad-bg);">
+          <div role="alert" style={css('display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ag-bad-text);')}>
+            <span aria-hidden="true" translate="no" style={css("font-family:'Material Symbols Outlined';font-size:18px;flex:none;")}>error</span>
+            {error}
+          </div>
         </Card>
       )}
 

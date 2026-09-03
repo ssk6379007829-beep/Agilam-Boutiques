@@ -79,7 +79,10 @@ export function Coupons() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not save the coupon';
       // The one error a user can actually fix themselves is a duplicate code.
-      showToast(/duplicate|unique/i.test(msg) ? 'That code is already taken — pick another' : msg);
+      const taken = /duplicate|unique/i.test(msg);
+      // A code someone else already used is the admin's to fix; any other
+      // failure reaching this catch is ours.
+      showToast(taken ? 'That code is already taken — pick another' : msg, taken ? 'warning' : 'error');
     } finally {
       setBusy(false);
     }
@@ -91,7 +94,7 @@ export function Coupons() {
       showToast(c.active ? 'Coupon deactivated' : 'Coupon activated');
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not update the coupon');
+      showToast(e instanceof Error ? e.message : 'Could not update the coupon', 'error');
     }
   };
 
@@ -104,7 +107,7 @@ export function Coupons() {
       setConfirmId(null);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not delete the coupon');
+      showToast(e instanceof Error ? e.message : 'Could not delete the coupon', 'error');
     } finally {
       setBusy(false);
     }

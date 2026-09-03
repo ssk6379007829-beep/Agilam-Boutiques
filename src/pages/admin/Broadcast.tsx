@@ -63,7 +63,7 @@ function BellBroadcast() {
     const res = await broadcast(audience, title, body);
     setBusy(false);
     setConfirm(false);
-    if (!res.ok) { showToast(res.error); return; }
+    if (!res.ok) { showToast(res.error, 'error'); return; }
     void logAdminAction({ actor_id: profile?.id, actor_name: profile?.full_name ?? 'Admin', action: 'broadcast.send', entity_type: 'notification', meta: { audience, sent: res.sent } });
     showToast(`Broadcast sent to ${res.sent} ${res.sent === 1 ? 'person' : 'people'}`);
     setTitle('');

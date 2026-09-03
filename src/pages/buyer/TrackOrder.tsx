@@ -140,7 +140,7 @@ export function TrackOrder() {
       const extras = order.rowId ? await fetchReceiptExtras(order.rowId).catch(() => null) : null;
       // Pop-ups are blocked by default in several browsers, and a button that
       // silently does nothing reads as broken — so say what happened.
-      if (!printReceipt(order, extras)) showToast('Allow pop-ups to download your receipt');
+      if (!printReceipt(order, extras)) showToast('Allow pop-ups to download your receipt', 'warning');
     } finally {
       setReceiptBusy(false);
     }
@@ -366,7 +366,7 @@ export function TrackOrder() {
                     setDisputed(true);
                     showToast('Reported — we’ll look into it');
                   } catch (e) {
-                    showToast(e instanceof Error ? e.message : 'Could not report this');
+                    showToast(e instanceof Error ? e.message : 'Could not report this', 'error');
                   } finally {
                     setDisputing(false);
                   }

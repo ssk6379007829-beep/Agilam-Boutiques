@@ -339,7 +339,7 @@ export function ProductForm({
       setCandidates(await fetchColourSetCandidates(boutiqueId, productId));
     } catch (e) {
       setCandidates(null);
-      showToast(e instanceof Error ? e.message : 'Could not load your other products');
+      showToast(e instanceof Error ? e.message : 'Could not load your other products', 'error');
     }
   };
 
@@ -352,7 +352,7 @@ export function ProductForm({
       // Drives the effect above, which reloads the set with the new colour in it.
       set('variantGroupId', groupId);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not link that product');
+      showToast(e instanceof Error ? e.message : 'Could not link that product', 'error');
     } finally {
       setLinking(false);
     }
@@ -364,7 +364,7 @@ export function ProductForm({
     setForm((f) => {
       if (f.badges.includes(id)) return { ...f, badges: f.badges.filter((x) => x !== id) };
       if (f.badges.length >= MAX_PRODUCT_BADGES) {
-        showToast(`Up to ${MAX_PRODUCT_BADGES} badges — remove one first`);
+        showToast(`Up to ${MAX_PRODUCT_BADGES} badges — remove one first`, 'warning');
         return f;
       }
       return { ...f, badges: [...f.badges, id] };
@@ -394,7 +394,7 @@ export function ProductForm({
         setForm((f) => ({ ...f, images: [...f.images, url] }));
         slots--;
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Photo upload failed');
+        showToast(e instanceof Error ? e.message : 'Photo upload failed', 'error');
       } finally {
         setUploading(null);
       }
@@ -416,7 +416,7 @@ export function ProductForm({
         set('imageUrl', url);
         setErrors((e) => ({ ...e, imageUrl: undefined }));
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Photo upload failed');
+        showToast(e instanceof Error ? e.message : 'Photo upload failed', 'error');
       } finally {
         setUploading(null);
       }
@@ -444,7 +444,7 @@ export function ProductForm({
   const submit = () => {
     if (!onSubmit) return;
     if (!validate()) {
-      showToast('Please fill all required fields');
+      showToast('Please fill all required fields', 'warning');
       focusFirstInvalid();
       return;
     }

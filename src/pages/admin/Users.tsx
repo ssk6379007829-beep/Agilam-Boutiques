@@ -118,7 +118,7 @@ function UserDirectory() {
   const doUpdate = async () => {
     if (!editUser) return;
     if (!editData.fullName.trim()) {
-      showToast('Name is required');
+      showToast('Name is required', 'warning');
       return;
     }
     setBusy(true);
@@ -131,7 +131,7 @@ function UserDirectory() {
       setEditUser(null);
       reload();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Update failed');
+      showToast(error instanceof Error ? error.message : 'Update failed', 'error');
     } finally {
       setBusy(false);
     }
@@ -185,7 +185,7 @@ function UserDirectory() {
       showToast(result.message);
       reload();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Update failed');
+      showToast(error instanceof Error ? error.message : 'Update failed', 'error');
     }
   };
 
@@ -200,7 +200,7 @@ function UserDirectory() {
       setReason('');
       reload();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Update failed');
+      showToast(error instanceof Error ? error.message : 'Update failed', 'error');
     } finally {
       setBusy(false);
     }
@@ -221,7 +221,7 @@ function UserDirectory() {
       setReason('');
       showFreshest();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Delete failed');
+      showToast(error instanceof Error ? error.message : 'Delete failed', 'error');
     } finally {
       setBusy(false);
     }
@@ -254,7 +254,7 @@ function UserDirectory() {
       setResetMfaUser(null);
       setMfaRefreshKey((k) => k + 1);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Reset failed');
+      showToast(error instanceof Error ? error.message : 'Reset failed', 'error');
     } finally {
       setBusy(false);
     }
@@ -267,7 +267,7 @@ function UserDirectory() {
       showToast(result.message);
       reload();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Restore failed');
+      showToast(error instanceof Error ? error.message : 'Restore failed', 'error');
     }
   };
 
@@ -285,7 +285,7 @@ function UserDirectory() {
 
   const doCreate = async () => {
     if (!createData.email.trim() || !createData.fullName.trim()) {
-      showToast('Email and name are required');
+      showToast('Email and name are required', 'warning');
       return;
     }
 
@@ -304,7 +304,7 @@ function UserDirectory() {
       setCreateData({ email: '', fullName: '', phone: '', city: '', role: 'buyer' });
       showFreshest();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Creation failed');
+      showToast(error instanceof Error ? error.message : 'Creation failed', 'error');
     } finally {
       setBusy(false);
     }

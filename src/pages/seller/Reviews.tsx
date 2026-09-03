@@ -94,7 +94,7 @@ export function Reviews() {
     const res = await replyToReview(r.id, clear ? '' : draft);
     setBusyId(null);
     if (!res.ok) {
-      showToast(res.error);
+      showToast(res.error, 'error');
       return;
     }
     showToast(clear ? 'Reply removed' : 'Reply posted');

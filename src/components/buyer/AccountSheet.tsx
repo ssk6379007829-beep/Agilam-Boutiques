@@ -171,7 +171,15 @@ export function AccountSheet({
   };
   const head = HEAD[view];
 
-  const errorLine = error && <div style={css('color:#C0455E;font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;line-height:1.5;')}>{error}</div>;
+  const errorLine = error && (
+    <div
+      role="alert"
+      style={css('display:flex;align-items:center;justify-content:center;gap:6px;color:var(--ag-danger-text);font-size:12.5px;font-weight:700;margin-top:12px;text-align:center;line-height:1.5;')}
+    >
+      <span aria-hidden="true" translate="no" style={css("font-family:'Material Symbols Outlined';font-size:16px;flex:none;")}>error</span>
+      {error}
+    </div>
+  );
 
   return (
     <div

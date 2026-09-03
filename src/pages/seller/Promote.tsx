@@ -81,7 +81,7 @@ export function Promote() {
       setConfirmDraft(null);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not delete draft');
+      showToast(e instanceof Error ? e.message : 'Could not delete draft', 'error');
     }
   };
 
@@ -283,7 +283,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
       const url = await uploadProductImage(boutiqueId, file);
       setHeroImage(url);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not upload the image');
+      showToast(e instanceof Error ? e.message : 'Could not upload the image', 'error');
     } finally {
       setUploading(false);
     }
@@ -320,8 +320,8 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
       onDone();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Something went wrong';
-      if (msg === 'Payment cancelled') showToast('Payment cancelled — your draft was saved.');
-      else showToast(msg);
+      if (msg === 'Payment cancelled') showToast('Payment cancelled — your draft was saved.', 'warning');
+      else showToast(msg, 'error');
       onDone();
     } finally {
       setBusy(false);

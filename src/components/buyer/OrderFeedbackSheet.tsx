@@ -110,7 +110,7 @@ export function OrderFeedbackSheet({
 
   const submit = async () => {
     if (!buyerId) {
-      showToast('Please sign in to leave a review');
+      showToast('Please sign in to leave a review', 'warning');
       return;
     }
     setBusy(true);
@@ -145,7 +145,7 @@ export function OrderFeedbackSheet({
       showToast('Thank you — that really helps');
       onClose(true);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save your feedback');
+      showToast(e instanceof Error ? e.message : 'Could not save your feedback', 'error');
     } finally {
       setBusy(false);
     }

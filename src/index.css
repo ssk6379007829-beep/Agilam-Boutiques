@@ -405,18 +405,38 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    so the composer meets the bottom edge, just above the keyboard.
    The inline `display:flex` on the dock is a non-important inline style, so a
    `!important` rule here overrides it. */
-/* Toast: clears whatever bottom furniture the current screen has. The dock sits
-   at bottom:24px and is ~64px tall, so 100px clears it everywhere; a product
-   page stacks its sticky action bar under the dock. */
-.agx-toast { bottom: 100px; }
-@media (max-width:640px){ .agx-toast { bottom: 90px; } }
+/* Toast: clears whatever bottom furniture the current screen has.
+
+   A single renderer at the root now serves all three consoles (see
+   `components/ui/Toaster.tsx`), where there used to be one copy inside
+   `AppShell` and another inside `AdminLayout`. So the BASE offset is the
+   neutral one — an auth screen and the desktop admin console carry no bottom
+   furniture at all, and the old 100px default left the toast floating in open
+   space on them. Screens that do have furniture raise it back below.
+
+   Every storefront rule is scoped to `body:has(.agx-app-main)` rather than
+   left bare, so they all sit at the same specificity and source order decides
+   between them — a bare `.agx-toast` override would lose to the scoped rules
+   no matter where it appeared. */
+.agx-toast { bottom: 28px; }
+/* Storefront and seller console. The dock sits at bottom:24px and is ~64px
+   tall, so 100px clears it everywhere; a product page stacks its sticky action
+   bar under the dock. */
+body:has(.agx-app-main) .agx-toast { bottom: 100px; }
+@media (max-width:640px){ body:has(.agx-app-main) .agx-toast { bottom: 90px; } }
+@media (min-width:960px){ body:has(.agx-app-main) .agx-toast { bottom: 28px; } }
+/* The admin console replaces its sidebar with a bottom tab bar at ≤900px —
+   ~62px plus the safe area. The console's own renderer sat at a flat 28px, so
+   on a phone every "Could not save" was posted behind that bar. */
+@media (max-width:900px){
+  body:has(.agx-admin-tabbar) .agx-toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+}
 /* The product page no longer stacks a dock on its action bar, so the toast only
    has to clear the bar itself (~78px) — at 160px it floated in open space. */
 @media (max-width:899px){ body:has(.agx-pdp-root) .agx-toast { bottom: 96px; } }
 /* The results grid drops its Filter/Sort bar to the bottom edge once the dock is
    gone, so the toast has to clear that bar (~70px) instead of the dock. */
 @media (max-width:959px){ body:has(.agx-results-root) .agx-toast { bottom: 90px; } }
-@media (min-width:960px){ .agx-toast { bottom: 28px; } }
 body.agx-photo-open .agx-toast { bottom: 28px; }
 /* A chat has no dock, but it does have the composer pinned to the bottom edge —
    which is ~68px tall plus the safe area. Dropping the toast to 28px here put

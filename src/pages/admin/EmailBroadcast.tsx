@@ -180,7 +180,7 @@ export function EmailBroadcast() {
     setCtaLabel(meta.sample.cta);
     setCtaUrl(meta.sample.cta ? '/' : '');
     setPreheader('');
-    showToast(`Loaded the ${meta.label.toLowerCase()} example — edit it before sending`);
+    showToast(`Loaded the ${meta.label.toLowerCase()} example — edit it before sending`, 'info');
   };
 
   const payload = (test: boolean) => ({
@@ -202,13 +202,13 @@ export function EmailBroadcast() {
 
   const sendTest = async () => {
     if (!subject.trim() || !body.trim()) {
-      showToast('Add a subject and a message first');
+      showToast('Add a subject and a message first', 'warning');
       return;
     }
     setBusy(true);
     const res = await sendEmailBroadcast(payload(true));
     setBusy(false);
-    showToast(res.ok ? 'Test sent to your own address — check your inbox' : res.error || 'Test failed');
+    showToast(res.ok ? 'Test sent to your own address — check your inbox' : res.error || 'Test failed', 'error');
   };
 
   const send = async () => {
@@ -218,7 +218,7 @@ export function EmailBroadcast() {
     setConfirm(false);
 
     if (!res.ok) {
-      showToast(res.error || 'Nothing was sent');
+      showToast(res.error || 'Nothing was sent', 'error');
       return;
     }
 
@@ -234,6 +234,9 @@ export function EmailBroadcast() {
       res.failed > 0
         ? `Sent to ${res.sent}, ${res.failed} failed`
         : `Emailed ${res.sent} ${res.sent === 1 ? 'person' : 'people'}${res.alsoNotified ? ' + notification bell' : ''}`,
+      // The broadcast went out either way, so this is never an error — but a
+      // partial failure is something the admin has to follow up on.
+      res.failed > 0 ? 'warning' : 'success',
     );
     setSubject('');
     setHeading('');

@@ -66,8 +66,20 @@ export type Cart = Record<string, CartLine>;
  * Every toast used to render the same green `check_circle`, so "Please select a
  * size" and "NOTACODE isn't a valid coupon" both arrived looking like a
  * confirmation of something that had in fact been refused.
+ *
+ * The four tones are a deliberate split, not a palette:
+ *
+ * - `success` — the thing they asked for happened. Past tense, no action left.
+ * - `error`   — it did not happen, and the cause is ours or the network's.
+ *               "Could not save your changes", "Photo upload failed".
+ * - `warning` — it did not happen, and the cause is something they can fix
+ *               right now. "Pick a reason", "Only 2 left in stock". Splitting
+ *               these off `error` matters: a form nag styled as a failure
+ *               reads as "the app is broken" rather than "your turn".
+ * - `info`    — neither a win nor a refusal; a neutral statement of fact.
+ *               "Ad scheduled for 12 Sep", "Code resent".
  */
-export type ToastTone = 'success' | 'error';
+export type ToastTone = 'success' | 'error' | 'warning' | 'info';
 export type Toast = { msg: string; tone: ToastTone };
 
 export type Guest = { name: string; phone: string; city: string; address: string; pincode: string };
@@ -172,10 +184,9 @@ type ShopValue = {
 
   toast: Toast | null;
   /**
-   * Flash a message. `tone` defaults to 'success' so every existing caller is
-   * unchanged; pass 'error' for anything that reports a refusal or a failure,
-   * which is what stops "isn't a valid coupon" being announced under a green
-   * tick. See `Toast`.
+   * Flash a message. `tone` defaults to 'success', so an un-toned call claims
+   * the thing worked — pass the tone explicitly for anything that did not.
+   * See `Toast` for which of the four to reach for.
    */
   showToast: (msg: string, tone?: ToastTone) => void;
 
@@ -223,9 +234,10 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const showToast = useCallback((msg: string, tone: ToastTone = 'success') => {
     setToast({ msg, tone });
     clearTimeout(toastTimer.current);
-    // An error is usually something the buyer has to act on, so it stays put
-    // long enough to actually be read.
-    toastTimer.current = setTimeout(() => setToast(null), tone === 'error' ? 3600 : 2200);
+    // Anything the buyer has to act on stays put long enough to actually be
+    // read; a confirmation they already expected does not need the dwell.
+    const dwell = tone === 'error' || tone === 'warning' ? 3600 : 2200;
+    toastTimer.current = setTimeout(() => setToast(null), dwell);
   }, []);
 
   // The signed-in buyer's id, or null for a guest. Held in a ref so the
@@ -338,6 +350,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       capped ? `Only ${limit} left — that's all we can add`
         : size ? 'Added to cart'
           : `Added to cart · size ${chosen}`,
+      // The piece did go in the bag either way — being held at the stock
+      // limit is a caveat on that, not a refusal.
+      capped ? 'warning' : 'success',
     );
   }, [showToast, pushToAccount, stockLimit, resolveSize]);
 

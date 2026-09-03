@@ -108,7 +108,7 @@ export function SecurityCard() {
       setEnrolling(await startEnrollment(n === 1 ? 'MangaiMart' : `MangaiMart ${n} · ${stamp}`));
       setCode('');
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not start setup');
+      showToast(e instanceof Error ? e.message : 'Could not start setup', 'error');
     } finally {
       setBusy(false);
     }
@@ -129,7 +129,7 @@ export function SecurityCard() {
       else showToast('Device added');
       await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That code did not work');
+      showToast(e instanceof Error ? e.message : 'That code did not work', 'error');
       setCode('');
     } finally {
       setBusy(false);
@@ -145,7 +145,7 @@ export function SecurityCard() {
       setEmailCode('');
       setEmailStep('code');
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not send a code');
+      showToast(e instanceof Error ? e.message : 'Could not send a code', 'error');
     } finally {
       setBusy(false);
     }
@@ -164,7 +164,7 @@ export function SecurityCard() {
       else showToast('Security address saved');
       await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That code did not work');
+      showToast(e instanceof Error ? e.message : 'That code did not work', 'error');
       setEmailCode('');
     } finally {
       setBusy(false);
@@ -177,7 +177,7 @@ export function SecurityCard() {
       setCodes(await generateBackupCodes());
       await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not generate codes');
+      showToast(e instanceof Error ? e.message : 'Could not generate codes', 'error');
     } finally {
       setBusy(false);
     }
@@ -192,7 +192,7 @@ export function SecurityCard() {
       setConfirmRemove(null);
       await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not remove that device');
+      showToast(e instanceof Error ? e.message : 'Could not remove that device', 'error');
     } finally {
       setBusy(false);
     }
@@ -206,7 +206,7 @@ export function SecurityCard() {
       setConfirmRemoveEmail(false);
       await load();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not turn that off');
+      showToast(e instanceof Error ? e.message : 'Could not turn that off', 'error');
     } finally {
       setBusy(false);
     }
@@ -249,7 +249,7 @@ export function SecurityCard() {
             onClick={() => {
               navigator.clipboard?.writeText(codes.join('\n')).then(
                 () => showToast('Backup codes copied'),
-                () => showToast('Could not copy — write them down instead'),
+                () => showToast('Could not copy — write them down instead', 'error'),
               );
             }}
           >

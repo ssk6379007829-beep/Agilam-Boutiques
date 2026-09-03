@@ -64,7 +64,7 @@ export function OrderDetail() {
       setRejectNote('');
       setReturnBump((n) => n + 1);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save that decision');
+      showToast(e instanceof Error ? e.message : 'Could not save that decision', 'error');
     } finally {
       setReturnBusy(false);
     }
@@ -123,7 +123,7 @@ export function OrderDetail() {
       showToast(msg);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Update failed');
+      showToast(e instanceof Error ? e.message : 'Update failed', 'error');
     }
   };
 
@@ -154,7 +154,7 @@ export function OrderDetail() {
       reloadShipment();
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not ship this order');
+      showToast(e instanceof Error ? e.message : 'Could not ship this order', 'error');
     } finally {
       setShipping(false);
     }
@@ -182,12 +182,12 @@ export function OrderDetail() {
       if (booked.weightEstimated) {
         // Worth interrupting for: the courier weighs the parcel themselves and
         // bills the difference, so a guessed weight becomes a real charge.
-        showToast('Some items have no weight set — we used your shop default. Set item weights to avoid extra charges.');
+        showToast('Some items have no weight set — we used your shop default. Set item weights to avoid extra charges.', 'warning');
       }
       reloadShipment();
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not book this parcel');
+      showToast(e instanceof Error ? e.message : 'Could not book this parcel', 'error');
     } finally {
       setShipping(false);
     }
@@ -198,7 +198,7 @@ export function OrderDetail() {
 
   const shareBillImage = async () => {
     if (!o.phone) {
-      showToast('No phone number on this order');
+      showToast('No phone number on this order', 'warning');
       return;
     }
     if (!receiptRef.current) return;
@@ -226,7 +226,7 @@ export function OrderDetail() {
       }
     } catch (e) {
       pendingTab?.close();
-      showToast(e instanceof Error ? e.message : 'Could not generate the bill image');
+      showToast(e instanceof Error ? e.message : 'Could not generate the bill image', 'error');
     } finally {
       setSharing(false);
     }
@@ -548,7 +548,7 @@ export function OrderDetail() {
                     showToast('Marked as packed');
                     reload();
                   } catch (e) {
-                    showToast(e instanceof Error ? e.message : 'Could not update this order');
+                    showToast(e instanceof Error ? e.message : 'Could not update this order', 'error');
                   }
                 }}
                 style={css('width:100%;height:42px;margin-bottom:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;')}

@@ -97,7 +97,7 @@ export function MyProducts() {
         state: { prefill: { ...values, variantGroupId, color: '', imageUrl: '', images: [] } },
       });
     } catch (e) {
-      showToast(errMessage(e, 'Could not start another colour'));
+      showToast(errMessage(e, 'Could not start another colour'), 'error');
     }
   };
 
@@ -145,7 +145,7 @@ export function MyProducts() {
       setEditing(null);
       reload();
     } catch (e) {
-      showToast(errMessage(e, 'Could not update product'));
+      showToast(errMessage(e, 'Could not update product'), 'error');
     } finally {
       setBusy(false);
     }
@@ -161,7 +161,7 @@ export function MyProducts() {
       setConfirmDelete(false);
       reload();
     } catch (e) {
-      showToast(errMessage(e, 'Could not delete product'));
+      showToast(errMessage(e, 'Could not delete product'), 'error');
     } finally {
       setBusy(false);
     }

@@ -22,7 +22,6 @@ import { useGoBack } from '@/hooks/useGoBack';
 import { Icon } from '@/components/ui/Icon';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { SkeletonRows } from '@/components/ui/Skeleton';
-import { useToast } from '@/components/ui/Toast';
 import { useShop } from '@/state/ShopContext';
 import { shareBoard } from '@/lib/share';
 import { buildBoardCollage } from '@/lib/boardCollage';
@@ -45,8 +44,7 @@ export function ShortlistDetail() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const goBack = useGoBack('/shortlists');
-  const showToast = useToast();
-  const { addToCart } = useShop();
+  const { showToast, addToCart } = useShop();
 
   const [reply, setReply] = useState('');
   const [posting, setPosting] = useState(false);
@@ -133,7 +131,7 @@ export function ShortlistDetail() {
       await navigator.clipboard.writeText(shareUrl);
       showToast('Link copied');
     } catch {
-      showToast('Could not copy the link');
+      showToast('Could not copy the link', 'error');
     }
   };
 
@@ -143,7 +141,7 @@ export function ShortlistDetail() {
       showToast(`${title} it is — everyone who voted can see`);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save that');
+      showToast(e instanceof Error ? e.message : 'Could not save that', 'error');
     }
   };
 
@@ -152,7 +150,7 @@ export function ShortlistDetail() {
       await removeBoardItem(itemId);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not remove that piece');
+      showToast(e instanceof Error ? e.message : 'Could not remove that piece', 'error');
     }
   };
 
@@ -162,7 +160,7 @@ export function ShortlistDetail() {
       showToast('Voting is open again');
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not reopen it');
+      showToast(e instanceof Error ? e.message : 'Could not reopen it', 'error');
     }
   };
 
@@ -180,7 +178,7 @@ export function ShortlistDetail() {
       setReply('');
       reloadComments();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not post that');
+      showToast(e instanceof Error ? e.message : 'Could not post that', 'error');
     } finally {
       setPosting(false);
     }
@@ -192,7 +190,7 @@ export function ShortlistDetail() {
       showToast('Shortlist deleted');
       navigate('/shortlists', { replace: true });
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not delete that');
+      showToast(e instanceof Error ? e.message : 'Could not delete that', 'error');
     }
   };
 

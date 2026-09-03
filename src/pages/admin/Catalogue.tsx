@@ -168,7 +168,7 @@ export function Catalogue() {
 
   const decide = async (row: TaxonomyRow, status: 'approved' | 'rejected', note?: string) => {
     if (status === 'rejected' && !note?.trim()) {
-      showToast('Add a reason — the seller needs something to act on');
+      showToast('Add a reason — the seller needs something to act on', 'warning');
       return;
     }
     setBusy(true);
@@ -183,7 +183,7 @@ export function Catalogue() {
       setReviewNote('');
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Update failed');
+      showToast(e instanceof Error ? e.message : 'Update failed', 'error');
     } finally {
       setBusy(false);
     }
@@ -206,7 +206,7 @@ export function Catalogue() {
       setRetire(null);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not remove it');
+      showToast(e instanceof Error ? e.message : 'Could not remove it', 'error');
     } finally {
       setBusy(false);
     }
@@ -230,7 +230,7 @@ export function Catalogue() {
       setEdit(null);
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Save failed');
+      showToast(e instanceof Error ? e.message : 'Save failed', 'error');
     } finally {
       setBusy(false);
     }
@@ -238,7 +238,7 @@ export function Catalogue() {
 
   const doAdd = async () => {
     if (draft.name.trim().length < 2) {
-      showToast('Enter a name');
+      showToast('Enter a name', 'warning');
       return;
     }
     setBusy(true);
@@ -254,7 +254,7 @@ export function Catalogue() {
       setDraft({ kind: 'category', name: '', hex: '', imageUrl: '' });
       reload();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not add it');
+      showToast(e instanceof Error ? e.message : 'Could not add it', 'error');
     } finally {
       setBusy(false);
     }

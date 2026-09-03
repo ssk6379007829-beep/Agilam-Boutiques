@@ -252,11 +252,11 @@ export function Approvals() {
           .catch((e) => {
             // Not silent: the admin needs to know it did not happen, but the
             // reason belongs in the console where it persists.
-            showToast(`Pickup address not registered: ${e instanceof Error ? e.message : 'failed'}`);
+            showToast(`Pickup address not registered: ${e instanceof Error ? e.message : 'failed'}`, 'error');
           });
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Update failed');
+      showToast(e instanceof Error ? e.message : 'Update failed', 'error');
     }
   };
 

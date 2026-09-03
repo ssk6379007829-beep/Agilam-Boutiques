@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
-import { useToast } from '@/components/ui/Toast';
 import { ResetPasswordCard } from '@/components/auth/ResetPasswordCard';
 import { adminPath } from '@/lib/adminPath';
+import { useShop } from '@/state/ShopContext';
 
 /**
  * Lands here from the admin password-reset email link. The change is only
@@ -13,7 +13,7 @@ import { adminPath } from '@/lib/adminPath';
 export function AdminResetPassword() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
-  const toast = useToast();
+  const { showToast } = useShop();
 
   return (
     <ResetPasswordCard
@@ -23,11 +23,11 @@ export function AdminResetPassword() {
       onComplete={async (role) => {
         if (role !== 'admin') {
           await signOut();
-          toast('This account does not have admin access.');
+          showToast('This account does not have admin access.', 'warning');
           navigate(adminPath('login'), { replace: true });
           return;
         }
-        toast('Password updated. You are signed in.');
+        showToast('Password updated. You are signed in.');
         navigate(adminPath('overview'), { replace: true });
       }}
     />

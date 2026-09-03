@@ -3,7 +3,6 @@ import { css } from '@/lib/css';
 import { GlobalSearchBox } from '@/components/search/GlobalSearchBox';
 import { ADMIN_SOURCES, type AdminCtx } from '@/lib/search/adminSources';
 import { useAuth } from '@/auth/AuthContext';
-import { useShop } from '@/state/ShopContext';
 import { useTheme } from '@/state/ThemeContext';
 import { initial } from '@/lib/tokens';
 import { RouteErrorBoundary } from '@/components/layout/RouteErrorBoundary';
@@ -64,10 +63,6 @@ export function AdminLayout() {
   // Sidebar and mobile tab bar both render this. An admin gets NAV unchanged;
   // an employee gets their twelve destinations plus the two stand-ins.
   const nav = NAV.filter((n) => (n.only ? n.only === role : canOpen(role, n.to)));
-  // The buyer AppShell renders the global toast, but admin pages live outside it,
-  // so every showToast() on the console (create user, block, delete, errors…) was
-  // silently discarded. Render it here too so admin actions give feedback.
-  const { toast } = useShop();
   // Routes that exist in the console but deliberately have no sidebar entry —
   // reached from the header instead. Without these the `?? NAV[0]` fallback
   // below labelled them "Overview · Marketplace health at a glance".
@@ -247,18 +242,6 @@ export function AdminLayout() {
         </button>
       </nav>
 
-      {toast && (
-        <div
-          role="status"
-          aria-live={toast.tone === 'error' ? 'assertive' : 'polite'}
-          style={css('position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#2A1A20;color:#fff;padding:13px 22px;border-radius:14px;font-weight:600;font-size:14px;box-shadow:0 16px 40px -14px rgba(0,0,0,.6);z-index:1400;display:flex;align-items:center;gap:10px;animation:agx-fade .2s ease;max-width:calc(100vw - 32px);text-align:center;')}
-        >
-          <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:${toast.tone === 'error' ? '#FFB4A8' : '#F7B7CF'};font-size:20px;flex:none;`)}>
-            {toast.tone === 'error' ? 'error' : 'info'}
-          </span>
-          {toast.msg}
-        </div>
-      )}
     </div>
   );
 }

@@ -147,7 +147,7 @@ export function AppShell({
 }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { toast, sellModal, guest } = useShop();
+  const { sellModal, guest } = useShop();
   const { profile, session } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   // Resolve a display name for the avatar initials from the signed-in account,
@@ -281,24 +281,6 @@ export function AppShell({
         </nav>
       </div>
 
-      {/* Toasts sit ABOVE the bottom furniture, not on it. At `bottom:28px` this
-          landed in the same band as the floating dock and the product page's
-          sticky action bar, so "Please select a size" covered the very button
-          the buyer had just pressed. `.agx-toast` carries the offset so the
-          per-screen bottom reserve lives with the rest of the layout rules. */}
-      {toast && (
-        <div
-          className="agx-toast"
-          role="status"
-          aria-live={toast.tone === 'error' ? 'assertive' : 'polite'}
-          style={css('position:fixed;left:50%;transform:translateX(-50%);max-width:min(420px,calc(100vw - 32px));background:#2A1A20;color:#fff;padding:13px 22px;border-radius:14px;font-weight:600;font-size:14px;box-shadow:0 16px 40px -14px rgba(0,0,0,.6);z-index:1400;display:flex;align-items:center;gap:10px;animation:agx-fade .2s ease;')}
-        >
-          <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:${toast.tone === 'error' ? '#FFB4A8' : '#F7B7CF'};font-size:20px;flex:none;`)}>
-            {toast.tone === 'error' ? 'error' : 'check_circle'}
-          </span>
-          {toast.msg}
-        </div>
-      )}
     </div>
   );
 }

@@ -56,7 +56,7 @@ export function ReviewsAdmin() {
 
   const toggleHide = async (r: AdminReviewRow) => {
     const res = await setReviewHidden(r.id, !r.hidden);
-    if (!res.ok) { showToast(res.error); return; }
+    if (!res.ok) { showToast(res.error, 'error'); return; }
     void logAdminAction({ actor_id: profile?.id, actor_name: profile?.full_name ?? 'Admin', action: r.hidden ? 'review.unhide' : 'review.hide', entity_type: 'review', entity_id: r.id });
     showToast(r.hidden ? 'Review restored' : 'Review hidden');
     reload();
@@ -67,7 +67,7 @@ export function ReviewsAdmin() {
     setBusy(true);
     const res = await deleteReview(toDelete.id);
     setBusy(false);
-    if (!res.ok) { showToast(res.error); return; }
+    if (!res.ok) { showToast(res.error, 'error'); return; }
     void logAdminAction({ actor_id: profile?.id, actor_name: profile?.full_name ?? 'Admin', action: 'review.delete', entity_type: 'review', entity_id: toDelete.id });
     showToast('Review deleted');
     setToDelete(null);

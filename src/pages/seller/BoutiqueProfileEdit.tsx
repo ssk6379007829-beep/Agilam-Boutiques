@@ -63,15 +63,15 @@ export function BoutiqueProfileEdit() {
       reload();
       showToast(kind === 'logo' ? 'Logo updated' : 'Cover updated');
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Upload failed');
+      showToast(e instanceof Error ? e.message : 'Upload failed', 'error');
     } finally {
       setUploading(null);
     }
   };
 
   const save = async () => {
-    if (!boutique) return showToast('No boutique linked to this account yet');
-    if (name.trim().length < 2) return showToast('Enter your boutique name');
+    if (!boutique) return showToast('No boutique linked to this account yet', 'warning');
+    if (name.trim().length < 2) return showToast('Enter your boutique name', 'warning');
     setSaving(true);
     try {
       await updateBoutique(boutique.id, {
@@ -89,7 +89,7 @@ export function BoutiqueProfileEdit() {
       reload();
       showToast('Boutique profile saved');
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save your profile');
+      showToast(e instanceof Error ? e.message : 'Could not save your profile', 'error');
     } finally {
       setSaving(false);
     }

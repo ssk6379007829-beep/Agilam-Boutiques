@@ -51,7 +51,7 @@ export function OrdersAdmin() {
       await log(`order.${next}`, o.id, { order: o.order_number });
       showToast(`${o.order_number} → ${next}`);
       reload();
-    } catch (e) { showToast(e instanceof Error ? e.message : 'Update failed'); }
+    } catch (e) { showToast(e instanceof Error ? e.message : 'Update failed', 'error'); }
   };
 
   /**
@@ -64,7 +64,7 @@ export function OrdersAdmin() {
     setBusyRefund(true);
     const res = await refundOrder(o.id, 'Refunded from the Orders console');
     setBusyRefund(false);
-    if (!res.ok) { showToast(res.error ?? 'Refund failed'); return; }
+    if (!res.ok) { showToast(res.error ?? 'Refund failed', 'error'); return; }
     await log('order.refund', o.id, {
       order: o.order_number,
       amount: buyerPaid({
@@ -84,7 +84,7 @@ export function OrdersAdmin() {
     setBusyRefund(true);
     const res = await clearLegacyRefundFlag(o.id);
     setBusyRefund(false);
-    if (!res.ok) { showToast(res.error ?? 'Update failed'); return; }
+    if (!res.ok) { showToast(res.error ?? 'Update failed', 'error'); return; }
     await log('order.unrefund', o.id, { order: o.order_number });
     showToast(`${o.order_number} refund flag cleared`);
     reload();

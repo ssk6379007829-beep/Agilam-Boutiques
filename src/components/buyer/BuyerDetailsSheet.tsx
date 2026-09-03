@@ -83,8 +83,15 @@ export function BuyerDetailsSheet({
             </div>
           </label>
           {touched && (!nameValid || !phoneValid) && (
-            <div style={css('color:#C0455E;font-size:12px;font-weight:700;margin-top:-4px;')}>
-              {!nameValid ? 'Please enter your name. ' : ''}{!phoneValid ? 'Enter a valid 10-digit mobile number.' : ''}
+            <div
+              role="alert"
+              style={css('display:flex;align-items:flex-start;gap:6px;color:var(--ag-danger-text);font-size:12px;font-weight:700;margin-top:-4px;')}
+            >
+              <span aria-hidden="true" translate="no" style={css("font-family:'Material Symbols Outlined';font-size:15px;flex:none;")}>error</span>
+              <span>
+                {!nameValid ? 'Please enter your name. ' : ''}
+                {!phoneValid ? 'Enter a valid 10-digit mobile number.' : ''}
+              </span>
             </div>
           )}
         </div>

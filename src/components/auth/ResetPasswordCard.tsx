@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { friendlyAuthError } from '@/lib/authMethods';
 import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
-import { useToast } from '@/components/ui/Toast';
+import { useShop } from '@/state/ShopContext';
 
 const primaryButton =
   'width:100%;height:54px;border:none;border-radius:16px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);';
@@ -33,7 +33,7 @@ export function ResetPasswordCard({
 }) {
   const { updatePassword } = useAuth();
   const navigate = useNavigate();
-  const toast = useToast();
+  const { showToast } = useShop();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -56,15 +56,15 @@ export function ResetPasswordCard({
   }, []);
 
   async function handleReset() {
-    if (password.length < 8) return toast('Use at least 8 characters.');
-    if (password !== confirm) return toast('Passwords do not match.');
+    if (password.length < 8) return showToast('Use at least 8 characters.', 'warning');
+    if (password !== confirm) return showToast('Passwords do not match.', 'warning');
 
     setBusy(true);
     try {
       const role = await updatePassword(password);
       onComplete(role);
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not update password');
+      showToast(e instanceof Error ? e.message : 'Could not update password', 'error');
     } finally {
       setBusy(false);
     }
@@ -118,19 +118,19 @@ export function RequestResetFields({
   redirectTo: string;
 }) {
   const { sendPasswordReset } = useAuth();
-  const toast = useToast();
+  const { showToast } = useShop();
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
 
   async function handleSend() {
     const trimmed = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return toast('Enter a valid email address first.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return showToast('Enter a valid email address first.', 'warning');
     setBusy(true);
     try {
       await sendPasswordReset(trimmed, redirectTo);
       setSent(true);
     } catch (e) {
-      toast(e instanceof Error ? friendlyAuthError(e.message) : 'Could not send reset email');
+      showToast(e instanceof Error ? friendlyAuthError(e.message) : 'Could not send reset email', 'error');
     } finally {
       setBusy(false);
     }

@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
 import { useAuth } from '@/auth/AuthContext';
-import { useToast } from '@/components/ui/Toast';
 import { createBoard, DEFAULT_BOARD_TITLE, MAX_BOARD_ITEMS } from '@/data/shortlists';
 import { buildBoardCollage } from '@/lib/boardCollage';
 import { shareBoard } from '@/lib/share';
+import { useShop } from '@/state/ShopContext';
 
 /**
  * "Ask my people" in a single tap — make the board and open the share sheet,
@@ -31,7 +31,7 @@ import { shareBoard } from '@/lib/share';
  */
 export function useQuickAsk() {
   const { session } = useAuth();
-  const showToast = useToast();
+  const { showToast } = useShop();
   const [busy, setBusy] = useState(false);
   const [needsSignIn, setNeedsSignIn] = useState(false);
 
@@ -58,7 +58,7 @@ export function useQuickAsk() {
       }
       const ids = input.productIds.slice(0, MAX_BOARD_ITEMS);
       if (ids.length === 0) {
-        showToast('Save a few pieces first');
+        showToast('Save a few pieces first', 'warning');
         return;
       }
 
@@ -89,9 +89,9 @@ export function useQuickAsk() {
         });
 
         if (result === 'copied') showToast('Link copied — paste it in your family group');
-        else if (result === 'failed') showToast('Could not share — open My shortlists to get the link');
+        else if (result === 'failed') showToast('Could not share — open My shortlists to get the link', 'error');
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not make that shortlist');
+        showToast(e instanceof Error ? e.message : 'Could not make that shortlist', 'error');
       } finally {
         setBusy(false);
       }

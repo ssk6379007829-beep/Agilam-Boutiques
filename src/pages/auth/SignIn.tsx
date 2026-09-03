@@ -8,9 +8,9 @@ import { css } from '@/lib/css';
 import { AuthModal, PasswordField } from '@/components/auth/AuthModal';
 import { RequestResetFields } from '@/components/auth/ResetPasswordCard';
 import { ConsentNotice } from '@/components/legal/Consent';
-import { useToast } from '@/components/ui/Toast';
 import { friendlyAuthError, signInWithGoogle } from '@/lib/authMethods';
 import { GoogleIcon } from '@/components/ui/GoogleIcon';
+import { useShop } from '@/state/ShopContext';
 
 export function SignIn() {
   const { role: roleParam } = useParams<{ role: string }>();
@@ -18,7 +18,7 @@ export function SignIn() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { signInWithPassword } = useAuth();
-  const toast = useToast();
+  const { showToast } = useShop();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [sending, setSending] = useState(false);
@@ -49,7 +49,7 @@ export function SignIn() {
       // redirect comes back to /auth/callback, not to this URL.
       await signInWithGoogle(role === 'seller' ? 'seller' : 'buyer', next);
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Google sign-in failed');
+      showToast(e instanceof Error ? e.message : 'Google sign-in failed', 'error');
     }
   }
 
@@ -59,8 +59,8 @@ export function SignIn() {
   async function handleSignIn(e?: FormEvent) {
     e?.preventDefault();
     const trimmedEmail = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return toast('Enter a valid email address');
-    if (!password) return toast('Enter your password');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) return showToast('Enter a valid email address', 'warning');
+    if (!password) return showToast('Enter your password', 'warning');
 
     setSending(true);
     try {
@@ -72,7 +72,7 @@ export function SignIn() {
       // account's own home when they simply came to sign in.
       navigate(next ?? homeFor(profileRole), { replace: true });
     } catch (e) {
-      toast(e instanceof Error ? friendlyAuthError(e.message) : 'Sign in failed');
+      showToast(e instanceof Error ? friendlyAuthError(e.message) : 'Sign in failed', 'error');
     } finally {
       setSending(false);
     }

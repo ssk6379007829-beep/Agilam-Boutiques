@@ -116,7 +116,7 @@ export function Payment() {
     setPending(null);
     // Razorpay's webhook flags a captured-but-unfulfilled payment for an
     // operator; it is not refunded automatically, so don't promise that it is.
-    showToast('Dismissed. Contact support with your payment reference for a refund.');
+    showToast('Dismissed. Contact support with your payment reference for a refund.', 'info');
   };
 
   // A stranded payment still needs this screen even with an empty bag — that is
