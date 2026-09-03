@@ -976,7 +976,7 @@ export function SellerOnboarding() {
               registration, which is exactly how sellers get lost.
             */}
             <MfaStepUp
-              reason="You’re changing where your earnings are paid. Verify with your authenticator app before editing these details."
+              reason="You’re changing where your earnings are paid. Verify with your authenticator app or an emailed code before editing these details."
               disabled={!bankOnFile}
             >
             <Field
