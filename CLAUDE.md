@@ -29,7 +29,7 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0113`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0114`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase,
    or asks the assistant to apply it over the Supabase MCP (`0105`/`0106` went in
    that way on 2026-08-31; never apply one unasked).

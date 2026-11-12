@@ -3,8 +3,10 @@
 **Date:** 2026-11-12 (rewritten same day against the real API documentation)
 **Status:** Built against the published contract at developer.shadowfax.in.
 `tsc -b` 0 errors, `npm run build` passes. **Nothing has been run against Shadowfax.**
-Migration `0110` **is applied**; `0112` is written and **NOT applied**. The three Edge
-Functions are written and **NOT deployed**.
+Migration `0110` **is applied**. `0112` is **superseded by `0113`** and now a no-op:
+it scheduled the sweep with a hand-substituted token placeholder, which failed on the
+attempt and was replaced by a Vault-backed version. `0113` is **NOT applied**. The four
+Edge Functions are written and **NOT deployed**.
 **Extends** `SHIPROCKET_INTEGRATION_2026-08-10.md`, which remains the fallback carrier and
 is not modified by this work.
 
@@ -122,8 +124,9 @@ in one dialog.
 
 | File | Role |
 |---|---|
-| `supabase/migrations/0110_shadowfax.sql` | **Applied.** provider widened, `service_level`, `sfx_*`, RTO columns, `shipment_freight_margin` view, both switches, `products.ready_to_ship`, COD guard widened to `provider <> 'manual'` |
-| `supabase/migrations/0112_shadowfax_reconcile.sql` | **Not applied.** The pg_cron sweep — with 0094's placeholder guard, so a forgotten token raises instead of failing silently |
+| `supabase/migrations/0110_shadowfax.sql` | **Applied.** provider widened, `service_level`, `sfx_*`, RTO columns, `shipment_freight_margin` view (`security_invoker`, revoked from `anon`), both switches, COD guard widened to `provider <> 'manual'` |
+| `supabase/migrations/0112_shadowfax_reconcile.sql` | **Superseded, no-op.** Scheduled the sweep with a `<RECONCILE_TOKEN>` placeholder; never applied |
+| `supabase/migrations/0113_cron_secrets_from_vault.sql` | **Not applied.** Registers the sweep AND 0094's daily-report job, both reading their tokens from Vault at run time. `require_cron_secret()` raises on a missing secret so the job fails in `cron.job_run_details` instead of posting unauthenticated |
 | `_shared/courier.ts` | Generic helpers shared by providers |
 | `_shared/shadowfax.ts` | **The only file encoding their contract.** Both products, both status vocabularies — the hyperlocal half marked NOT WIRED |
 | `book-parcel` | **The entry point.** Runs Shiprocket → Shadowfax → manual, server-side. Calls each carrier over HTTP forwarding the seller's JWT, so it holds no authority of its own |
@@ -135,8 +138,19 @@ in one dialog.
 Removed when hyperlocal left v1: `src/lib/courierService.ts` (nothing imported it) and the
 "Ready to ship today" toggle in `ProductForm`. The toggle promised buyers same-day delivery,
 which v1 does not do — a seller switch with no effect is worse than no switch.
-`products.ready_to_ship` stays in the database: `0110` is already applied, the column is
-harmless, and it is what the toggle returns to.
+`products.ready_to_ship` was then dropped from `0110` entirely, because nothing wrote it
+and nothing read it. **If `0110` was applied before that edit, the column and its partial
+index still exist in the live database** and are now created by no migration — harmless,
+but undocumented. Confirm with:
+
+```sql
+select 1 from information_schema.columns
+where table_name = 'products' and column_name = 'ready_to_ship';
+```
+
+If it is there, leave it or drop it deliberately — do not let a later migration assume
+either way. It comes back with the hyperlocal work and its seller toggle, in one
+migration, when there is something to read it.
 
 `apply_shipment_scan()` is **not modified**. It was already provider-agnostic, and a second
 provider must not mean a second way to mark an order delivered.
@@ -154,15 +168,22 @@ it — worth remembering as part of that cost.
 ## 5. What the owner must do
 
 1. **Create an SFX 360 Partner Portal account** and generate an API token. Self-serve.
-2. **Apply `0112`** — replacing `<RECONCILE_TOKEN>` with the real secret first. It raises if
-   you forget.
+2. **Add the Vault secrets, then apply `0113`.** Skip `0112` — it is a no-op now.
+   ```sql
+   select vault.create_secret('<the SFX reconcile token>', 'shadowfax_reconcile_token');
+   select vault.create_secret('<REPORT_TOKEN from .env>',  'daily_report_token');
+   ```
+   `0113` refuses to schedule anything until both exist, and fixes the daily-report job
+   from `0094`, which has been posting a literal placeholder since it was scheduled.
 3. **Set the secrets** on the Supabase project — four for v1:
    `SHADOWFAX_API_KEY`, `SHADOWFAX_FORWARD_BASE_URL`, `SHADOWFAX_WEBHOOK_SECRET`,
    `SHADOWFAX_RECONCILE_TOKEN`.
    (`SHADOWFAX_HYPERLOCAL_BASE_URL` and `SHADOWFAX_CLIENT_CODE` are read only by the
    not-wired hyperlocal client; leave them unset.)
-4. **Deploy three Edge Functions by hand** — `shadowfax-book`, `shadowfax-tracking`,
-   `shadowfax-reconcile`. Committing the files does not deploy them.
+4. **Deploy five Edge Functions by hand** — `book-parcel`, `shadowfax-book`,
+   `shadowfax-tracking`, `shadowfax-reconcile`, and `shiprocket-book` (changed: it now
+   flags a booked-but-unsaved parcel so the chain stops instead of booking a second one).
+   Committing the files does not deploy them.
 5. **Register the callback** in SF360 → Integrations → Webhooks → Add New Webhook:
    - Client Push URL (staging and production separately):
      `https://<project>.supabase.co/functions/v1/shadowfax-tracking`
