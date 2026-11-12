@@ -110,11 +110,15 @@ do $do$
 declare
   v_missing text[] := '{}';
 begin
+  -- array_append, not `||`: with an untyped string literal on the right,
+  -- `anyarray || anyelement` and `anyarray || anyarray` are both candidates and
+  -- Postgres picks the second, then fails parsing the name as an array literal
+  -- (22P02 malformed array literal). array_append has no such ambiguity.
   if not exists (select 1 from vault.secrets where name = 'shadowfax_reconcile_token') then
-    v_missing := v_missing || 'shadowfax_reconcile_token';
+    v_missing := array_append(v_missing, 'shadowfax_reconcile_token');
   end if;
   if not exists (select 1 from vault.secrets where name = 'daily_report_token') then
-    v_missing := v_missing || 'daily_report_token';
+    v_missing := array_append(v_missing, 'daily_report_token');
   end if;
 
   if array_length(v_missing, 1) > 0 then
@@ -179,8 +183,7 @@ $job$);
 
 do $do$
 declare
-  r         record;
-  v_secret  text;
+  r record;
 begin
   for r in
     select jobname, command from cron.job
@@ -200,8 +203,9 @@ begin
   end if;
 
   -- Resolve each secret the way the jobs will, so a wrong NAME is caught now
-  -- rather than at 01:30 tomorrow.
-  v_secret := public.require_cron_secret('shadowfax_reconcile_token');
-  v_secret := public.require_cron_secret('daily_report_token');
+  -- rather than at 01:30 tomorrow. The value is discarded — this is called for
+  -- the raise, not the result, so it must never be logged.
+  perform public.require_cron_secret('shadowfax_reconcile_token');
+  perform public.require_cron_secret('daily_report_token');
 end
 $do$;
