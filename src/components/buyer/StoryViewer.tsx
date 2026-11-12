@@ -109,8 +109,12 @@ export function StoryViewer({
     };
   }, [onClose, next, previous]);
 
-  if (!story) return null;
-  const current = story.slides[slide];
+  if (!story || story.slides.length === 0) return null;
+  // `slide` is reset to 0 by an effect, which runs only AFTER the render that
+  // already has the new story. Moving from a shop with four slides to one with
+  // two would read past the end of `slides` for that one frame.
+  const slideIndex = Math.min(slide, story.slides.length - 1);
+  const current = story.slides[slideIndex];
   const hasMrp = !!current.mrp && current.mrp > current.price;
 
   // Press-and-hold pauses; a quick tap advances. The 220ms threshold is long
@@ -162,7 +166,7 @@ export function StoryViewer({
         <div style={css('display:flex;gap:4px;')}>
           {story.slides.map((_, i) => (
             <span key={i} style={css('flex:1;height:2.5px;border-radius:2px;background:rgba(255,255,255,.3);overflow:hidden;')}>
-              <span style={css(`display:block;height:100%;background:var(--ag-surface);width:${i < slide ? 100 : i === slide ? progress * 100 : 0}%;`)} />
+              <span style={css(`display:block;height:100%;background:var(--ag-surface);width:${i < slideIndex ? 100 : i === slideIndex ? progress * 100 : 0}%;`)} />
             </span>
           ))}
         </div>
