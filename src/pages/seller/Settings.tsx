@@ -175,7 +175,7 @@ export function Settings() {
         >
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Settings</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;")}>Settings</h1>
       </div>
 
       <div style={css('max-width:760px;display:flex;flex-direction:column;gap:16px;')}>

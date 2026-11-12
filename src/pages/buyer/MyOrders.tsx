@@ -86,7 +86,7 @@ export function MyOrders() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 0 6px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Purchases</div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>My orders</h1>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>My orders</h1>
         </div>
         <button
           onClick={() => void refresh()}
@@ -139,7 +139,7 @@ export function MyOrders() {
             <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-crimson);")}>receipt_long</span>
             </div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:20px;")}>
+            <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:20px;")}>
               {empty ? 'No orders yet' : `Nothing ${tab === 'active' ? 'in progress' : tab}`}
             </div>
             <div style={css('color:var(--ag-muted);font-size:14.5px;margin-top:8px;max-width:340px;line-height:1.55;')}>
@@ -180,7 +180,7 @@ export function MyOrders() {
                 style={css('cursor:pointer;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:15px;box-shadow:0 16px 36px -30px rgba(107,20,54,.55);')}
               >
                 <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
-                  <span style={css("font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:var(--ag-muted);")}>{o.id}</span>
+                  <span className="agx-code" style={css("font-size:12px;font-weight:600;color:var(--ag-muted);")}>{o.id}</span>
                   <span style={css(`font-size:11px;font-weight:800;padding:5px 11px;border-radius:999px;background:${delivered ? 'var(--ag-good-bg)' : rejected ? 'var(--ag-bad-bg)' : 'var(--ag-surface-2)'};color:${delivered ? 'var(--ag-good)' : rejected ? '#C0455E' : 'var(--ag-crimson)'};`)}>
                     {badge}
                   </span>
@@ -212,7 +212,7 @@ export function MyOrders() {
                             : `Arriving ${deliveryEstimate(o.placedAt)}`}
                     </div>
                     <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:8px;')}>
-                      <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(o.total)}</span>
+                      <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(o.total)}</span>
                       <span style={css('display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ag-muted);')}>
                         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>event</span>{formatOrderDate(o.placedAt)}
                       </span>

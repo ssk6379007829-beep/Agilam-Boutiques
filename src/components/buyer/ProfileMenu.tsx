@@ -53,11 +53,11 @@ export function ProfileMenu({ close }: { close: () => void }) {
     <>
       {/* Identity */}
       <div style={css('display:flex;align-items:center;gap:10px;padding:11px 12px;background:linear-gradient(150deg,#8E1C44,#B02454 60%,#D6336C);color:#fff;')}>
-        <span style={css("width:36px;height:36px;flex:none;border-radius:11px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:15px;")}>
+        <span style={css("width:36px;height:36px;flex:none;border-radius:11px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;")}>
           {initials || <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>person</span>}
         </span>
         <span style={css('flex:1;min-width:0;')}>
-          <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:14.5px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{name}</span>
+          <span style={css("display:block;font-weight:700;font-size:14.5px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{name}</span>
           <span style={css('display:block;font-size:10.5px;opacity:.85;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{subline}</span>
         </span>
         <button onClick={close} aria-label="Close" style={css('flex:none;width:26px;height:26px;border-radius:8px;border:none;background:rgba(255,255,255,.16);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
@@ -84,7 +84,7 @@ export function ProfileMenu({ close }: { close: () => void }) {
         {stats.map((s) => (
           <button key={s.label} onClick={() => go(s.to)} style={css('flex:1;background:none;border:none;cursor:pointer;padding:5px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:17px;")}>{s.icon}</span>
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:15px;color:var(--ag-ink);line-height:1;")}>{s.value}</span>
+            <span style={css("font-weight:700;font-size:15px;color:var(--ag-ink);line-height:1;")}>{s.value}</span>
             <span style={css('font-size:9.5px;font-weight:700;color:var(--ag-muted);')}>{s.label}</span>
           </button>
         ))}

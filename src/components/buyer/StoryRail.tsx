@@ -143,7 +143,7 @@ export function StoryRail() {
                 <span
                   style={css(
                     `position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);background:${badgeColor(s.badge)};color:#fff;` +
-                      "font-family:'IBM Plex Mono',monospace;font-size:7.5px;font-weight:600;letter-spacing:.1em;" +
+                      "font-size:7.5px;font-weight:600;letter-spacing:.1em;" +
                       'padding:3px 7px;border-radius:999px;border:1.5px solid var(--ag-bg);white-space:nowrap;',
                   )}
                 >

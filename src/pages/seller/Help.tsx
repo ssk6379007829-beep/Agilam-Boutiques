@@ -65,7 +65,7 @@ export function Help() {
         <button onClick={goBack} aria-label="Back" className="agx-con-icon">
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Help &amp; Support</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;")}>Help &amp; Support</h1>
       </div>
 
       <div style={css('max-width:760px;')}>

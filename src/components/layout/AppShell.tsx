@@ -26,7 +26,7 @@ function ProfileAvatar({ initials, onClick, className }: { initials: string; onC
       style={css('width:44px;height:44px;flex:none;border-radius:14px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#C62A60,#B02454 70%,#8E1C44);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 12px 26px -12px rgba(176,36,84,.9);')}
     >
       {initials ? (
-        <span aria-hidden="true" style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;letter-spacing:.02em;")}>{initials}</span>
+        <span aria-hidden="true" style={css("font-weight:700;font-size:16px;letter-spacing:.02em;")}>{initials}</span>
       ) : (
         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:24px;")}>person</span>
       )}

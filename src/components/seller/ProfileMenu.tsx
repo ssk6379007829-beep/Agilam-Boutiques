@@ -62,11 +62,11 @@ export function ProfileMenu({ close }: { close: () => void }) {
     <>
       {/* Identity */}
       <div style={css('display:flex;align-items:center;gap:10px;padding:11px 12px;background:linear-gradient(150deg,#D6336C,#B02454);color:#fff;')}>
-        <span style={css("width:44px;height:44px;flex:none;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:15px;")}>
+        <span style={css("width:44px;height:44px;flex:none;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;")}>
           {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
         </span>
         <span style={css('flex:1;min-width:0;')}>
-          <span style={css("display:flex;align-items:center;gap:4px;font-family:'Playfair Display',serif;font-weight:700;font-size:14.5px;line-height:1.15;")}>
+          <span style={css("display:flex;align-items:center;gap:4px;font-weight:700;font-size:14.5px;line-height:1.15;")}>
             <span style={css('overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{boutiqueName}</span>
             {boutique?.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;flex:none;")}>verified</span>}
           </span>

@@ -175,11 +175,11 @@ export function Dashboard() {
             onClick={() => navigate('/seller/boutique')}
             style={css('width:100%;margin-top:11px;text-align:left;background:none;border:none;padding:0;display:flex;align-items:center;gap:13px;cursor:pointer;font-family:inherit;color:inherit;')}
           >
-            <span style={css("width:54px;height:54px;flex:none;border-radius:17px;overflow:hidden;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Playfair Display',serif;font-weight:700;font-size:23px;")}>
+            <span style={css("width:54px;height:54px;flex:none;border-radius:17px;overflow:hidden;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--ag-display);font-weight:700;font-size:23px;")}>
               {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
             </span>
             <span style={css('flex:1;min-width:0;')}>
-              <span style={css("display:flex;align-items:center;gap:6px;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.8vw,28px);line-height:1.15;")}>
+              <span style={css("display:flex;align-items:center;gap:6px;font-family:var(--ag-display);font-weight:700;font-size:clamp(21px,2.8vw,28px);line-height:1.15;")}>
                 <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{boutiqueName}</span>
                 {boutique?.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;flex:none;opacity:.9;")}>verified</span>}
               </span>
@@ -319,7 +319,7 @@ export function Dashboard() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:28px 0 14px;gap:12px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);')}>Business overview</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.4vw,28px);line-height:1.12;margin-top:5px;")}>Your numbers</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(21px,2.4vw,28px);line-height:1.12;margin-top:5px;")}>Your numbers</div>
         </div>
         <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;white-space:nowrap;')}>
           {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -347,7 +347,7 @@ export function Dashboard() {
             <span style={css(`width:40px;height:40px;border-radius:13px;background:${st.tint};display:flex;align-items:center;justify-content:center;`)}>
               <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:21px;color:${st.ic};`)}>{st.icon}</span>
             </span>
-            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3vw,31px);line-height:1;margin-top:13px;color:var(--ag-ink);word-break:break-word;")}>{st.value}</span>
+            <span style={css("display:block;font-family:var(--ag-display);font-weight:700;font-size:clamp(24px,3vw,31px);line-height:1;margin-top:13px;color:var(--ag-ink);word-break:break-word;")}>{st.value}</span>
             <span style={css('display:block;color:var(--ag-muted);font-size:12.5px;font-weight:600;margin-top:5px;')}>{st.label}</span>
             <span style={css('display:flex;align-items:center;gap:3px;color:var(--ag-crimson);font-size:12px;font-weight:800;margin-top:8px;')}>
               View all<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>chevron_right</span>
@@ -361,7 +361,7 @@ export function Dashboard() {
         {TODAY.map((s) => (
           <div key={s.label} style={css('flex:1;min-width:120px;')}>
             <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;')}>{s.label}</div>
-            <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:${s.ic};`)}>{s.value}</div>
+            <div style={css(`font-family:var(--ag-display);font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:${s.ic};`)}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -370,7 +370,7 @@ export function Dashboard() {
       <div className="agx-sd-split" style={css('margin-top:16px;')}>
         <div>
           <div style={css('display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Recent orders</div>
+            <div style={css("font-weight:700;font-size:20px;")}>Recent orders</div>
             <button
               onClick={() => navigate('/seller/orders')}
               style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:3px;font-family:inherit;')}
@@ -399,7 +399,7 @@ export function Dashboard() {
                   className="agx-lift"
                   style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:13px;display:flex;gap:12px;align-items:center;cursor:pointer;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}
                 >
-                  <div style={css(`width:48px;height:48px;flex:none;border-radius:14px;background:${TONES[o.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:rgba(42,26,32,.5);`)}>
+                  <div style={css(`width:48px;height:48px;flex:none;border-radius:14px;background:${TONES[o.tone]};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:19px;color:rgba(42,26,32,.5);`)}>
                     {o.customer.charAt(0).toUpperCase()}
                   </div>
                   <div style={css('flex:1;min-width:0;')}>
@@ -408,7 +408,7 @@ export function Dashboard() {
                     <div style={css('font-size:12px;color:var(--ag-muted-soft);font-weight:700;margin-top:2px;')}>{o.number} · {o.date}</div>
                   </div>
                   <div style={css('text-align:right;flex:none;')}>
-                    <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-crimson);")}>{fmt(o.amount)}</div>
+                    <div style={css("font-variant-numeric:tabular-nums;font-weight:700;font-size:16px;color:var(--ag-crimson);")}>{fmt(o.amount)}</div>
                     <span style={css(`display:inline-block;margin-top:4px;font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;background:${st.bg};color:${st.fg};`)}>{o.status}</span>
                   </div>
                 </div>
@@ -419,7 +419,7 @@ export function Dashboard() {
 
         <div>
           <div style={css('display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Low stock</div>
+            <div style={css("font-weight:700;font-size:20px;")}>Low stock</div>
             <button
               onClick={() => navigate('/seller/products')}
               style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;display:flex;align-items:center;gap:3px;font-family:inherit;')}

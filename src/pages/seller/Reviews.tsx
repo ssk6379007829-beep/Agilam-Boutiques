@@ -106,7 +106,7 @@ export function Reviews() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 4px;')}>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Reviews</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;")}>Reviews</h1>
         <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;margin-top:2px;')}>
           What buyers say about your pieces — reply in public.
         </div>
@@ -116,17 +116,17 @@ export function Reviews() {
       <div style={css('margin:12px 20px 0;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;display:flex;gap:12px;flex-wrap:wrap;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
         <div style={css('flex:1;min-width:90px;')}>
           <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;')}>Average</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;color:var(--ag-crimson);margin-top:3px;")}>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:23px;color:var(--ag-crimson);margin-top:3px;")}>
             {summary.count ? summary.avg.toFixed(1) : '—'} <span style={css('font-size:13px;color:var(--ag-star);')}>★</span>
           </div>
         </div>
         <div style={css('flex:1;min-width:90px;')}>
           <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;')}>Total reviews</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;margin-top:3px;")}>{summary.count}</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:23px;margin-top:3px;")}>{summary.count}</div>
         </div>
         <div style={css('flex:1;min-width:90px;')}>
           <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;')}>Needs reply</div>
-          <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:23px;margin-top:3px;color:${summary.needsReply ? 'var(--ag-gold-text)' : 'var(--ag-good)'};`)}>{summary.needsReply}</div>
+          <div style={css(`font-family:var(--ag-display);font-weight:700;font-size:23px;margin-top:3px;color:${summary.needsReply ? 'var(--ag-gold-text)' : 'var(--ag-good)'};`)}>{summary.needsReply}</div>
         </div>
       </div>
 
@@ -196,7 +196,7 @@ export function Reviews() {
 
               {/* The review itself. */}
               <div style={css('display:flex;align-items:center;gap:11px;margin-top:11px;')}>
-                <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${tone};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:17px;color:rgba(42,26,32,.55);`)}>{name[0].toUpperCase()}</div>
+                <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${tone};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;color:rgba(42,26,32,.55);`)}>{name[0].toUpperCase()}</div>
                 <div style={css('flex:1;min-width:0;')}>
                   <div style={css('display:flex;align-items:center;gap:7px;flex-wrap:wrap;')}>
                     <span style={css('font-weight:700;font-size:13.5px;')}>{name}</span>

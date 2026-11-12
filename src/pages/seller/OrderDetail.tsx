@@ -16,7 +16,8 @@ import { BillReceipt } from '@/components/seller/BillReceipt';
 import { ShipSheet } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import {
-  bookShiprocketShipment, createShipment, fetchCouriers, fetchShipment, fetchShiprocketAvailability,
+  bookParcel, createShipment, fetchCouriers, fetchShadowfaxAvailability,
+  fetchShipment, fetchShiprocketAvailability,
 } from '@/data/shipments';
 import { Skeleton, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { fetchReturnForOrder, resolveReturnRequest, RETURN_REASON_LABEL } from '@/data/returns';
@@ -76,10 +77,27 @@ export function OrderDetail() {
   // Both switches on and a registered pickup location, or the booking mode is
   // never offered. Failing closed matters: the alternative is a seller tapping
   // "Book & ship" and getting a refusal from the Edge Function instead.
-  const { data: canBookCourier } = useAsync(
-    () => (boutique ? fetchShiprocketAvailability(boutique.id).catch(() => false) : Promise.resolve(false)),
+  //
+  // Either carrier being on is enough to offer booking. Which one actually
+  // carries the parcel is decided server-side by `book-parcel` — Shiprocket
+  // first because it aggregates several couriers and so covers more rural
+  // pincodes, then Shadowfax, then the manual docket form.
+  const { data: courierAvailability } = useAsync(
+    async () => {
+      if (!boutique) return { shadowfax: false, shiprocket: false };
+      const [shadowfax, shiprocket] = await Promise.all([
+        fetchShadowfaxAvailability(boutique.id).catch(() => false),
+        fetchShiprocketAvailability(boutique.id).catch(() => false),
+      ]);
+      return { shadowfax, shiprocket };
+    },
     [boutique?.id],
   );
+  const canBookCourier = Boolean(courierAvailability?.shadowfax || courierAvailability?.shiprocket);
+
+  // Set when both carriers decline, which drops the sheet onto the manual
+  // docket form. The seller is not left holding a packed parcel and no button.
+  const [manualOnly, setManualOnly] = useState(false);
 
   if (!row && loading) {
     return (
@@ -176,18 +194,36 @@ export function OrderDetail() {
   const bookOrder = async () => {
     setShipping(true);
     try {
-      const booked = await bookShiprocketShipment(o.id);
+      // One call. The carrier chain runs server-side, so the seller never
+      // chooses a courier and never retries against a second button.
+      const booked = await bookParcel(o.id);
+
       setShipOpen(false);
-      showToast(`Booked with ${booked.courierName} · ${booked.awb}`);
-      if (booked.weightEstimated) {
-        // Worth interrupting for: the courier weighs the parcel themselves and
-        // bills the difference, so a guessed weight becomes a real charge.
-        showToast('Some items have no weight set — we used your shop default. Set item weights to avoid extra charges.', 'warning');
+
+      // ONE toast. The toast host holds a single slot, so three calls in a row
+      // leave only the last one on screen — and the AWB, the part the seller
+      // may need to write down, was the first. Everything goes in one message.
+      const parts = [`Booked with ${booked.courierName} · ${booked.awb}`];
+      if ('fellBack' in booked && booked.fellBack) {
+        // Not an error, but a parcel went by the second carrier rather than the
+        // usual one. Named rather than explained: the seller only needs to know
+        // who is turning up at their door, and which carrier declined first is
+        // our problem, not theirs.
+        parts.push('Our usual courier could not collect this one.');
       }
+      if (booked.weightEstimated) {
+        // Worth saying: the courier weighs the parcel themselves and bills the
+        // difference, so a guessed weight becomes a real charge.
+        parts.push('Some items have no weight set — we used your shop default. Set item weights to avoid extra charges.');
+      }
+      showToast(parts.join(' '), booked.weightEstimated ? 'warning' : 'success');
       reloadShipment();
       reload();
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not book this parcel', 'error');
+      // Both carriers declined. Drop the sheet onto the manual form rather than
+      // leaving the seller with a packed parcel and a button that just failed.
+      if ((e as { canShipManually?: boolean }).canShipManually) setManualOnly(true);
     } finally {
       setShipping(false);
     }
@@ -239,7 +275,7 @@ export function OrderDetail() {
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
         <div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;margin:0;")}>Order {o.number}</h1>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:22px;line-height:1;margin:0;")}>Order {o.number}</h1>
           <div style={css('font-size:12px;color:var(--ag-muted);')}>Placed {o.date} · {o.status}</div>
         </div>
       </div>
@@ -327,7 +363,7 @@ export function OrderDetail() {
         <div style={css('background:var(--ag-surface);border-radius:16px;padding:14px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
           <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>CUSTOMER</div>
           <div style={css('display:flex;align-items:center;gap:11px;margin-top:8px;')}>
-            <div style={css("width:44px;height:44px;border-radius:13px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.5);")}>{o.customer[0]}</div>
+            <div style={css("width:44px;height:44px;border-radius:13px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;font-weight:700;color:rgba(42,26,32,.5);")}>{o.customer[0]}</div>
             <div style={css('flex:1;')}>
               <div style={css('font-weight:800;font-size:14px;')}>{o.customer}</div>
               <div style={css('font-size:12px;color:var(--ag-muted);display:flex;align-items:center;gap:5px;flex-wrap:wrap;')}>
@@ -593,13 +629,16 @@ export function OrderDetail() {
 
       {shipOpen && (
         <ShipSheet
+          // Remounts when both carriers decline, so the sheet re-opens on the
+          // manual form instead of keeping a booking mode that cannot succeed.
+          key={manualOnly ? 'manual' : 'book'}
           couriers={couriers ?? []}
           busy={shipping}
           // Every order is prepaid (migration 0085), so every parcel is
-          // bookable. A legacy cash order is still excluded: Shiprocket remits
+          // bookable. A legacy cash order is still excluded: a courier remits
           // collected cash to the account holder — us — which would make the
           // platform the money handler on an order it never took payment for.
-          canBook={Boolean(canBookCourier) && !o.isCod}
+          canBook={canBookCourier && !o.isCod && !manualOnly}
           onCancel={() => setShipOpen(false)}
           onConfirm={shipOrder}
           onBook={bookOrder}

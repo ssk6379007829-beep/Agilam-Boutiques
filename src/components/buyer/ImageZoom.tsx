@@ -345,7 +345,7 @@ export function ImageZoom({
       >
         <div style={css('flex:1;min-width:0;')}>
           <div style={css('font-weight:800;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{title}</div>
-          <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;opacity:.65;margin-top:2px;")}>
+          <div style={css("font-variant-numeric:tabular-nums;font-size:11px;opacity:.65;margin-top:2px;")}>
             Photo {index + 1} of {images.length} · {pct}%
           </div>
         </div>
@@ -445,7 +445,7 @@ export function ImageZoom({
             aria-hidden="true"
             style={css(
               'position:absolute;left:50%;bottom:14px;transform:translateX(-50%);pointer-events:none;' +
-                "font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.04em;white-space:nowrap;" +
+                "font-size:11px;letter-spacing:.04em;white-space:nowrap;" +
                 'color:rgba(255,255,255,.82);background:rgba(0,0,0,.42);backdrop-filter:blur(6px);' +
                 'padding:7px 13px;border-radius:999px;animation:agx-fade .25s ease;',
             )}

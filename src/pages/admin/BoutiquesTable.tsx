@@ -104,7 +104,7 @@ export function BoutiquesTable() {
               return (
                 <div key={b.id} style={css(`${GRID}padding:14px 20px;align-items:center;border-top:1px solid var(--ag-border-soft);`)}>
                   <div style={css('display:flex;align-items:center;gap:10px;min-width:0;')}>
-                    <div style={css(`width:36px;height:36px;flex:none;border-radius:11px;background:${TONES[b.tone ?? i % TONES.length]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.5);`)}>{b.name[0]}</div>
+                    <div style={css(`width:36px;height:36px;flex:none;border-radius:11px;background:${TONES[b.tone ?? i % TONES.length]};display:flex;align-items:center;justify-content:center;font-weight:700;color:rgba(42,26,32,.5);`)}>{b.name[0]}</div>
                     <div style={css('min-width:0;')}>
                       <div style={css(`font-weight:700;font-size:13.5px;${CELL}`)}>{b.name}</div>
                       <div style={css(`font-size:11.5px;color:var(--ag-muted);${CELL}`)}>{b.owner?.full_name ?? '—'}</div>

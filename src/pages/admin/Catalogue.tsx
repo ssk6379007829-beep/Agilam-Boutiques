@@ -455,7 +455,7 @@ export function Catalogue() {
                   value={draft.hex}
                   onChange={(e) => setDraft({ ...draft, hex: e.target.value })}
                   placeholder="#E7719F"
-                  style={css(`flex:1;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--ag-ink);`)}
+                  className="agx-code" style={css(`flex:1;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;color:var(--ag-ink);`)}
                 />
               </div>
             </label>
@@ -514,7 +514,7 @@ export function Catalogue() {
                   value={editDraft.hex}
                   onChange={(e) => setEditDraft({ ...editDraft, hex: e.target.value })}
                   placeholder="#E7719F"
-                  style={css(`flex:1;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--ag-ink);`)}
+                  className="agx-code" style={css(`flex:1;height:48px;border:1.5px solid ${T.field};border-radius:13px;padding:0 14px;font-size:14px;font-weight:600;color:var(--ag-ink);`)}
                 />
               </div>
             </label>

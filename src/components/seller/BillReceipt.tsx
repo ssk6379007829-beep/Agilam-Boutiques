@@ -49,9 +49,9 @@ export const BillReceipt = forwardRef<HTMLDivElement, BillReceiptProps>(function
     <div ref={ref} style={css('width:420px;background:#fff;font-family:"Inter",sans-serif;')}>
       <div style={css('background:linear-gradient(135deg,#8E1C44 0%,#B02454 55%,#D6336C 100%);padding:28px 30px 24px;color:#fff;')}>
         <div style={css('display:flex;align-items:center;gap:12px;')}>
-          <div style={css("width:44px;height:44px;flex:none;border-radius:13px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>{initial}</div>
+          <div style={css("width:44px;height:44px;flex:none;border-radius:13px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;")}>{initial}</div>
           <div style={css('flex:1;min-width:0;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;line-height:1.15;")}>{boutiqueName}</div>
+            <div style={css("font-weight:700;font-size:20px;line-height:1.15;")}>{boutiqueName}</div>
             {boutiquePhone && <div style={css('font-size:11px;opacity:.85;margin-top:2px;')}>{boutiquePhone}</div>}
           </div>
         </div>
@@ -116,7 +116,7 @@ export const BillReceipt = forwardRef<HTMLDivElement, BillReceiptProps>(function
 
       <div style={css(`margin:16px 30px 0;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,${SURFACE_2},#F8D2E2);display:flex;justify-content:space-between;align-items:center;`)}>
         <span style={css('font-size:13px;font-weight:800;color:#8E1C44;letter-spacing:.04em;text-transform:uppercase;')}>Total</span>
-        <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;color:#B02454;")}>{fmt(total)}</span>
+        <span style={css("font-variant-numeric:tabular-nums;font-weight:700;font-size:24px;color:#B02454;")}>{fmt(total)}</span>
       </div>
 
       {/* On an unpaid COD order this is the point of the whole document — the
@@ -125,12 +125,12 @@ export const BillReceipt = forwardRef<HTMLDivElement, BillReceiptProps>(function
       {amountDue != null && amountDue > 0 && (
         <div style={css('margin:10px 30px 0;padding:12px 16px;border-radius:14px;background:#FFF8E8;border:1px solid #F0DCB4;display:flex;justify-content:space-between;align-items:center;')}>
           <span style={css('font-size:12px;font-weight:800;color:#B0862B;letter-spacing:.04em;text-transform:uppercase;')}>Pay on delivery</span>
-          <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:#B0862B;")}>{fmt(amountDue)}</span>
+          <span style={css("font-variant-numeric:tabular-nums;font-weight:700;font-size:20px;color:#B0862B;")}>{fmt(amountDue)}</span>
         </div>
       )}
 
       <div style={css('padding:20px 30px 26px;text-align:center;')}>
-        <div style={css(`font-family:'Playfair Display',serif;font-style:italic;font-size:13px;color:${INK_2};`)}>Thank you for shopping with {boutiqueName}!</div>
+        <div style={css(`font-family:var(--ag-display);font-style:italic;font-size:13px;color:${INK_2};`)}>Thank you for shopping with {boutiqueName}!</div>
         <div style={css('margin-top:10px;font-size:9.5px;letter-spacing:.1em;color:#CBB0BC;text-transform:uppercase;')}>Powered by MangaiMart</div>
       </div>
     </div>

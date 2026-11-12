@@ -44,14 +44,14 @@ export function PayoutHistory({ boutiqueId, slaHours }: { boutiqueId: string | u
 
   return (
     <>
-      <div style={css("padding:22px 0 10px;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Your payouts</div>
+      <div style={css("padding:22px 0 10px;font-weight:700;font-size:20px;")}>Your payouts</div>
 
       {/* The rule, in the seller's own words. Two facts decide when they get
           paid, and neither is visible from a list of amounts. */}
       <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
         <div style={css('display:flex;align-items:center;gap:9px;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-good);font-size:20px;")}>local_shipping</span>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;")}>How you get paid</div>
+          <div style={css("font-weight:700;font-size:17px;")}>How you get paid</div>
         </div>
         <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;line-height:1.65;margin-top:9px;')}>
           A payout is released <strong style={css('color:var(--ag-ink);')}>only after the order is delivered</strong> — while a parcel is
@@ -110,7 +110,7 @@ export function PayoutHistory({ boutiqueId, slaHours }: { boutiqueId: string | u
                     style={css('display:flex;align-items:center;gap:11px;width:100%;padding:15px 16px;background:none;border:0;font-family:inherit;text-align:left;cursor:pointer;color:inherit;')}
                   >
                     <span style={css('flex:1;min-width:0;')}>
-                      <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:21px;line-height:1.1;")}>
+                      <span style={css("display:block;font-weight:700;font-size:21px;line-height:1.1;")}>
                         {owed ? '– ' : ''}{fmt(Math.abs(Number(p.amount)))}
                       </span>
                       <span style={css('display:block;margin-top:4px;font-size:12px;color:var(--ag-muted);font-weight:700;')}>

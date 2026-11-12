@@ -49,7 +49,7 @@ export function Cart() {
       <div style={css('max-width:980px;margin:0 auto;')}>
         <div style={css('padding:4px 0 2px;')}>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Step 1 of 3 · Bag</div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>Your shopping bag</h1>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>Your shopping bag</h1>
         </div>
 
         {hasCart ? (
@@ -87,7 +87,7 @@ export function Cart() {
                           style={css(`width:34px;height:34px;border:none;background:var(--ag-surface);cursor:${c.atStock ? 'not-allowed' : 'pointer'};color:${c.atStock ? 'var(--ag-muted-soft)' : 'var(--ag-crimson)'};font-size:18px;font-weight:700;`)}
                         >+</button>
                       </div>
-                      <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:20px;")}>{fmt(c.lineTotal)}</div>
+                      <div style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:20px;")}>{fmt(c.lineTotal)}</div>
                     </div>
                   </div>
                 </div>
@@ -98,7 +98,7 @@ export function Cart() {
             </div>
 
             <div className="agx-cart-sticky" style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:20px;box-shadow:0 20px 44px -30px rgba(107,20,54,.55);position:sticky;top:80px;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Order summary</div>
+              <div style={css("font-weight:700;font-size:20px;")}>Order summary</div>
 
               {coupon && (
                 <div style={css('display:flex;align-items:center;gap:10px;margin-top:15px;background:var(--ag-good-bg);border:1px dashed #9BD3B0;border-radius:13px;padding:11px 13px;')}>
@@ -139,7 +139,7 @@ export function Cart() {
               <div style={css('height:1px;background:var(--ag-surface-3);margin:16px 0;')} />
               <div style={css('display:flex;justify-content:space-between;align-items:baseline;')}>
                 <span style={css('font-weight:800;')}>Total</span>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
+                <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
               </div>
 
               {/* Desktop only. Below 840px this card is no longer a sticky
@@ -167,7 +167,7 @@ export function Cart() {
             <div style={css('width:88px;height:88px;margin:0 auto;border-radius:26px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>shopping_bag</span>
             </div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:20px;")}>Your bag is empty</div>
+            <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;margin-top:20px;")}>Your bag is empty</div>
             <div style={css('color:var(--ag-muted);font-size:14px;margin-top:6px;')}>Discover beautiful pieces from India&apos;s finest boutiques.</div>
             <button onClick={() => navigate('/')} style={css('margin-top:22px;height:50px;padding:0 28px;border:none;border-radius:14px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>Start shopping</button>
           </div>
@@ -190,7 +190,7 @@ export function Cart() {
           <div className="agx-cart-bar-row" style={css('display:flex;align-items:center;gap:14px;')}>
             <div style={css('flex:none;')}>
               <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-muted);')}>Total</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:22px;line-height:1.15;")}>{fmt(total)}</div>
+              <div style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:22px;line-height:1.15;")}>{fmt(total)}</div>
             </div>
             <button
               onClick={goCheckout}

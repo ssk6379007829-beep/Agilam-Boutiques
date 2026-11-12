@@ -89,7 +89,7 @@ export function Promote() {
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:28px;')}>
       <div style={css('background:linear-gradient(150deg,#D6336C,#B02454);padding:22px 20px 26px;color:#fff;')}>
         <div className="agx-eyebrow" style={css('font-size:11px;opacity:.85;')}>Grow your reach</div>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:25px;margin-top:4px;")}>Promote & Ads</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:25px;margin-top:4px;")}>Promote & Ads</h1>
         <div style={css('opacity:.85;font-size:13px;margin-top:4px;max-width:440px;')}>
           Book a slot on the marketplace, pay online, and go live after a quick review. You’re charged a flat daily rate — no bidding, no surprises.
         </div>
@@ -205,7 +205,7 @@ export function Promote() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;line-height:1;")}>{value}</div>
+      <div style={css("font-weight:700;font-size:20px;line-height:1;")}>{value}</div>
       <div style={css('font-size:11px;color:var(--ag-muted-soft);margin-top:2px;')}>{label}</div>
     </div>
   );
@@ -524,7 +524,7 @@ function AdWizard({ boutique, placements, editCampaign, onClose, onDone }: Wizar
               <div style={css('height:1px;background:var(--ag-border-soft);margin:11px 0;')} />
               <div style={css('display:flex;justify-content:space-between;align-items:center;')}>
                 <span style={css('font-weight:800;font-size:15px;')}>Total</span>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;color:var(--ag-crimson);")}>{money(price)}</span>
+                <span style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;color:var(--ag-crimson);")}>{money(price)}</span>
               </div>
             </div>
             <div style={css('font-size:12px;color:var(--ag-muted);margin-top:10px;text-align:center;')}>
@@ -612,7 +612,7 @@ function AdPreview({
           <div style={css('padding:9px 2px 0;')}>
             <div style={css('font-size:13.5px;font-weight:700;color:var(--ag-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{product.title}</div>
             <div style={css('font-size:12px;color:var(--ag-muted);')}>{boutique.name}</div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:16.5px;margin-top:4px;")}>{money(product.price)}</div>
+            <div style={css("font-weight:700;color:var(--ag-crimson);font-size:16.5px;margin-top:4px;")}>{money(product.price)}</div>
           </div>
         </div>
       </div>
@@ -644,7 +644,7 @@ function AdPreview({
             {tag.trim() && (
               <div style={css('align-self:flex-start;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#F4D9A6;')}>{tag.trim()}</div>
             )}
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;line-height:1.15;margin-top:10px;text-shadow:0 1px 8px rgba(45,8,24,.5);")}>{t}</div>
+            <div style={css("font-weight:700;font-size:20px;line-height:1.15;margin-top:10px;text-shadow:0 1px 8px rgba(45,8,24,.5);")}>{t}</div>
             {subtext.trim() && <div style={css('font-size:12px;opacity:.92;margin-top:6px;max-width:230px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{subtext.trim()}</div>}
             {/* Literal colours, matching buyer/Home.tsx: the inside of the hero
                 is a dark scrim over a photo in both themes, so the theme
@@ -665,11 +665,11 @@ function AdPreview({
     <div style={css(frame)}>
       <div style={css('width:100%;max-width:340px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 12px 30px -26px rgba(107,20,54,.6);')}>
         <div style={css('width:52px;height:52px;flex:none;border-radius:14px;background:linear-gradient(135deg,var(--ag-surface-2),var(--ag-surface-3));overflow:hidden;display:flex;align-items:center;justify-content:center;')}>
-          {boutique.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:var(--ag-crimson);")}>{initials}</span>}
+          {boutique.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : <span style={css("font-weight:700;font-size:19px;color:var(--ag-crimson);")}>{initials}</span>}
         </div>
         <div style={css('min-width:0;flex:1;')}>
           <div style={css('display:flex;align-items:center;gap:6px;')}>
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{boutique.name}</span>
+            <span style={css("font-weight:700;font-size:16px;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{boutique.name}</span>
             {boutique.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-info-text);flex:none;")}>verified</span>}
             <span style={css('flex:none;' + PROMOTED_PILL)}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:12px;")}>bolt</span>Promoted
@@ -687,7 +687,7 @@ function AdPreview({
 }
 
 function SectionTitle({ children }: { children: ReactNode }) {
-  return <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:var(--ag-ink);")}>{children}</div>;
+  return <div style={css("font-weight:700;font-size:19px;color:var(--ag-ink);")}>{children}</div>;
 }
 
 function Row({ k, v }: { k: string; v: string }) {

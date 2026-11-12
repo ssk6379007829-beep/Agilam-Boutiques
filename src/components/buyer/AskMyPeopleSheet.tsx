@@ -183,7 +183,7 @@ export function AskMyPeopleSheet({
                 <Icon name="groups" style={{ fontSize: 30, color: 'var(--ag-good)' }} />
               </span>
             </div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;text-align:center;margin-top:12px;")}>
+            <div style={css("font-weight:700;font-size:21px;text-align:center;margin-top:12px;")}>
               Ready to ask
             </div>
             <div style={css('font-size:13px;color:var(--ag-muted);margin-top:6px;line-height:1.55;text-align:center;')}>
@@ -229,7 +229,7 @@ export function AskMyPeopleSheet({
           <>
             <div style={css('display:flex;align-items:center;gap:9px;')}>
               <Icon name="groups" style={{ fontSize: 24, color: 'var(--ag-crimson)' }} />
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;")}>Ask my people</div>
+              <div style={css("font-weight:700;font-size:21px;")}>Ask my people</div>
             </div>
             <div style={css('font-size:13px;color:var(--ag-muted);margin-top:5px;line-height:1.5;')}>
               Pick what you're torn between. Your family votes on a link — they don't need an account.

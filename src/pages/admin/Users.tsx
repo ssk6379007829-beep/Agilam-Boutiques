@@ -815,7 +815,7 @@ function UserDrawer({ id, row, onClose }: { id: string | null; row: AdminUserRow
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div style={css('background:var(--ag-surface);border-radius:12px;padding:12px;text-align:center;')}>
-      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;line-height:1;")}>{value}</div>
+      <div style={css("font-weight:700;font-size:18px;line-height:1;")}>{value}</div>
       <div style={css(`font-size:11px;color:${T.muted};margin-top:3px;`)}>{label}</div>
     </div>
   );

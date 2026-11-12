@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { slugify } from '@/lib/seo';
 import { fmt } from '@/data/demo';
+import { showsRating } from '@/lib/ratingDisplay';
 import { ilikeAny } from './query';
 import type { SearchHit, SearchSource } from './types';
 
@@ -64,7 +65,7 @@ const products: SearchSource<BuyerCtx> = {
   },
 };
 
-const BOUTIQUE_COLUMNS = 'id, slug, name, city, area, logo_url, tone, rating';
+const BOUTIQUE_COLUMNS = 'id, slug, name, city, area, logo_url, tone, rating, reviews_count';
 
 type BoutiqueRow = {
   id: string;
@@ -75,6 +76,7 @@ type BoutiqueRow = {
   logo_url: string | null;
   tone: number | null;
   rating: number | null;
+  reviews_count: number | null;
 };
 
 const boutiques: SearchSource<BuyerCtx> = {
@@ -98,7 +100,10 @@ const boutiques: SearchSource<BuyerCtx> = {
       kind: 'boutique',
       title: b.name,
       sub: [b.area, b.city].filter(Boolean).join(', ') || 'Boutique',
-      right: b.rating ? `★ ${Number(b.rating).toFixed(1)}` : undefined,
+      // Guarded by the platform threshold, not just a truthy rating: the
+      // search row is the same promise as the badge on the card, and a shop
+      // below the line shows no stars in either. See src/lib/ratingDisplay.ts.
+      right: showsRating(b.rating, b.reviews_count) ? `★ ${Number(b.rating).toFixed(1)}` : undefined,
       logo: b.logo_url,
       tone: b.tone ?? 0,
       to: `/boutique/${b.slug ?? b.id}`,

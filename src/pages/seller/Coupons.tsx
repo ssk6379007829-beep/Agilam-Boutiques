@@ -127,7 +127,7 @@ export function Coupons() {
         <div style={css('display:flex;align-items:flex-start;gap:12px;')}>
           <div style={css('flex:1;min-width:0;')}>
             <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);')}>Boutique offers</div>
-            <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;line-height:1.1;margin-top:3px;")}>Coupons</h1>
+            <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;line-height:1.1;margin-top:3px;")}>Coupons</h1>
             <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:5px;line-height:1.5;')}>
               Discount codes for your own items. You fund these — the discount comes off your payout, and commission is taken on the reduced amount.
             </div>
@@ -164,7 +164,7 @@ export function Coupons() {
             return (
               <div key={c.id} style={css(`background:var(--ag-surface);border:1.5px solid ${expired ? 'var(--ag-border)' : c.active ? 'var(--ag-surface-3)' : 'var(--ag-border)'};border-radius:18px;padding:15px;box-shadow:0 14px 34px -30px rgba(107,20,54,.5);opacity:${expired || !c.active ? 0.72 : 1};`)}>
                 <div style={css('display:flex;align-items:center;gap:10px;flex-wrap:wrap;')}>
-                  <span style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;color:var(--ag-crimson);letter-spacing:.04em;")}>{c.code}</span>
+                  <span className="agx-code" style={css("font-weight:600;font-size:15px;color:var(--ag-crimson);letter-spacing:.04em;")}>{c.code}</span>
                   <span style={css(`font-size:11px;font-weight:800;border-radius:6px;padding:2px 8px;${expired ? 'color:var(--ag-bad-text);background:var(--ag-bad-bg);' : c.active ? 'color:var(--ag-good-text);background:var(--ag-good-bg);' : 'color:var(--ag-muted);background:var(--ag-surface-2);'}`)}>
                     {expired ? 'EXPIRED' : c.active ? 'ACTIVE' : 'PAUSED'}
                   </span>
@@ -194,7 +194,7 @@ export function Coupons() {
                 <div key={c.id} style={css('display:flex;align-items:center;gap:12px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:14px;padding:12px 14px;')}>
                   <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>redeem</span>
                   <div style={css('flex:1;min-width:0;')}>
-                    <span style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:var(--ag-crimson);")}>{c.code}</span>
+                    <span className="agx-code" style={css("font-weight:600;font-size:13px;color:var(--ag-crimson);")}>{c.code}</span>
                     <div style={css('font-size:12px;color:var(--ag-label);font-weight:600;margin-top:1px;')}>{describeCoupon(c)}</div>
                   </div>
                   <span style={css('font-size:12px;color:var(--ag-muted);font-weight:600;')}>till {fmtDate(c.expires_at)}</span>
@@ -213,7 +213,7 @@ export function Coupons() {
         <div onClick={() => !busy && setEditing(null)} style={css('position:fixed;inset:0;z-index:200;background:rgba(40,10,22,.5);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;')}>
           <div onClick={(e) => e.stopPropagation()} className="agx-scroll" style={css('width:100%;max-width:520px;max-height:92vh;overflow-y:auto;background:var(--ag-bg);border-radius:26px 26px 0 0;padding:20px 20px 26px;box-shadow:0 -20px 60px -20px rgba(107,20,54,.5);')}>
             <div style={css('display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>{editing.id ? 'Edit coupon' : 'New coupon'}</div>
+              <div style={css("font-weight:700;font-size:20px;")}>{editing.id ? 'Edit coupon' : 'New coupon'}</div>
               <button onClick={() => setEditing(null)} style={css('width:44px;height:44px;border-radius:12px;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';")}>close</span>
               </button>
@@ -232,7 +232,7 @@ export function Coupons() {
       {confirmId && (
         <div onClick={() => !busy && setConfirmId(null)} style={css('position:fixed;inset:0;z-index:210;background:rgba(42,26,32,.45);display:flex;align-items:center;justify-content:center;padding:20px;')}>
           <div onClick={(e) => e.stopPropagation()} style={css('width:400px;max-width:100%;background:var(--ag-surface);border-radius:20px;padding:24px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Delete coupon?</div>
+            <div style={css("font-weight:700;font-size:20px;")}>Delete coupon?</div>
             <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:8px;line-height:1.5;')}>Buyers will no longer be able to use this code. This can’t be undone.</div>
             <div style={css('display:flex;gap:10px;margin-top:22px;')}>
               <button onClick={() => setConfirmId(null)} disabled={busy} style={css('flex:1;height:48px;border-radius:14px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);font-weight:700;font-size:14px;cursor:pointer;')}>Cancel</button>

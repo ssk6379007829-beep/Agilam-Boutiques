@@ -69,7 +69,7 @@ export function FilterSheet() {
       <div className="agx-scroll" style={css('position:absolute;left:0;right:0;bottom:0;max-height:88%;overflow-y:auto;background:var(--ag-surface);border-radius:28px 28px 0 0;padding:14px 22px 24px;animation:agx-sheet .28s cubic-bezier(.2,.9,.3,1);')}>
         <div style={css('width:44px;height:5px;border-radius:3px;background:var(--ag-border);margin:0 auto 14px;')} />
         <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Filters</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;")}>Filters</div>
           <button onClick={resetFilters} style={css('border:none;background:none;color:var(--ag-crimson);font-weight:700;font-size:14px;cursor:pointer;')}>Reset</button>
         </div>
 

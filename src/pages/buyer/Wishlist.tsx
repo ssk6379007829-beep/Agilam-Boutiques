@@ -29,7 +29,7 @@ export function Wishlist() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:4px 0 6px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Saved by you</div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(27px,3.2vw,42px);line-height:1.1;padding-bottom:2px;margin:6px 0 0;letter-spacing:-.01em;")}>Wishlist</h1>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(27px,3.2vw,42px);line-height:1.1;padding-bottom:2px;margin:6px 0 0;letter-spacing:-.01em;")}>Wishlist</h1>
         </div>
         {/* Counts what is actually on screen (a saved piece the boutique has
             since removed is no longer in `items`), and says "1 piece", not
@@ -103,7 +103,7 @@ export function Wishlist() {
               </div>
               <div style={css('padding:11px 2px 0;')}>
                 <div className="agx-card-title" style={css('font-size:14px;font-weight:700;')}>{p.title}</div>
-                <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;margin-top:2px;")}>{fmt(p.price)}</div>
+                <div style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:19px;margin-top:2px;")}>{fmt(p.price)}</div>
               </div>
             </CardLink>
           ))}
@@ -113,7 +113,7 @@ export function Wishlist() {
           <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
             <WishHeart wished={false} size={40} />
           </div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:20px;")}>Your wishlist is empty</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:20px;")}>Your wishlist is empty</div>
           <div style={css('color:var(--ag-muted);font-size:14.5px;margin-top:8px;max-width:340px;line-height:1.55;')}>Tap the heart on any piece and it lands here — your personal edit, ready when you are.</div>
           <button onClick={() => navigate('/')} style={css('margin-top:20px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;border:none;border-radius:14px;padding:13px 24px;font-weight:800;font-size:14px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(214,51,108,.8);')}>Browse collections</button>
         </div>

@@ -138,7 +138,7 @@ export function InspireFilterSheet({
       >
         <div style={css('width:44px;height:5px;border-radius:3px;background:var(--ag-border);margin:0 auto 14px;')} />
         <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Filters</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;")}>Filters</div>
           <button
             onClick={() => { onApply(NO_FEED_FILTERS); onClose(); }}
             style={css('border:none;background:none;color:var(--ag-crimson);font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;')}

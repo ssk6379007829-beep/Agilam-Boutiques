@@ -635,7 +635,7 @@ export function SellerOnboarding() {
           <div className="agx-eyebrow" style={css('font-size:11px;color:#F4D9A6;')}>
             {editMode ? 'Manage boutique' : isResubmission ? 'Update & resubmit' : step === 0 ? 'Create your boutique' : 'Seller setup'}
           </div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3.2vw,34px);margin:6px 0 0;line-height:1.15;")}>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(24px,3.2vw,34px);margin:6px 0 0;line-height:1.15;")}>
             {editMode ? 'Edit your business details' : isResubmission ? 'Fix the details and resubmit' : step === 0 ? 'Open your boutique on MangaiMart' : 'Set up your boutique'}
           </h1>
           <div style={css('opacity:.88;font-size:13.5px;margin-top:6px;max-width:520px;')}>
@@ -688,7 +688,7 @@ export function SellerOnboarding() {
           </span>
           <div>
             <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);')}>Step {active.n + 1} of {ALL_STEPS.length}</div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1.2;margin-top:2px;")}>{active.title}</div>
+            <div style={css("font-family:var(--ag-display);font-weight:700;font-size:22px;line-height:1.2;margin-top:2px;")}>{active.title}</div>
             <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;')}>{active.sub}</div>
           </div>
         </div>
@@ -1173,7 +1173,7 @@ function ReviewStep({
       {groups.map((g) => (
         <div key={g.step} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
           <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;")}>{g.title}</div>
+            <div style={css("font-weight:700;font-size:17px;")}>{g.title}</div>
             <button
               type="button"
               onClick={() => onEdit(g.step)}

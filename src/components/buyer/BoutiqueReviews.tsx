@@ -91,7 +91,7 @@ export function BoutiqueReviews({ boutiqueId }: { boutiqueId: string }) {
           claims, and only the spread tells them apart. */}
       <div style={css('display:flex;flex-wrap:wrap;align-items:center;gap:clamp(16px,4vw,40px);margin-top:16px;padding:18px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;')}>
         <div style={css('text-align:center;flex:none;')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:38px;line-height:1;")}>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:38px;line-height:1;")}>
             {summary.average.toFixed(1)}
           </div>
           <div style={css('color:var(--ag-gold-text);font-size:14px;letter-spacing:2px;margin-top:4px;')}>
@@ -149,7 +149,7 @@ export function BoutiqueReviews({ boutiqueId }: { boutiqueId: string }) {
               style={css('flex:none;width:min(78vw,300px);scroll-snap-align:start;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:16px 18px;')}
             >
               <div style={css('display:flex;align-items:center;gap:12px;')}>
-                <div style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${tone};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:rgba(42,26,32,.55);`)}>{name[0].toUpperCase()}</div>
+                <div style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${tone};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:rgba(42,26,32,.55);`)}>{name[0].toUpperCase()}</div>
                 <div style={css('flex:1;min-width:0;')}>
                   <div style={css('display:flex;align-items:center;gap:7px;flex-wrap:wrap;')}>
                     <span style={css('font-weight:700;font-size:14px;')}>{name}</span>

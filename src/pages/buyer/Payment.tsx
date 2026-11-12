@@ -128,7 +128,7 @@ export function Payment() {
       <div style={css('max-width:980px;margin:0 auto;')}>
         <div style={css('padding:4px 0 2px;')}>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Step 3 of 3 · Payment</div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>How would you like to pay?</h1>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>How would you like to pay?</h1>
         </div>
 
         {pending && (
@@ -179,7 +179,7 @@ export function Payment() {
           </div>
 
           <div className="agx-cart-sticky" style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:20px;box-shadow:0 20px 44px -30px rgba(107,20,54,.55);position:sticky;top:80px;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Order total</div>
+            <div style={css("font-weight:700;font-size:20px;")}>Order total</div>
             {/* Coupons are worth one last offer here: this is the screen where
                 the buyer is looking hardest at the number they're about to pay. */}
             {coupon ? (
@@ -206,7 +206,7 @@ export function Payment() {
             <div style={css('height:1px;background:var(--ag-surface-3);margin:16px 0;')} />
             <div style={css('display:flex;justify-content:space-between;align-items:baseline;')}>
               <span style={css('font-weight:800;')}>To pay</span>
-              <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
+              <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
             </div>
             <button onClick={onPlaceOrder} disabled={processing} style={css(`width:100%;height:54px;margin-top:18px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:${processing ? 'wait' : 'pointer'};opacity:${processing ? '.7' : '1'};display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);`)}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>lock</span>

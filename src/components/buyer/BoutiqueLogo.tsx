@@ -53,7 +53,7 @@ export function BoutiqueLogo({
           style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:var(--ag-surface);')}
         />
       ) : (
-        <span style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:${Math.round(size * 0.38)}px;color:#fff;letter-spacing:.02em;`)}>
+        <span style={css(`font-family:var(--ag-display);font-weight:700;font-size:${Math.round(size * 0.38)}px;color:#fff;letter-spacing:.02em;`)}>
           {monogram(name)}
         </span>
       )}

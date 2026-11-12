@@ -1,7 +1,8 @@
 /**
  * Book one order as a Shiprocket parcel, and ship it.
  *
- * Called by the seller console (`bookShiprocketShipment` in src/data/shipments.ts)
+ * Called by the `book-parcel` orchestrator, which the seller console reaches
+ * through `bookParcel` in src/data/shipments.ts
  * with the seller's own session JWT. Four Shiprocket calls, in order:
  *
  *   1. orders/create/adhoc     → their order + shipment ids
@@ -269,6 +270,9 @@ Deno.serve(async (req: Request) => {
       // that needs a human, because a retry would book it twice.
       console.error('shipment insert failed after booking', { awb, error: shipErr.message });
       return json({
+        // `booked` tells book-parcel a real parcel exists despite the failure,
+        // so it stops the chain instead of booking a second one elsewhere.
+        booked: true,
         error: `The parcel was booked (AWB ${awb}) but could not be saved. Do NOT book again — send this AWB to support.`,
       }, 500);
     }
@@ -277,6 +281,7 @@ Deno.serve(async (req: Request) => {
       .from('orders').update({ status: 'shipped' }).eq('id', order.id);
     if (statusErr) {
       return json({
+        booked: true,
         error: `Parcel booked (AWB ${awb}) but the order status did not update: ${statusErr.message}`,
       }, 500);
     }

@@ -267,7 +267,7 @@ function CropperModal({ request, onDone }: { request: Request; onDone: (file: Fi
       style={css('position:fixed;inset:0;z-index:120;background:rgba(24,8,15,.72);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px;')}
     >
       <div style={css('width:100%;max-width:440px;background:var(--ag-bg);border-radius:24px;padding:20px;box-shadow:0 30px 70px -30px rgba(0,0,0,.7);max-height:100%;overflow:auto;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;")}>{preset.title}</div>
+        <div style={css("font-weight:700;font-size:21px;")}>{preset.title}</div>
         <div style={css('color:var(--ag-muted);font-size:12.5px;line-height:1.55;margin-top:4px;')}>{preset.hint}</div>
 
         {failed ? (

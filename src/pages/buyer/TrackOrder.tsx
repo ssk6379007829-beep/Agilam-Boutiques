@@ -81,7 +81,7 @@ export function TrackOrder() {
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:48px;color:#CBB0BC;")}>
               {refreshing ? 'sync' : 'search_off'}
             </span>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:14px;")}>
+            <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;margin-top:14px;")}>
               {refreshing ? 'Loading your order…' : 'Order not found'}
             </div>
             <div style={css('color:var(--ag-muted);font-size:14px;margin-top:8px;max-width:340px;line-height:1.55;')}>
@@ -205,7 +205,7 @@ export function TrackOrder() {
     }));
 
   const card = 'background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);';
-  const sectionTitle = "font-family:'Playfair Display',serif;font-weight:700;font-size:19px;";
+  const sectionTitle = "font-weight:700;font-size:19px;";
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
@@ -234,7 +234,7 @@ export function TrackOrder() {
             </div>
             <div style={css('flex:1;min-width:0;')}>
               <div className="agx-eyebrow" style={css('font-size:9px;color:#F4D9A6;')}>{order.id}</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;line-height:1.15;margin-top:5px;")}>
+              <div style={css("font-weight:700;font-size:21px;line-height:1.15;margin-top:5px;")}>
                 {item?.title ?? 'Order'}{order.items.length > 1 ? ` +${order.items.length - 1} more` : ''}
               </div>
               <div style={css('opacity:.85;font-size:12.5px;margin-top:4px;')}>{order.boutique} · Qty {totalQty} · {fmt(order.total)}</div>
@@ -415,7 +415,7 @@ export function TrackOrder() {
               <div style={css('flex:1;padding-bottom:18px;padding-top:6px;')}>
                 <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
                   <span style={css(`font-weight:800;font-size:15px;color:${st.done ? 'var(--ag-ink)' : 'var(--ag-muted-soft)'};`)}>{st.label}</span>
-                  <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ag-muted);")}>{st.time}</span>
+                  <span style={css("font-variant-numeric:tabular-nums;font-size:10.5px;color:var(--ag-muted);")}>{st.time}</span>
                 </div>
                 <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:2px;')}>{st.sub}</div>
 
@@ -437,6 +437,30 @@ export function TrackOrder() {
                         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>content_copy</span>
                       </button>
                     </div>
+                    {/* A named rider, on a same-day hyperlocal run only
+                        (migration 0110). Assigned after the parcel is booked,
+                        so it arrives by webhook and is simply absent until
+                        then — and absent forever on a surface parcel, which
+                        has no one rider carrying it end to end. */}
+                    {shipment.sfx_rider_name && (
+                      <div style={css('margin-top:10px;padding-top:10px;border-top:1px solid var(--ag-border);display:flex;align-items:center;gap:10px;')}>
+                        <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>sports_motorsports</span>
+                        <div style={css('flex:1;min-width:0;')}>
+                          <div style={css('font-weight:800;font-size:13px;')}>{shipment.sfx_rider_name}</div>
+                          <div style={css('font-size:11.5px;color:var(--ag-muted);')}>Your delivery partner</div>
+                        </div>
+                        {shipment.sfx_rider_phone && (
+                          <a
+                            href={`tel:${shipment.sfx_rider_phone}`}
+                            aria-label={`Call ${shipment.sfx_rider_name}`}
+                            style={css('width:34px;height:34px;flex:none;border-radius:10px;background:var(--ag-surface);display:flex;align-items:center;justify-content:center;text-decoration:none;')}
+                          >
+                            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>call</span>
+                          </a>
+                        )}
+                      </div>
+                    )}
+
                     {/* No link is a real outcome, not a bug: most Indian courier
                         tracking pages take no docket in the URL. */}
                     {shipment.tracking_url ? (
@@ -523,7 +547,7 @@ export function TrackOrder() {
                     {it.size ? `Size ${it.size} · ` : ''}Qty {it.qty}
                   </div>
                 </div>
-                <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:16px;flex:none;")}>
+                <div style={css("font-weight:700;font-variant-numeric:tabular-nums;color:var(--ag-crimson);font-size:16px;flex:none;")}>
                   {fmt(it.price * it.qty)}
                 </div>
               </div>
@@ -546,7 +570,7 @@ export function TrackOrder() {
             )}
             <div style={css('display:flex;justify-content:space-between;align-items:baseline;margin-top:5px;padding-top:11px;border-top:1px solid var(--ag-border-soft);')}>
               <span style={css('font-weight:800;')}>{owes ? 'Due on delivery' : 'Paid'}</span>
-              <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:22px;")}>{fmt(order.total)}</span>
+              <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:22px;")}>{fmt(order.total)}</span>
             </div>
             <div style={css(`display:flex;align-items:center;gap:7px;color:${owes ? '#B0862B' : 'var(--ag-good)'};font-size:12px;font-weight:700;margin-top:2px;`)}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>{owes ? 'payments' : 'verified'}</span>

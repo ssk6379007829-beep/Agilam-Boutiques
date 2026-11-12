@@ -174,7 +174,7 @@ export function AddProduct() {
         <button onClick={goBack} aria-label="Go back" className="agx-con-icon">
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;")}>
           {joiningSet ? 'Add Another Colour' : 'Add New Product'}
         </h1>
       </div>

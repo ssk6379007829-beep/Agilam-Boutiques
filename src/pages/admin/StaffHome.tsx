@@ -93,7 +93,7 @@ export function StaffHome() {
   return (
     <div style={css('display:flex;flex-direction:column;gap:16px;')}>
       <div>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1.2;")}>
+        <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;line-height:1.2;")}>
           Good to see you, {firstName}.
         </div>
         <div style={css(`color:${T.muted};font-size:13.5px;margin-top:4px;`)}>
@@ -130,7 +130,7 @@ export function StaffHome() {
                   <div style={css('font-weight:700;font-size:14px;')}>{r.label}</div>
                   <div style={css(`font-size:12px;color:${T.muted};`)}>{r.sub}</div>
                 </div>
-                <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:22px;color:${r.n > 0 ? 'var(--ag-crimson)' : T.muted};`)}>
+                <div style={css(`font-family:var(--ag-display);font-weight:700;font-size:22px;color:${r.n > 0 ? 'var(--ag-crimson)' : T.muted};`)}>
                   {loading ? '·' : r.n}
                 </div>
                 <Icon name="chevron_right" size={20} color={T.muted} />

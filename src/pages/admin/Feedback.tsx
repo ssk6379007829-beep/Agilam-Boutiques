@@ -150,19 +150,19 @@ export function Feedback() {
       <div style={css('display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;')}>
         <Card style="padding:14px 18px;flex:1;min-width:150px;">
           <div style={css(`font-size:11.5px;font-weight:800;color:${T.muted};letter-spacing:.05em;`)}>AVERAGE</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:2px;")}>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:2px;")}>
             {stats.count ? stats.avg.toFixed(2) : '—'}
           </div>
         </Card>
         <Card style="padding:14px 18px;flex:1;min-width:150px;">
           <div style={css(`font-size:11.5px;font-weight:800;color:${T.muted};letter-spacing:.05em;`)}>RESPONSES</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:2px;")}>{stats.count}</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:2px;")}>{stats.count}</div>
         </Card>
         <Card style="padding:14px 18px;flex:1;min-width:150px;">
           {/* The number worth acting on. An average hides the handful of people
               who had a bad time, and those are the ones who tell others. */}
           <div style={css(`font-size:11.5px;font-weight:800;color:${T.muted};letter-spacing:.05em;`)}>1–2 STARS</div>
-          <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:2px;color:${stats.detractors ? '#C0455E' : 'inherit'};`)}>
+          <div style={css(`font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:2px;color:${stats.detractors ? '#C0455E' : 'inherit'};`)}>
             {stats.detractors}
           </div>
         </Card>
@@ -170,13 +170,13 @@ export function Feedback() {
           {/* Buyers who said we may quote them and are still waiting on us.
               A queue, so it should look like one. */}
           <div style={css(`font-size:11.5px;font-weight:800;color:${T.muted};letter-spacing:.05em;`)}>AWAITING REVIEW</div>
-          <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:2px;color:${stats.awaiting ? '#B02454' : 'inherit'};`)}>
+          <div style={css(`font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:2px;color:${stats.awaiting ? '#B02454' : 'inherit'};`)}>
             {stats.awaiting}
           </div>
         </Card>
         <Card style="padding:14px 18px;flex:1;min-width:150px;">
           <div style={css(`font-size:11.5px;font-weight:800;color:${T.muted};letter-spacing:.05em;`)}>ON HOME PAGE</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:2px;")}>{stats.published}</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:2px;")}>{stats.published}</div>
         </Card>
       </div>
 

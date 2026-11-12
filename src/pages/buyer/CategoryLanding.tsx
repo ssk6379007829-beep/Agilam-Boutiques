@@ -13,6 +13,7 @@ import { occasionLabel, occasionNoun, sameTerm, titleCase } from '@/lib/vocabula
 import { useTaxonomy } from '@/state/TaxonomyContext';
 import { TONES, fmt } from '@/data/demo';
 import { compactCount } from '@/lib/ranking';
+import { useShowsRating } from '@/lib/ratingDisplay';
 import { routes, slugify, clampDescription } from '@/lib/seo';
 import {
   breadcrumbSchema,
@@ -257,6 +258,8 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
   const { products: PRODUCTS, boutiques: BOUTIQUES, loading } = useCatalog();
   const { wishlist, toggleWish } = useShop();
   const vocab = useTaxonomy();
+  /** Whether a rating may be printed at all — see src/lib/ratingDisplay.ts. */
+  const showsRating = useShowsRating();
 
   const spec = SPECS[kind];
 
@@ -336,7 +339,7 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
   if (!term || items.length === 0) {
     return (
       <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:24px;')}>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3.2vw,40px);margin:20px 2px 0;")}>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(26px,3.2vw,40px);margin:20px 2px 0;")}>
           Nothing listed under “{slug?.replace(/-/g, ' ')}” yet
         </h1>
         <EmptyState
@@ -374,13 +377,13 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
         <p className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:0;')}>
           {spec.label} · Indian boutiques
         </p>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.4vw,44px);line-height:1.08;margin:6px 0 0;letter-spacing:-.015em;text-wrap:balance;")}>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(28px,3.4vw,44px);line-height:1.08;margin:6px 0 0;letter-spacing:-.015em;text-wrap:balance;")}>
           {heading}
         </h1>
         <p style={css('color:var(--ag-muted);font-size:14.5px;line-height:1.65;max-width:660px;margin:12px 0 0;')}>
           {intro}
         </p>
-        <p style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;margin:10px 0 0;")}>
+        <p style={css("font-variant-numeric:tabular-nums;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;margin:10px 0 0;")}>
           {items.length} {items.length === 1 ? 'piece' : 'pieces'} · from {fmt(cheapest)}
         </p>
       </header>
@@ -408,8 +411,8 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
               <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
               <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>{p.boutique} · {p.city}</div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;')}>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
-                {p.reviews > 0 && (
+                <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
+                {showsRating(p.rating, p.reviews) && (
                   <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
                     <span style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")} aria-hidden="true">star</span>
                     {p.rating}
@@ -459,7 +462,7 @@ export function CategoryLanding({ kind }: { kind: LandingKind }) {
                 {/* Through `heading`, because a budget sibling's term is the
                     raw ceiling ("3000") and has to read as "Under ₹3,000". */}
                 {spec.heading(name)}
-                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ag-muted-soft);")}>{n}</span>
+                <span style={css("font-variant-numeric:tabular-nums;font-size:10.5px;color:var(--ag-muted-soft);")}>{n}</span>
               </Link>
             ))}
           </div>

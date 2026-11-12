@@ -176,7 +176,7 @@ export function Billing() {
           <button onClick={newBill} aria-label="Go back" style={css('width:44px;height:44px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
           </button>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>Bill generated</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;")}>Bill generated</div>
         </div>
 
         <div style={css('padding:6px 20px 0;display:flex;flex-direction:column;align-items:center;')}>
@@ -215,7 +215,7 @@ export function Billing() {
         <button onClick={goBack} aria-label="Go back" className="agx-con-icon">
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;")}>New Bill</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;")}>New Bill</h1>
       </div>
 
       <div style={css('padding:6px 20px 0;display:flex;flex-direction:column;gap:14px;')}>

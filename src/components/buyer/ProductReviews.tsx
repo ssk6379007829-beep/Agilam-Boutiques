@@ -119,7 +119,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
       <div style={css('background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:16px;padding:18px;')}>
         <div style={css('display:flex;align-items:center;gap:18px;')}>
           <div style={css('text-align:center;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:44px;line-height:1;color:var(--ag-crimson);")}>
+            <div style={css("font-family:var(--ag-display);font-weight:700;font-size:44px;line-height:1;color:var(--ag-crimson);")}>
               {summary.count ? summary.avg.toFixed(1) : '—'}
             </div>
             <div style={css('color:var(--ag-star);font-size:15px;letter-spacing:2px;margin-top:4px;')}>
@@ -137,7 +137,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
                 <span style={css('flex:1;height:7px;border-radius:4px;background:var(--ag-border-soft);overflow:hidden;')}>
                   <span style={css(`display:block;height:100%;width:${r.pct}%;background:linear-gradient(90deg,#D6336C,#B02454);border-radius:4px;`)} />
                 </span>
-                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ag-muted);width:30px;text-align:right;")}>{r.pct}%</span>
+                <span style={css("font-variant-numeric:tabular-nums;font-size:10px;color:var(--ag-muted);width:30px;text-align:right;")}>{r.pct}%</span>
               </div>
             ))}
           </div>
@@ -265,7 +265,7 @@ export function ProductReviews({ productId, boutiqueId }: { productId: string; b
           return (
             <div key={rv.id} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:16px 18px;')}>
               <div style={css('display:flex;align-items:center;gap:12px;')}>
-                <div style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${tone};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:rgba(42,26,32,.55);`)}>{name[0].toUpperCase()}</div>
+                <div style={css(`width:42px;height:42px;flex:none;border-radius:13px;background:${tone};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:rgba(42,26,32,.55);`)}>{name[0].toUpperCase()}</div>
                 <div style={css('flex:1;min-width:0;')}>
                   <div style={css('display:flex;align-items:center;gap:7px;flex-wrap:wrap;')}>
                     <span style={css('font-weight:700;font-size:14px;')}>{name}</span>

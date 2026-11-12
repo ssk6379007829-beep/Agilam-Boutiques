@@ -32,7 +32,7 @@ export function SponsoredStrip({ ads, title = 'Sponsored for you' }: { ads: AdCa
   return (
     <div style={css('margin:26px 0 0;')}>
       <div style={css('display:flex;align-items:center;gap:8px;margin-bottom:12px;')}>
-        <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(19px,2.4vw,24px);color:var(--ag-ink);")}>{title}</span>
+        <span style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(19px,2.4vw,24px);color:var(--ag-ink);")}>{title}</span>
         <PromotedBadge style={{ background: 'rgba(214,51,108,.12)', color: 'var(--ag-crimson)' }} />
       </div>
       <div style={css('display:flex;gap:14px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none;')}>
@@ -48,7 +48,7 @@ export function SponsoredStrip({ ads, title = 'Sponsored for you' }: { ads: AdCa
               <div style={css('padding:9px 2px 0;')}>
                 <div className="agx-card-title" style={css('font-size:13.5px;font-weight:700;')}>{p!.title}</div>
                 <div className="agx-card-sub" style={css('font-size:12px;color:var(--ag-muted);')}>{p!.boutique}</div>
-                <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:16.5px;margin-top:4px;")}>{fmt(p!.price)}</div>
+                <div style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:16.5px;margin-top:4px;")}>{fmt(p!.price)}</div>
               </div>
             </div>
           </AdImpression>

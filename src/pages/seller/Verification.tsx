@@ -114,7 +114,7 @@ export function Verification() {
           >
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
           </button>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin:0;")}>Verification</h1>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;margin:0;")}>Verification</h1>
         </div>
 
         {/* Status hero */}
@@ -125,7 +125,7 @@ export function Verification() {
             </span>
             <div>
               <div className="agx-eyebrow" style={css(`font-size:11px;color:${tone.accent};`)}>{copy.eyebrow}</div>
-              <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(20px,2.6vw,26px);line-height:1.2;margin-top:3px;color:${tone.fg};`)}>{copy.heading}</div>
+              <div style={css(`font-family:var(--ag-display);font-weight:700;font-size:clamp(20px,2.6vw,26px);line-height:1.2;margin-top:3px;color:${tone.fg};`)}>{copy.heading}</div>
             </div>
           </div>
           <div style={css(`font-size:13.5px;font-weight:600;line-height:1.6;margin-top:14px;color:${tone.fg};opacity:.9;`)}>{copy.body}</div>
@@ -153,7 +153,7 @@ export function Verification() {
           <div style={css('margin-top:16px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
             <div style={css('display:flex;align-items:center;gap:8px;')}>
               <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${tone.accent};`)}>feedback</span>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;")}>
+              <div style={css("font-weight:700;font-size:18px;")}>
                 {status === 'rejected' ? 'Reason' : 'What needs changing'}
               </div>
             </div>
@@ -163,7 +163,7 @@ export function Verification() {
 
         {/* What the team checks */}
         <div style={css('margin-top:16px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;")}>What our team verifies</div>
+          <div style={css("font-weight:700;font-size:18px;")}>What our team verifies</div>
           <div style={css('margin-top:12px;display:flex;flex-direction:column;gap:10px;')}>
             {CHECKS.map((c) => (
               <div key={c.label} style={css('display:flex;align-items:center;gap:11px;')}>

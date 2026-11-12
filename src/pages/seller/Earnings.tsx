@@ -179,7 +179,7 @@ export function Earnings() {
         >
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Earnings</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;")}>Earnings</h1>
       </div>
 
       {/* Hero — net earnings after commission ------------------------------ */}
@@ -189,7 +189,7 @@ export function Earnings() {
           <div style={css('font-size:13px;opacity:.85;')}>
             Your earnings · {new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
           </div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(34px,5vw,44px);line-height:1;margin-top:6px;")}>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(34px,5vw,44px);line-height:1;margin-top:6px;")}>
             {loading ? (
               // The shimmer tokens are tuned for the page background and would
               // read as a pale smudge on the crimson hero, so this instance
@@ -228,7 +228,7 @@ export function Earnings() {
         {TILES.map((t) => (
           <div key={t.label} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:14px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
             <div style={css('font-size:12px;color:var(--ag-muted);font-weight:700;')}>{t.label}</div>
-            <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1.1;margin-top:5px;color:${t.color};word-break:break-word;`)}>{t.value}</div>
+            <div style={css(`font-family:var(--ag-display);font-weight:700;font-size:24px;line-height:1.1;margin-top:5px;color:${t.color};word-break:break-word;`)}>{t.value}</div>
           </div>
         ))}
       </div>
@@ -241,21 +241,21 @@ export function Earnings() {
         <div style={css('margin-top:14px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);border-radius:20px;padding:16px 18px;')}>
           <div style={css('display:flex;align-items:center;gap:9px;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-gold-text);font-size:20px;")}>payments</span>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;color:var(--ag-gold-text);")}>Cash on delivery · withdrawn</div>
+            <div style={css("font-weight:700;font-size:18px;color:var(--ag-gold-text);")}>Cash on delivery · withdrawn</div>
           </div>
 
           <div style={css('display:flex;gap:14px;flex-wrap:wrap;margin-top:13px;')}>
             <div style={css('flex:1;min-width:130px;')}>
               <div style={css('font-size:12px;color:var(--ag-gold-text);font-weight:700;')}>Cash you collected</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-gold-text);")}>{fmt(codCash)}</div>
+              <div style={css("font-variant-numeric:tabular-nums;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-gold-text);")}>{fmt(codCash)}</div>
             </div>
             <div style={css('flex:1;min-width:130px;')}>
               <div style={css('font-size:12px;color:var(--ag-gold-text);font-weight:700;')}>Commission owed on it</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-bad-text);")}>– {fmt(codCommissionOwed)}</div>
+              <div style={css("font-variant-numeric:tabular-nums;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-bad-text);")}>– {fmt(codCommissionOwed)}</div>
             </div>
             <div style={css('flex:1;min-width:130px;')}>
               <div style={css('font-size:12px;color:var(--ag-gold-text);font-weight:700;')}>Still to collect</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-gold-text);")}>{fmt(codOutstanding)}</div>
+              <div style={css("font-variant-numeric:tabular-nums;font-weight:700;font-size:23px;line-height:1.1;margin-top:4px;color:var(--ag-gold-text);")}>{fmt(codOutstanding)}</div>
             </div>
           </div>
 
@@ -286,7 +286,7 @@ export function Earnings() {
       )}
 
       {/* Last 7 days -------------------------------------------------------- */}
-      <div style={css("padding:22px 0 10px;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Last 7 days</div>
+      <div style={css("padding:22px 0 10px;font-weight:700;font-size:20px;")}>Last 7 days</div>
       <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:18px 16px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
         {peak === 1 && !loading ? (
           <div style={css('padding:14px 4px;text-align:center;color:var(--ag-muted);font-size:13.5px;font-weight:600;')}>
@@ -309,7 +309,7 @@ export function Earnings() {
       <PayoutHistory boutiqueId={boutique?.id} slaHours={slaHours} />
 
       {/* Payout destination -------------------------------------------------- */}
-      <div style={css("padding:22px 0 10px;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Payout account</div>
+      <div style={css("padding:22px 0 10px;font-weight:700;font-size:20px;")}>Payout account</div>
       <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px 18px;box-shadow:0 14px 32px -28px rgba(107,20,54,.55);')}>
         {payout?.account ? (
           <div style={css('display:flex;flex-direction:column;gap:9px;')}>

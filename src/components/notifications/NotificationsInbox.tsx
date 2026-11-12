@@ -137,7 +137,7 @@ export function NotificationsInbox({ backTo, console: surface, embedded = false 
             <button onClick={() => navigate(backTo)} aria-label="Go back" style={css('width:42px;height:42px;border-radius:12px;border:none;background:var(--ag-surface);box-shadow:0 6px 18px -12px rgba(107,20,54,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
             </button>
-            <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;flex:1;margin:0;")}>Notifications</h1>
+            <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;flex:1;margin:0;")}>Notifications</h1>
           </>
         )}
         {unreadCount > 0 && (
@@ -167,7 +167,7 @@ export function NotificationsInbox({ backTo, console: surface, embedded = false 
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:var(--ag-muted-soft);")}>
               notifications_none
             </span>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;margin-top:12px;")}>
+            <div style={css("font-weight:700;font-size:20px;margin-top:12px;")}>
               No notifications yet
             </div>
             <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:6px;max-width:330px;line-height:1.55;')}>

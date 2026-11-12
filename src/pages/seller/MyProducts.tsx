@@ -193,7 +193,7 @@ export function MyProducts() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 12px;display:flex;align-items:center;justify-content:space-between;')}>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>My Products</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;")}>My Products</h1>
         <button className="agx-con-btn" onClick={() => navigate('/seller/add-product')} style={css('color:#fff;border:none;border-radius:12px;padding:9px 14px;font-weight:800;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>add</span>Add
         </button>
@@ -293,7 +293,7 @@ export function MyProducts() {
         <div onClick={closeEdit} style={css('position:fixed;inset:0;z-index:50;background:rgba(42,16,25,.42);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;')}>
           <div onClick={(e) => e.stopPropagation()} style={css('width:100%;max-width:520px;margin:auto;background:var(--ag-bg);border-radius:22px;padding:18px 20px 24px;box-shadow:0 30px 80px -30px rgba(107,20,54,.6);display:flex;flex-direction:column;max-height:calc(100dvh - 40px);')}>
             <div style={css('flex:none;display:flex;align-items:center;justify-content:space-between;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;")}>Edit product</div>
+              <div style={css("font-family:var(--ag-display);font-weight:700;font-size:22px;")}>Edit product</div>
               <button onClick={closeEdit} style={css('width:44px;height:44px;border-radius:12px;border:none;background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>close</span>
               </button>

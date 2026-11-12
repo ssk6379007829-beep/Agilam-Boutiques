@@ -208,7 +208,7 @@ export function StoryViewer({
               {current.title}
             </span>
             <span style={css('display:flex;align-items:baseline;gap:8px;margin-top:3px;')}>
-              <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:#F4D9A6;")}>{fmt(current.price)}</span>
+              <span style={css("font-variant-numeric:tabular-nums;font-weight:700;font-size:19px;color:#F4D9A6;")}>{fmt(current.price)}</span>
               {hasMrp && (
                 <span style={css('font-size:12.5px;color:rgba(255,255,255,.6);text-decoration:line-through;')}>{fmt(current.mrp as number)}</span>
               )}

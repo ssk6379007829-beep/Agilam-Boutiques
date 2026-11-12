@@ -165,7 +165,7 @@ export function OrderFeedbackSheet({
       >
         <div style={css('display:flex;align-items:flex-start;justify-content:space-between;gap:12px;')}>
           <div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1.15;")}>
+            <div style={css("font-family:var(--ag-display);font-weight:700;font-size:22px;line-height:1.15;")}>
               How was your order?
             </div>
             <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:4px;line-height:1.5;')}>

@@ -29,7 +29,7 @@ deployed to Vercel.
 
 ## Rules that bite
 
-1. **Migrations are numbered and applied by hand.** The next one is `0107`. Writing
+1. **Migrations are numbered and applied by hand.** The next one is `0113`. Writing
    a migration file does NOT put it in the database — the user runs it in Supabase,
    or asks the assistant to apply it over the Supabase MCP (`0105`/`0106` went in
    that way on 2026-08-31; never apply one unasked).
@@ -78,6 +78,31 @@ deployed to Vercel.
    for a NEW shop.
 4. **Colours are `--ag-*` CSS variables, never literal hex.** The app has a full
    light/dark theme; a hardcoded colour breaks dark mode. See `src/lib/tokens.ts`.
+   **Two typefaces, and only two** (set 2026-11-12, replacing Playfair Display
+   + Manrope + IBM Plex Mono). **Fraunces** is the display face, used as
+   `font-family:var(--ag-display)` and never as a named family — it is for
+   **titles and headings only**. **Archivo** is everything else: it is the
+   `body` face, so body text, labels and anything at or below 21px simply
+   inherit it and should declare no family at all. Both are defined in
+   `src/index.css`; Archivo is also `/sell`'s own face (`FACE` in
+   `src/pages/sell/type.ts`), and the two stacks are kept identical on purpose.
+   Don't add a third family without deleting one.
+   **Money and codes get tabular figures.** Money is Archivo with
+   `font-variant-numeric:tabular-nums` at every size, so figures align down a
+   column. The nine places showing a coupon code, order id, expense reference
+   or hex field use the `.agx-code` class, which adds tabular figures and a
+   little tracking — **not** a monospace. There is no monospace in the app any
+   more, on either site.
+   The history is worth knowing, because each mistake is easy to repeat:
+   Playfair sat at 13–21px on nav labels, avatar initials and prices, which is
+   the "lining zeros read as capital O" finding in
+   `docs/archive/2026-08/MANGAIMART_UI_UX_AUDIT.md`; and IBM Plex Mono was on
+   36 sites plus every `.agx-eyebrow`, so section labels and decorative counts
+   ("12 of 340", "8 styles") were set in a typewriter face. A count is a
+   number, not a code.
+   The email templates in `supabase/functions/*` are **not** part of any of
+   this — they set `Georgia,'Times New Roman',serif` as their real face,
+   because an inbox loads no webfont and resolves no custom property.
 5. **`boutiques` cannot be read with `select('*')`** — column-level grants since
    the onboarding/verification work. Name the columns.
 6. **`SUPABASE_URL` and `VITE_SUPABASE_URL` can point at different projects.**

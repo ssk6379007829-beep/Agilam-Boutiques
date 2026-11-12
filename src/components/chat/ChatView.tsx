@@ -497,7 +497,7 @@ export function ChatView({
                     {order.status && <div className="agx-eyebrow" style={css('font-size:9px;color:var(--ag-muted);')}>{order.status}</div>}
                     <div style={css('font-size:13.5px;font-weight:700;color:var(--ag-ink);line-height:1.25;margin-top:2px;')}>{order.title}</div>
                     <div style={css('display:flex;align-items:baseline;gap:8px;margin-top:4px;')}>
-                      {order.amount != null && <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:16px;")}>{fmt(order.amount)}</span>}
+                      {order.amount != null && <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:16px;")}>{fmt(order.amount)}</span>}
                       {order.qty != null && <span style={css('font-size:11px;color:var(--ag-muted);font-weight:600;')}>Qty {order.qty}</span>}
                     </div>
                   </div>
@@ -525,7 +525,7 @@ export function ChatView({
                   <div style={css('flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;')}>
                     {card.cat && <div className="agx-eyebrow" style={css('font-size:9px;color:var(--ag-muted);')}>{card.cat}</div>}
                     <div style={css('font-size:13.5px;font-weight:700;color:var(--ag-ink);line-height:1.25;margin-top:2px;')}>{card.title}</div>
-                    <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:16px;margin-top:4px;")}>{fmt(card.price)}</div>
+                    <div style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:16px;margin-top:4px;")}>{fmt(card.price)}</div>
                   </div>
                 </div>
                 <div style={css('font-size:10px;color:var(--ag-muted-soft);padding:0 12px 8px;text-align:right;')}>{c.time}</div>

@@ -98,7 +98,7 @@ export function ShortlistDetail() {
     return (
       <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:70px 26px;')}>
         <Icon name="link_off" style={{ fontSize: 40, color: 'var(--ag-border)' }} />
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;margin-top:14px;")}>
+        <div style={css("font-family:var(--ag-display);font-weight:700;font-size:23px;margin-top:14px;")}>
           Shortlist not found
         </div>
         <Link to="/shortlists" style={css('margin-top:16px;color:var(--ag-crimson);font-weight:800;font-size:14px;text-decoration:none;')}>
@@ -206,7 +206,7 @@ export function ShortlistDetail() {
           <Icon name="arrow_back" style={{ fontSize: 19 }} />
         </button>
         <div style={css('flex:1;min-width:0;')}>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.4vw,30px);line-height:1.15;margin:0;")}>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(21px,2.4vw,30px);line-height:1.15;margin:0;")}>
             {board.title}
           </h1>
           <div style={css('font-size:12px;color:var(--ag-muted);margin-top:3px;')}>
@@ -309,7 +309,7 @@ export function ShortlistDetail() {
                     {p?.title ?? 'This piece is no longer listed'}
                   </div>
                   {p && (
-                    <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:17px;margin-top:3px;")}>
+                    <div style={css("font-weight:700;font-variant-numeric:tabular-nums;color:var(--ag-crimson);font-size:17px;margin-top:3px;")}>
                       {fmt(Number(p.price))}
                     </div>
                   )}
@@ -384,7 +384,7 @@ export function ShortlistDetail() {
 
       {/* ── The conversation ───────────────────────────────────────────── */}
       <div style={css('margin-top:24px;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;")}>What everyone said</div>
+        <div style={css("font-weight:700;font-size:19px;")}>What everyone said</div>
         <div style={css('display:flex;flex-direction:column;gap:9px;margin-top:12px;')}>
           {(comments ?? []).length === 0 && (
             <div style={css('font-size:13px;color:var(--ag-muted);line-height:1.5;')}>

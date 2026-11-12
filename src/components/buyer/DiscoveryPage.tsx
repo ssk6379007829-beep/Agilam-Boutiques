@@ -11,6 +11,7 @@ import { useGoBack } from '@/hooks/useGoBack';
 import { routes } from '@/lib/seo';
 import { TONES, fmt, type Product } from '@/data/demo';
 import { compactCount } from '@/lib/ranking';
+import { useShowsRating } from '@/lib/ratingDisplay';
 
 /**
  * Shared chrome for the four "See all" discovery pages — Collections, New
@@ -68,13 +69,13 @@ export function DiscoveryHeader({
       </div>
 
       <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin-top:14px;')}>{eyebrow}</div>
-      <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.4vw,44px);line-height:1.08;margin:6px 0 0;letter-spacing:-.015em;text-wrap:balance;")}>
+      <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(28px,3.4vw,44px);line-height:1.08;margin:6px 0 0;letter-spacing:-.015em;text-wrap:balance;")}>
         {title}{accent && <> <span style={css('font-style:italic;color:var(--ag-crimson);')}>{accent}</span></>}
       </h1>
       <div style={css('display:flex;align-items:baseline;flex-wrap:wrap;gap:10px;margin-top:10px;')}>
         <div style={css('color:var(--ag-muted);font-size:14px;line-height:1.6;max-width:620px;')}>{subtitle}</div>
         {count != null && (
-          <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;white-space:nowrap;")}>
+          <div style={css("font-variant-numeric:tabular-nums;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;white-space:nowrap;")}>
             {count} {countLabel ?? (count === 1 ? 'piece' : 'pieces')}
           </div>
         )}
@@ -113,7 +114,7 @@ export function RankingNote({ lines }: { lines: { term: string; weight?: string;
             {lines.map((l) => (
               <div key={l.term} style={css('display:flex;gap:10px;align-items:flex-start;')}>
                 {l.weight && (
-                  <span style={css("flex:none;min-width:42px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--ag-crimson);background:var(--ag-surface-2);border-radius:8px;padding:4px 7px;text-align:center;")}>
+                  <span style={css("flex:none;min-width:42px;font-variant-numeric:tabular-nums;font-size:11px;font-weight:700;color:var(--ag-crimson);background:var(--ag-surface-2);border-radius:8px;padding:4px 7px;text-align:center;")}>
                     {l.weight}
                   </span>
                 )}
@@ -150,10 +151,10 @@ export function SectionLabel({ icon, title, note }: { icon: string; title: strin
     <div style={css('display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:34px 2px 14px;')}>
       <div style={css('display:flex;align-items:center;gap:9px;')}>
         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:var(--ag-crimson);")}>{icon}</span>
-        <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(19px,2vw,24px);color:var(--ag-ink);margin:0;")}>{title}</h2>
+        <h2 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(19px,2vw,24px);color:var(--ag-ink);margin:0;")}>{title}</h2>
       </div>
       {note && (
-        <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;white-space:nowrap;")}>{note}</span>
+        <span style={css("font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;white-space:nowrap;")}>{note}</span>
       )}
     </div>
   );
@@ -186,6 +187,8 @@ export function CatalogCard({
   rank?: number;
 }) {
   const soldOut = p.stock === 0;
+  /** Whether a rating may be printed at all — see src/lib/ratingDisplay.ts. */
+  const showsRating = useShowsRating();
 
   /**
    * A real `<a href>`, not a `<div onClick>`.
@@ -211,7 +214,7 @@ export function CatalogCard({
 
         {/* Rank chip — only the top few carry one; past that a number is noise. */}
         {rank != null && rank <= 10 && (
-          <div style={css("position:absolute;left:10px;top:10px;min-width:26px;height:26px;padding:0 7px;border-radius:9px;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(176,36,84,.9);")}>
+          <div style={css("position:absolute;left:10px;top:10px;min-width:26px;height:26px;padding:0 7px;border-radius:9px;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);color:#fff;font-variant-numeric:tabular-nums;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(176,36,84,.9);")}>
             {rank}
           </div>
         )}
@@ -243,8 +246,8 @@ export function CatalogCard({
         <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
         <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>{p.boutique}</div>
         <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;')}>
-          <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
-          {p.reviews > 0 && (
+          <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
+          {showsRating(p.rating, p.reviews) && (
             <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>
               {p.rating}
@@ -314,7 +317,7 @@ export function ShowMore({ shown, total, onMore }: { shown: number; total: numbe
       >
         Show more
       </button>
-      <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);")}>{shown} of {total}</span>
+      <span style={css("font-variant-numeric:tabular-nums;font-size:11px;color:var(--ag-muted-soft);")}>{shown} of {total}</span>
     </div>
   );
 }

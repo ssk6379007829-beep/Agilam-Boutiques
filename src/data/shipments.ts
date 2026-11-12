@@ -29,14 +29,28 @@ export type Shipment = {
   awb: string;
   tracking_url: string | null;
   shipped_at: string;
-  /** Migration 0067. 'manual' = the seller typed the docket; 'shiprocket' = we
-   *  booked it and a courier scan drives the timeline. Optional because the
-   *  column list falls back when 0067 has not been applied. */
-  provider?: 'manual' | 'shiprocket';
+  /** Migrations 0067 and 0110. 'manual' = the seller typed the docket;
+   *  'shiprocket' / 'shadowfax' = we booked it and a courier scan drives the
+   *  timeline. Optional because the column list falls back when 0067 has not
+   *  been applied. */
+  provider?: 'manual' | 'shiprocket' | 'shadowfax';
   label_url?: string | null;
   freight_charge?: number | null;
   last_status?: string | null;
   last_status_at?: string | null;
+  /** Migration 0110, Shadowfax only. 'hyperlocal' is an intracity run measured
+   *  in hours; 'surface' is the multi-day parcel. NULL on manual and Shiprocket
+   *  parcels, which have no such split. */
+  service_level?: 'hyperlocal' | 'surface' | null;
+  /** Assigned after booking on a hyperlocal run, so it arrives by webhook
+   *  rather than in the booking response. The first thing anyone asks for when
+   *  a pickup is late. */
+  sfx_rider_name?: string | null;
+  sfx_rider_phone?: string | null;
+  /** What a return-to-origin cost us, and who an admin decided bears it.
+   *  NULL bearer = undecided, which is where every RTO starts. */
+  rto_freight_charge?: number | null;
+  rto_bearer?: 'seller' | 'platform' | null;
 };
 
 const SHIPMENT_COLUMNS = 'id, order_id, boutique_id, courier_id, courier_name, awb, tracking_url, shipped_at';
@@ -47,6 +61,12 @@ const SHIPMENT_COLUMNS = 'id, order_id, boutique_id, courier_id, courier_name, a
  *  rather than just losing the booking extras. */
 const SHIPMENT_COLUMNS_V2 =
   `${SHIPMENT_COLUMNS}, provider, label_url, freight_charge, last_status, last_status_at`;
+
+/** The 0110 columns. Same ladder, one rung further up: a deploy with 0067 but
+ *  not 0110 keeps Shiprocket tracking and simply shows no rider or RTO detail,
+ *  rather than losing the tracking card entirely. */
+const SHIPMENT_COLUMNS_V3 =
+  `${SHIPMENT_COLUMNS_V2}, service_level, sfx_rider_name, sfx_rider_phone, rto_freight_charge, rto_bearer`;
 
 /**
  * Substitute the AWB into a courier's template.
@@ -106,6 +126,13 @@ export async function saveCourier(
  * the order screens must still render, just without tracking.
  */
 export async function fetchShipment(orderId: string): Promise<Shipment | null> {
+  const widest = await supabase
+    .from('shipments')
+    .select(SHIPMENT_COLUMNS_V3)
+    .eq('order_id', orderId)
+    .maybeSingle();
+  if (!widest.error) return (widest.data as Shipment | null) ?? null;
+
   const wide = await supabase
     .from('shipments')
     .select(SHIPMENT_COLUMNS_V2)
@@ -135,6 +162,12 @@ export async function fetchShipment(orderId: string): Promise<Shipment | null> {
 export async function fetchShipmentsForOrders(orderIds: string[]): Promise<Record<string, Shipment>> {
   if (orderIds.length === 0) return {};
   const byOrder: Record<string, Shipment> = {};
+
+  const widest = await supabase.from('shipments').select(SHIPMENT_COLUMNS_V3).in('order_id', orderIds);
+  if (!widest.error) {
+    for (const s of (widest.data ?? []) as unknown as Shipment[]) byOrder[s.order_id] = s;
+    return byOrder;
+  }
 
   const wide = await supabase.from('shipments').select(SHIPMENT_COLUMNS_V2).in('order_id', orderIds);
   if (!wide.error) {
@@ -239,44 +272,6 @@ export type ShipmentBooking = {
   weightEstimated: boolean;
 };
 
-/**
- * Book the parcel with Shiprocket and ship the order in one call.
- *
- * Runs as a Supabase Edge Function, not a Vercel route: `api/` holds exactly 12
- * functions, which is the Hobby ceiling, so a thirteenth would fail the deploy.
- *
- * Every order is prepaid (migration 0085), so every parcel is bookable. The
- * function and its trigger still refuse a historical COD order: Shiprocket
- * remits collected cash to the wallet holder (us), which for those rows would
- * make the platform the money handler.
- */
-export async function bookShiprocketShipment(orderId: string): Promise<ShipmentBooking> {
-  const { data, error } = await supabase.functions.invoke('shiprocket-book', {
-    body: { orderId },
-  });
-
-  if (error) {
-    // supabase-js turns any non-2xx into an opaque "Edge Function returned a
-    // non-2xx status code" and hides the body on `error.context`. Every refusal
-    // this function makes is written to be read by a seller, so dig it out —
-    // "Check the wallet balance" is actionable, the generic message is not.
-    let message = error.message;
-    const res = (error as { context?: Response }).context;
-    if (res && typeof res.json === 'function') {
-      try {
-        const body = await res.json();
-        if (body?.error) message = body.error as string;
-      } catch {
-        /* not JSON — keep the generic message */
-      }
-    }
-    throw new Error(message);
-  }
-
-  if (!data?.ok) throw new Error(data?.error ?? 'Booking failed');
-  return data as ShipmentBooking;
-}
-
 /** Is Shiprocket booking available for this shop right now? Both switches must
  *  be on and an admin must have registered the shop's pickup location. */
 export async function fetchShiprocketAvailability(boutiqueId: string): Promise<boolean> {
@@ -289,6 +284,93 @@ export async function fetchShiprocketAvailability(boutiqueId: string): Promise<b
     (shop as { shiprocket_enabled?: boolean } | null)?.shiprocket_enabled &&
     (shop as { shiprocket_pickup_location?: string | null } | null)?.shiprocket_pickup_location,
   );
+}
+
+/* ── Booking, across carriers ──────────────────────────────────────────────── */
+
+export type ParcelBooking = ShipmentBooking & {
+  /** Which carrier actually took it. The seller does not choose — but they do
+   *  have to recognise whoever turns up at their door. */
+  provider: 'shiprocket' | 'shadowfax';
+  serviceLevel?: 'hyperlocal' | 'surface' | null;
+  /** True when the first carrier declined and a later one took it. */
+  fellBack?: boolean;
+  fallbackReason?: string;
+  /** Every carrier that declined, and why. Shown to nobody by default; worth
+   *  having in the response when a seller asks why their parcel went by a
+   *  courier they did not expect. */
+  attempts?: { carrier: string; reason: string }[];
+};
+
+/**
+ * Book the parcel and ship the order, whichever carrier will take it.
+ *
+ * ONE call. The chain — Shiprocket, then Shadowfax, then the manual docket
+ * form — runs server-side in the `book-parcel` Edge Function, so a browser
+ * that navigates away mid-flight cannot leave an order paid, packed and
+ * unshipped with no record of why.
+ *
+ * Shiprocket leads because it is an AGGREGATOR: it routes across several
+ * couriers per pincode, where any single carrier has rural gaps. Shadowfax led
+ * until 2026-11-12, when a rural pincode came back unserviceable.
+ *
+ * Throws only when NO carrier would take it. The error then carries
+ * `canShipManually`, which the ship sheet uses to drop the seller onto the
+ * manual docket form rather than leaving them stuck holding a packed parcel.
+ */
+export async function bookParcel(orderId: string): Promise<ParcelBooking> {
+  const { data, error } = await supabase.functions.invoke('book-parcel', {
+    body: { orderId },
+  });
+
+  if (error) {
+    // supabase-js turns any non-2xx into an opaque "Edge Function returned a
+    // non-2xx status code" and hides the body on `error.context`. Every refusal
+    // the chain makes is written to be read by a seller, so dig it out.
+    let message = error.message;
+    let canShipManually = false;
+    const res = (error as { context?: Response }).context;
+    if (res && typeof res.json === 'function') {
+      try {
+        const body = await res.json();
+        if (body?.error) message = body.error as string;
+        canShipManually = Boolean(body?.canShipManually);
+      } catch {
+        /* not JSON — keep the generic message */
+      }
+    }
+    const err = new Error(message) as Error & { canShipManually?: boolean };
+    err.canShipManually = canShipManually;
+    throw err;
+  }
+
+  if (!data?.ok) throw new Error(data?.error ?? 'Booking failed');
+  return data as ParcelBooking;
+}
+
+/** Is Shadowfax booking available for this shop right now? Both switches must
+ *  be on, and the shop needs a pickup pincode for the serviceability check.
+ *  Unlike Shiprocket there is no pickup nickname to register: the booking sends
+ *  the shop's own address and map pin (0076) with every parcel. */
+export async function fetchShadowfaxAvailability(boutiqueId: string): Promise<boolean> {
+  const [{ data: settings }, { data: shop }] = await Promise.all([
+    supabase.from('platform_settings').select('shadowfax_enabled').eq('id', 1).maybeSingle(),
+    supabase.from('boutiques').select('shadowfax_enabled, pincode').eq('id', boutiqueId).maybeSingle(),
+  ]);
+  return Boolean(
+    (settings as { shadowfax_enabled?: boolean } | null)?.shadowfax_enabled &&
+    (shop as { shadowfax_enabled?: boolean } | null)?.shadowfax_enabled &&
+    (shop as { pincode?: string | null } | null)?.pincode,
+  );
+}
+
+/** Point a boutique at Shadowfax, or take it off. */
+export async function saveBoutiqueShadowfax(
+  boutiqueId: string,
+  patch: { shadowfax_enabled: boolean },
+): Promise<void> {
+  const { error } = await supabase.from('boutiques').update(patch).eq('id', boutiqueId);
+  if (error) throw error;
 }
 
 /* ── Shiprocket admin ──────────────────────────────────────────────────────── */
@@ -319,6 +401,10 @@ export type ShiprocketShopRow = {
    *  than pasted in by an admin, and the last failure if it was refused. */
   shiprocket_pickup_registered_at: string | null;
   shiprocket_pickup_error: string | null;
+  /** Migration 0110. Optional because the column list falls back when 0110 has
+   *  not been applied — the admin console then shows the Shiprocket columns it
+   *  always did rather than an empty table. */
+  shadowfax_enabled?: boolean;
 };
 
 const SHOP_COLUMNS =
@@ -333,6 +419,17 @@ const SHOP_COLUMNS =
  * column-level grants in 0021.
  */
 export async function fetchShiprocketShops(): Promise<ShiprocketShopRow[]> {
+  // 0110's column first, falling back to the 0068 set. Naming a column that
+  // does not exist yet fails the WHOLE query, and this one is wrapped in a
+  // `.catch(() => [])` at the call site — so without this ladder an
+  // un-migrated deploy would show an empty boutique table rather than the
+  // Shiprocket administration it has always had.
+  const wide = await supabase
+    .from('boutiques')
+    .select(`${SHOP_COLUMNS}, shadowfax_enabled`)
+    .order('name');
+  if (!wide.error) return (wide.data ?? []) as unknown as ShiprocketShopRow[];
+
   const { data, error } = await supabase
     .from('boutiques')
     .select(SHOP_COLUMNS)
@@ -414,7 +511,13 @@ export async function registerShiprocketPickup(
   return { nickname: data.nickname as string, alreadyRegistered: Boolean(data.alreadyRegistered) };
 }
 
-export type PlatformSwitches = { shiprocket_enabled: boolean };
+export type PlatformSwitches = {
+  shiprocket_enabled: boolean;
+  /** Migration 0110. Undefined — not false — when that migration has not been
+   *  applied, so the console can show "migration not applied" rather than a
+   *  switch that silently does nothing when toggled. */
+  shadowfax_enabled?: boolean;
+};
 
 /**
  * The courier-booking master switch (0067). `cod_enabled` (0066) used to sit
@@ -427,6 +530,17 @@ export type PlatformSwitches = { shiprocket_enabled: boolean };
  * when toggled.
  */
 export async function fetchPlatformSwitches(): Promise<PlatformSwitches | null> {
+  // Both switches first, falling back to Shiprocket alone. Naming a column that
+  // does not exist yet fails the WHOLE query, so without this ladder a deploy
+  // with 0067 but not 0110 would lose the Shiprocket switch too — reporting
+  // "migration not applied" for an integration that is in fact live.
+  const wide = await supabase
+    .from('platform_settings')
+    .select('shiprocket_enabled, shadowfax_enabled')
+    .eq('id', 1)
+    .maybeSingle();
+  if (!wide.error) return (wide.data as PlatformSwitches | null) ?? null;
+
   const { data, error } = await supabase
     .from('platform_settings')
     .select('shiprocket_enabled')

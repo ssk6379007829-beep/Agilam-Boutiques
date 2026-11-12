@@ -104,7 +104,7 @@ export function ProductAnalytics() {
         <button onClick={goBack} aria-label="Back" className="agx-con-icon">
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:0;")}>Product analytics</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;margin:0;")}>Product analytics</h1>
       </div>
 
       {loading && !p && (
@@ -150,7 +150,7 @@ export function ProductAnalytics() {
                 <span style={css(`width:44px;height:44px;border-radius:12px;background:${t.tint};display:flex;align-items:center;justify-content:center;`)}>
                   <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:20px;color:${t.ic};`)}>{t.icon}</span>
                 </span>
-                <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:11px;color:var(--ag-ink);word-break:break-word;")}>{t.value}</div>
+                <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;margin-top:11px;color:var(--ag-ink);word-break:break-word;")}>{t.value}</div>
                 <div style={css('color:var(--ag-muted);font-size:12px;font-weight:700;margin-top:3px;')}>{t.label}</div>
               </div>
             ))}

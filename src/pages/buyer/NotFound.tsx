@@ -44,7 +44,7 @@ export function NotFound() {
         <p className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);margin:22px 0 0;')}>
           Error 404
         </p>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.6vw,44px);line-height:1.06;letter-spacing:-.015em;margin:8px 0 0;")}>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(28px,3.6vw,44px);line-height:1.06;letter-spacing:-.015em;margin:8px 0 0;")}>
           We couldn’t find that page
         </h1>
         <p style={css('color:var(--ag-muted);font-size:15px;line-height:1.6;margin:12px auto 0;max-width:460px;')}>
@@ -52,7 +52,7 @@ export function NotFound() {
           Everything else is still here.
         </p>
 
-        <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;margin:38px 0 0;")}>
+        <h2 style={css("font-weight:700;font-size:20px;margin:38px 0 0;")}>
           Where would you like to go?
         </h2>
 

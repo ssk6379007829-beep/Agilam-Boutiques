@@ -150,7 +150,7 @@ export function SharedBoard() {
     return (
       <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:70px 26px;')}>
         <Icon name="link_off" style={{ fontSize: 42, color: 'var(--ag-border)' }} />
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:16px;")}>
+        <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;margin-top:16px;")}>
           {error ?? 'Shortlist not found'}
         </div>
         <div style={css('color:var(--ag-muted);font-size:14px;margin-top:8px;max-width:340px;line-height:1.55;')}>
@@ -175,7 +175,7 @@ export function SharedBoard() {
         <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>
           {owner ? `${owner} needs your help` : 'Help them pick'}
         </div>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(25px,3vw,38px);line-height:1.15;margin:7px 0 0;")}>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(25px,3vw,38px);line-height:1.15;margin:7px 0 0;")}>
           {board.title}
         </h1>
         {board.note && (
@@ -282,7 +282,7 @@ export function SharedBoard() {
                       {item.title}
                     </div>
                     <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:2px;')}>{item.boutique_name}</div>
-                    <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:18px;margin-top:4px;")}>
+                    <div style={css("font-weight:700;font-variant-numeric:tabular-nums;color:var(--ag-crimson);font-size:18px;margin-top:4px;")}>
                       {fmt(Number(item.price))}
                     </div>
                   </Link>
@@ -385,7 +385,7 @@ export function SharedBoard() {
 
       {/* ── The conversation ───────────────────────────────────────────── */}
       <div style={css('margin-top:24px;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;")}>What everyone's saying</div>
+        <div style={css("font-weight:700;font-size:19px;")}>What everyone's saying</div>
 
         <div style={css('display:flex;flex-direction:column;gap:9px;margin-top:12px;')}>
           {(data?.comments ?? []).length === 0 && (
@@ -439,7 +439,7 @@ export function SharedBoard() {
       {/* ── The invitation. They came to judge four sarees; they're standing
           in the shop. ─────────────────────────────────────────────────── */}
       <div style={css('margin-top:26px;padding:18px;border-radius:18px;background:var(--ag-surface);border:1.5px solid var(--ag-border);text-align:center;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:18px;")}>
+        <div style={css("font-weight:700;font-size:18px;")}>
           Found something you like?
         </div>
         <div style={css('font-size:13px;color:var(--ag-muted);margin-top:6px;line-height:1.55;')}>

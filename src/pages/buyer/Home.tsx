@@ -11,6 +11,7 @@ import { useShop, DEFAULT_FILTERS } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { TONES, fmt, img } from '@/data/demo';
 import { newArrivals, bestSellers, bestSellingBoutiques } from '@/lib/ranking';
+import { useShowsRating } from '@/lib/ratingDisplay';
 import { buildCollections } from '@/lib/collections';
 import { shopPath } from '@/lib/searchParams';
 import { sameTerm } from '@/lib/vocabulary';
@@ -62,6 +63,8 @@ export function Home() {
   const { wishlist, toggleWish, setFilters, setQuery } = useShop();
   const { products: PRODUCTS, boutiques: BOUTIQUES } = useCatalog();
   const { ads, heroPending } = useLiveAds();
+  /** Whether a rating may be printed at all — see src/lib/ratingDisplay.ts. */
+  const showsRating = useShowsRating();
   const { data: topReviews } = useAsync(() => fetchPublicPlatformReviews(3), []);
   const REVIEWS = topReviews ?? [];
 
@@ -348,7 +351,7 @@ export function Home() {
                         an <h2> at most: the page still has exactly one <h1>,
                         which says what MangaiMart is.
                       */}
-                      <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(27px,4.6vw,60px);line-height:1.04;margin:clamp(9px,1.2vw,14px) 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
+                      <h2 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(27px,4.6vw,60px);line-height:1.04;margin:clamp(9px,1.2vw,14px) 0 0;letter-spacing:-.02em;text-shadow:0 2px 30px rgba(45,8,24,.45);text-wrap:balance;")}>
                         {h.pre}<span style={css('font-style:italic;color:#F4D9A6;')}>{h.accent}</span>{h.post}
                       </h2>
                       <div style={css('font-size:clamp(12.5px,1.25vw,16px);line-height:1.4;opacity:.92;margin-top:clamp(7px,1vw,12px);font-weight:500;max-width:420px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{h.sub}</div>
@@ -412,7 +415,7 @@ export function Home() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:28px 0 16px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Browse every edit</div>
-          <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Shop by collection</h2>
+          <h2 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Shop by collection</h2>
         </div>
         {/* "View all" is the whole catalogue, unfiltered — the opposite of a
             circle, which is one collection. It used to open the Collections
@@ -480,7 +483,7 @@ export function Home() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:38px 0 16px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Fresh off the loom</div>
-          <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>New arrivals</h2>
+          <h2 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>New arrivals</h2>
         </div>
         <a href="/new-arrivals" onClick={(e) => { e.preventDefault(); navigate('/new-arrivals'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>See all →</a>
       </div>
@@ -504,10 +507,12 @@ export function Home() {
               <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
               <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:2px;')}>{p.boutique}</div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:7px;')}>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
-                <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
-                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>{p.rating}
-                </span>
+                <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
+                {showsRating(p.rating, p.reviews) && (
+                  <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>{p.rating}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -518,7 +523,7 @@ export function Home() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:40px 0 18px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Most-loved right now</div>
-          <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best sellers</h2>
+          <h2 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best sellers</h2>
         </div>
         <a href="/best-sellers" onClick={(e) => { e.preventDefault(); navigate('/best-sellers'); }} className="agx-eyebrow" style={css('font-size:10px;color:var(--ag-crimson);display:inline-flex;align-items:center;min-height:44px;padding:0 4px;')}>See all →</a>
       </div>
@@ -541,11 +546,13 @@ export function Home() {
             <div style={css('padding:12px 2px 0;')}>
               <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:7px;')}>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
-                <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
-                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>{p.rating}
-                  <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {reviewsF(p.reviews)}</span>
-                </span>
+                <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
+                {showsRating(p.rating, p.reviews) && (
+                  <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>{p.rating}
+                    <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {reviewsF(p.reviews)}</span>
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -556,7 +563,7 @@ export function Home() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;margin:40px 0 16px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Shops buyers love</div>
-          <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best-selling boutiques</h2>
+          <h2 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(24px,2.6vw,34px);line-height:1.12;padding-bottom:2px;margin:6px 0 0;")}>Best-selling boutiques</h2>
         </div>
         {/* "View all" is the full directory, not a longer version of this rail.
             It used to open /top-boutiques — the same eight shops in the same
@@ -580,7 +587,7 @@ export function Home() {
                 <BoutiqueLogo name={b.name} src={b.logo} size={44} />
                 <div style={css('min-width:0;flex:1;')}>
                   <div style={css('display:flex;align-items:center;gap:5px;')}>
-                    <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
+                    <span style={css("font-weight:700;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
                     {b.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
                   </div>
                   <div style={css('color:var(--ag-muted);font-size:12px;display:flex;align-items:center;gap:3px;margin-top:2px;')}>
@@ -589,10 +596,12 @@ export function Home() {
                 </div>
               </div>
               <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:13px;padding-top:12px;border-top:1px solid var(--ag-border-soft);')}>
-                <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;")}>{b.products} styles</div>
-                <div style={css('display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:5px 10px;white-space:nowrap;')}>
-                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>{b.rating} <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {b.reviews}</span>
-                </div>
+                <div style={css("font-variant-numeric:tabular-nums;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;")}>{b.products} styles</div>
+                {showsRating(b.rating, b.reviews) && (
+                  <div style={css('display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700;background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:5px 10px;white-space:nowrap;')}>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>{b.rating} <span style={css('color:var(--ag-muted-soft);font-weight:600;')}>· {b.reviews}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -619,7 +628,7 @@ export function Home() {
         <div style={css('max-width:1180px;margin:0 auto;padding:clamp(36px,4.5vw,64px) clamp(20px,4vw,56px);')}>
           <div style={css('text-align:center;max-width:600px;margin:0 auto;')}>
             <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Loved across India</div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,40px);line-height:1.08;margin-top:8px;text-wrap:balance;")}>
+            <div style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(26px,3vw,40px);line-height:1.08;margin-top:8px;text-wrap:balance;")}>
               What shoppers say about {' '}<span style={css('font-style:italic;color:var(--ag-crimson);')}>MangaiMart</span>
             </div>
             <div style={css('color:var(--ag-muted);font-size:14px;margin-top:10px;line-height:1.6;')}>
@@ -638,7 +647,7 @@ export function Home() {
                   style={css('margin:0;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:clamp(22px,2.4vw,28px);box-shadow:0 18px 44px -34px rgba(107,20,54,.5);display:flex;flex-direction:column;height:100%;')}
                 >
                   {/* Opening mark — anchors the quote without shouting. */}
-                  <span style={css("font-family:'Playfair Display',serif;font-size:52px;line-height:.6;color:var(--ag-border);height:26px;")}>“</span>
+                  <span style={css("font-family:var(--ag-display);font-size:52px;line-height:.6;color:var(--ag-border);height:26px;")}>“</span>
 
                   <blockquote style={css('margin:14px 0 0;font-size:15px;line-height:1.65;color:var(--ag-ink-2);text-wrap:pretty;flex:1;')}>
                     {r.body}
@@ -662,7 +671,7 @@ export function Home() {
                   </div>
 
                   <figcaption style={css('display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--ag-surface-2);')}>
-                    <span style={css(`width:44px;height:44px;flex:none;border-radius:50%;background:${tone};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:#5C1E38;`)}>
+                    <span style={css(`width:44px;height:44px;flex:none;border-radius:50%;background:${tone};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:19px;color:#5C1E38;`)}>
                       {name[0].toUpperCase()}
                     </span>
                     <span style={css('min-width:0;')}>

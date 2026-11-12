@@ -54,7 +54,7 @@ export function BuyerDetailsSheet({
         <div style={css('width:56px;height:56px;border-radius:17px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 16px 34px -16px rgba(214,51,108,.8);')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:28px;")}>badge</span>
         </div>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;text-align:center;margin-top:15px;line-height:1.15;")}>{title}</div>
+        <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;text-align:center;margin-top:15px;line-height:1.15;")}>{title}</div>
         <div style={css('text-align:center;color:var(--ag-muted);font-size:13.5px;margin-top:8px;line-height:1.5;max-width:330px;margin-left:auto;margin-right:auto;')}>{subtitle}</div>
 
         <div style={css('display:flex;flex-direction:column;gap:14px;margin-top:22px;')}>

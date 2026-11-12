@@ -50,7 +50,7 @@ export function SearchResultsView<C>({
   return (
     <div>
       <div style={css('display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;color:var(--ag-ink);")}>“{term}”</div>
+        <div style={css("font-family:var(--ag-display);font-weight:700;font-size:22px;color:var(--ag-ink);")}>“{term}”</div>
         <div style={css('color:var(--ag-muted);font-size:13px;')}>
           {loading ? 'Searching…' : `${outcome.total} result${outcome.total === 1 ? '' : 's'}`}
         </div>

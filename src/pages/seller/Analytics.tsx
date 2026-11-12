@@ -165,7 +165,7 @@ export function Analytics() {
       <div style={css('max-width:1240px;margin:0 auto;')}>
         <div style={css('padding:6px 0 4px;')}>
           <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);')}>Business insights</div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>Analytics</h1>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin-top:4px;")}>Analytics</h1>
         </div>
 
         {loadError && (
@@ -203,7 +203,7 @@ export function Analytics() {
           {tiles.map((t) => (
             <div key={t.label} className="agx-lift" style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:18px;box-shadow:0 18px 40px -28px rgba(107,20,54,.55);')}>
               <div style={css(`width:42px;height:42px;border-radius:13px;background:${t.tint};display:flex;align-items:center;justify-content:center;`)}><span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';color:${t.ic};`)}>{t.icon}</span></div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:12px;")}>{t.value}</div>
+              <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:12px;")}>{t.value}</div>
               <div style={css('color:var(--ag-muted);font-size:12.5px;font-weight:700;')}>{t.label}</div>
               <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);margin-top:6px;')}>{t.sub}</div>
             </div>
@@ -214,14 +214,14 @@ export function Analytics() {
         <div className="agx-an-grid" style={css('display:grid;gap:18px;margin-top:18px;align-items:start;')}>
           <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Revenue trend</div>
+              <div style={css("font-weight:700;font-size:20px;")}>Revenue trend</div>
               <span style={css('font-size:12px;font-weight:800;color:var(--ag-muted);')}>₹ · {range}</span>
             </div>
             <Bars data={trend} max={maxRev} kind="revenue" />
           </div>
           <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
             <div style={css('display:flex;align-items:center;justify-content:space-between;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Orders trend</div>
+              <div style={css("font-weight:700;font-size:20px;")}>Orders trend</div>
               <span style={css('font-size:12px;font-weight:800;color:var(--ag-muted);')}>Orders · {range}</span>
             </div>
             <Bars data={trend} max={maxOrd} kind="orders" />
@@ -231,7 +231,7 @@ export function Analytics() {
         {/* Top categories + most viewed */}
         <div className="agx-an-grid" style={css('display:grid;gap:18px;margin-top:18px;align-items:start;')}>
           <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Top categories</div>
+            <div style={css("font-weight:700;font-size:20px;")}>Top categories</div>
             <div style={css('font-size:12px;color:var(--ag-muted);margin-top:2px;')}>By revenue · {range}</div>
             <div style={css('display:flex;flex-direction:column;gap:14px;margin-top:18px;')}>
               {topCats.length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;')}>No sales in this period.</div>}
@@ -252,13 +252,13 @@ export function Analytics() {
           </div>
 
           <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:22px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Most viewed products</div>
+            <div style={css("font-weight:700;font-size:20px;")}>Most viewed products</div>
             <div style={css('font-size:12px;color:var(--ag-muted);margin-top:2px;')}>All-time views</div>
             <div style={css('display:flex;flex-direction:column;gap:4px;margin-top:12px;')}>
               {mostViewed.length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>No views recorded yet.</div>}
               {mostViewed.map((p, i) => (
                 <button type="button" className="agx-con-row" key={p.id} onClick={() => navigate(`/seller/products/${p.id}`)} style={css('display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--ag-border-soft);cursor:pointer;')}>
-                  <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${TONES[p.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:rgba(42,26,32,.55);`)}>{i + 1}</div>
+                  <div style={css(`width:40px;height:40px;flex:none;border-radius:12px;background:${TONES[p.tone]};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:rgba(42,26,32,.55);`)}>{i + 1}</div>
                   <div style={css('flex:1;min-width:0;')}>
                     <div style={css('font-weight:800;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{p.title}</div>
                     <div style={css('color:var(--ag-muted);font-size:12px;margin-top:2px;')}>{p.category}</div>
@@ -279,17 +279,17 @@ export function Analytics() {
 
         {/* Top customers */}
         <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:22px;margin-top:18px;box-shadow:0 18px 40px -30px rgba(107,20,54,.55);')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Top customers</div>
+          <div style={css("font-weight:700;font-size:20px;")}>Top customers</div>
           <div style={css('display:flex;flex-direction:column;gap:6px;margin-top:12px;')}>
             {topCustomers.length === 0 && <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>No customers yet.</div>}
             {topCustomers.map((c) => (
               <div key={c.name} style={css('display:flex;align-items:center;gap:13px;padding:11px 0;border-bottom:1px solid var(--ag-border-soft);')}>
-                <div style={css(`width:44px;height:44px;flex:none;border-radius:13px;background:${TONES[c.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:rgba(42,26,32,.55);`)}>{c.name[0]}</div>
+                <div style={css(`width:44px;height:44px;flex:none;border-radius:13px;background:${TONES[c.tone]};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:19px;color:rgba(42,26,32,.55);`)}>{c.name[0]}</div>
                 <div style={css('flex:1;min-width:0;')}>
                   <div style={css('font-weight:800;font-size:14px;')}>{c.name}</div>
                   <div style={css('color:var(--ag-muted);font-size:12px;margin-top:2px;')}>{c.orders} orders</div>
                 </div>
-                <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:17px;")}>{fmt(c.spent)}</div>
+                <div style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:17px;")}>{fmt(c.spent)}</div>
               </div>
             ))}
           </div>

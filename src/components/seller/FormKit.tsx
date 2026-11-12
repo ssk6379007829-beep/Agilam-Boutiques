@@ -217,7 +217,7 @@ export function Toggle({
 export function SectionCard({ title, subtitle, children }: { title?: string; subtitle?: string; children: ReactNode }) {
   return (
     <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
-      {title && <h2 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:var(--ag-ink);margin:0;")}>{title}</h2>}
+      {title && <h2 style={css("font-weight:700;font-size:19px;color:var(--ag-ink);margin:0;")}>{title}</h2>}
       {subtitle && <div style={css('font-size:12.5px;color:var(--ag-muted);font-weight:600;margin-top:3px;')}>{subtitle}</div>}
       <div style={css(`display:flex;flex-direction:column;gap:14px;${title || subtitle ? 'margin-top:16px;' : ''}`)}>{children}</div>
     </div>

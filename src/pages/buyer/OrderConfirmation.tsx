@@ -31,7 +31,7 @@ export function OrderConfirmation() {
       <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
         <div style={css('max-width:560px;margin:0 auto;text-align:center;padding-top:60px;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:48px;color:#CBB0BC;")}>receipt_long</span>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:14px;")}>No recent order</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:14px;")}>No recent order</div>
           <div style={css('color:var(--ag-muted);font-size:14px;margin-top:8px;')}>Your placed orders live under My orders.</div>
           <div style={css('display:flex;gap:12px;margin-top:22px;justify-content:center;flex-wrap:wrap;')}>
             <button onClick={() => navigate('/orders')} style={css('height:52px;padding:0 22px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:14.5px;cursor:pointer;')}>My orders</button>
@@ -51,7 +51,7 @@ export function OrderConfirmation() {
         <div style={css('width:96px;height:96px;margin:0 auto;border-radius:30px;background:linear-gradient(135deg,var(--ag-good),#1E8455);display:flex;align-items:center;justify-content:center;box-shadow:0 22px 44px -20px rgba(47,163,107,.7);')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:56px;color:#fff;")}>check</span>
         </div>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:34px;line-height:1.05;margin-top:22px;")}>Order confirmed!</div>
+        <div style={css("font-family:var(--ag-display);font-weight:700;font-size:34px;line-height:1.05;margin-top:22px;")}>Order confirmed!</div>
         <div style={css('color:var(--ag-ink-2);font-size:15px;margin-top:8px;line-height:1.55;')}>
           Thank you, {firstName}. {multi ? `${orders.length} boutiques have been notified` : 'Your boutique has been notified'} and will start preparing your order.
         </div>
@@ -69,7 +69,7 @@ export function OrderConfirmation() {
               </span>
               <div style={css('flex:1;min-width:0;')}>
                 <div className="agx-eyebrow" style={css('font-size:9.5px;color:var(--ag-muted);')}>{o.boutique}</div>
-                <div style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;color:var(--ag-crimson);margin-top:3px;")}>{o.id}</div>
+                <div className="agx-code" style={css("font-weight:600;font-size:17px;color:var(--ag-crimson);margin-top:3px;")}>{o.id}</div>
                 <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:3px;')}>
                   {o.items.reduce((s, it) => s + it.qty, 0)} item{o.items.reduce((s, it) => s + it.qty, 0) === 1 ? '' : 's'} · {fmt(o.total)}
                 </div>
@@ -82,7 +82,7 @@ export function OrderConfirmation() {
         {multi && (
           <div style={css('display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;padding:0 4px;font-size:14px;')}>
             <span style={css('font-weight:800;')}>Total paid</span>
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:22px;")}>{fmt(grandTotal)}</span>
+            <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:22px;")}>{fmt(grandTotal)}</span>
           </div>
         )}
 

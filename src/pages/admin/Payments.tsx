@@ -469,7 +469,7 @@ export function Payments() {
           <div style={css('display:flex;flex-direction:column;gap:20px;')}>
             <div style={css(`background:var(--ag-surface);border-radius:16px;padding:18px;text-align:center;box-shadow:0 12px 30px -24px rgba(107,20,54,.6);`)}>
               <div style={css(`font-size:12px;font-weight:700;color:${T.muted};`)}>NET PAYABLE</div>
-              <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:34px;margin-top:4px;color:${selected.net < 0 ? 'var(--ag-bad-text)' : 'var(--ag-good-text)'};`)}>{money(selected.net)}</div>
+              <div style={css(`font-family:var(--ag-display);font-weight:700;font-size:34px;margin-top:4px;color:${selected.net < 0 ? 'var(--ag-bad-text)' : 'var(--ag-good-text)'};`)}>{money(selected.net)}</div>
               {selected.net < 0 && <div style={css('font-size:12px;color:var(--ag-bad-text);font-weight:600;margin-top:4px;')}>Seller owes the platform</div>}
               {(() => {
                 const clock = payoutClock(selected.oldestDeliveredAt, slaHours, now);

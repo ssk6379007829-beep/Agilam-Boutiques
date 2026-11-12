@@ -128,7 +128,7 @@ export function ReturnRequestSheet({
         className="agx-scroll"
         style={css('width:100%;max-width:520px;max-height:88vh;overflow-y:auto;background:var(--ag-surface);border-radius:24px 24px 0 0;padding:22px 20px 28px;animation:agx-sheet .3s ease;')}
       >
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;")}>Request a return</div>
+        <div style={css("font-weight:700;font-size:21px;")}>Request a return</div>
         <div style={css('font-size:13px;color:var(--ag-muted);margin-top:5px;line-height:1.5;')}>
           Order {orderNumber}. Tell us what went wrong and the boutique will respond.
         </div>

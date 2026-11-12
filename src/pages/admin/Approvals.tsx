@@ -314,7 +314,7 @@ export function Approvals() {
           return (
           <div key={a.id} style={css(`${GRID}padding:14px 20px;align-items:center;border-top:1px solid var(--ag-border-soft);`)}>
             <div style={css('display:flex;align-items:center;gap:10px;min-width:0;')}>
-              <div style={css(`width:36px;height:36px;flex:none;border-radius:11px;overflow:hidden;background:${TONES[a.tone ?? i % TONES.length]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.5);`)}>
+              <div style={css(`width:36px;height:36px;flex:none;border-radius:11px;overflow:hidden;background:${TONES[a.tone ?? i % TONES.length]};display:flex;align-items:center;justify-content:center;font-weight:700;color:rgba(42,26,32,.5);`)}>
                 {a.logo_url ? <img src={a.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : a.name.charAt(0)}
               </div>
               <div style={css('min-width:0;')}>
@@ -561,11 +561,11 @@ function ReviewDrawer({
       >
         <div style={css('position:sticky;top:0;z-index:2;background:linear-gradient(135deg,#8E1C44,#B02454 60%,#D6336C);color:#fff;padding:20px;')}>
           <div style={css('display:flex;align-items:flex-start;gap:12px;')}>
-            <div style={css("width:48px;height:48px;flex:none;border-radius:15px;overflow:hidden;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:21px;")}>
+            <div style={css("width:48px;height:48px;flex:none;border-radius:15px;overflow:hidden;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:21px;")}>
               {boutique.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : boutique.name.charAt(0)}
             </div>
             <div style={css('flex:1;min-width:0;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1.2;")}>{boutique.name}</div>
+              <div style={css("font-family:var(--ag-display);font-weight:700;font-size:22px;line-height:1.2;")}>{boutique.name}</div>
               <div style={css('font-size:12.5px;opacity:.85;margin-top:3px;')}>Submitted {fmtDate(boutique.submitted_at)}</div>
               <span style={css(`display:inline-block;margin-top:8px;font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;background:${chip.bg};color:${chip.fg};`)}>{BOUTIQUE_STATUS_LABEL[boutique.status]}</span>
             </div>
@@ -592,7 +592,7 @@ function ReviewDrawer({
               stops the check from happening is composing the same paragraph for
               the fiftieth time, not the dialling. */}
           <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:15px 17px;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;")}>Verify by calling</div>
+            <div style={css("font-weight:700;font-size:16px;")}>Verify by calling</div>
             <div style={css('font-size:12px;color:var(--ag-muted);font-weight:600;margin-top:3px;line-height:1.55;')}>
               Nothing below is checked against any registry. Ask for a landmark near the shop, how long they have run it, and a short video of the shop front — a fake application cannot answer the first and will not send the last.
             </div>
@@ -620,7 +620,7 @@ function ReviewDrawer({
               nothing at all. */}
           <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:15px 17px;')}>
             <div style={css('display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;")}>Automatic checks</div>
+              <div style={css("font-weight:700;font-size:16px;")}>Automatic checks</div>
               <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-muted);')}>{flags.length} check{flags.length === 1 ? '' : 's'}</span>
             </div>
 
@@ -642,7 +642,7 @@ function ReviewDrawer({
 
           {groups.map((g) => (
             <div key={g.title} style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:15px 17px;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;")}>{g.title}</div>
+              <div style={css("font-weight:700;font-size:16px;")}>{g.title}</div>
               <div style={css('margin-top:9px;display:flex;flex-direction:column;gap:7px;')}>
                 {g.rows.map(([k, v]) => (
                   <div key={k} style={css('display:flex;gap:12px;align-items:baseline;')}>
@@ -657,7 +657,7 @@ function ReviewDrawer({
           {/* Decision --------------------------------------------------- */}
           {asking ? (
             <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:18px;padding:16px 17px;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;")}>
+              <div style={css("font-weight:700;font-size:16px;")}>
                 {asking === 'rejected' ? 'Reason for rejection' : 'What needs changing?'}
               </div>
               <div style={css('font-size:12px;color:var(--ag-muted);font-weight:600;margin-top:3px;')}>

@@ -96,7 +96,7 @@ export function AdminLayout() {
               style={css('width:44px;height:44px;object-fit:contain;flex:none;')}
             />
             <div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;line-height:1.15;")}>MangaiMart</div>
+              <div style={css("font-weight:700;font-size:19px;line-height:1.15;")}>MangaiMart</div>
               <div style={css('font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--ag-muted);text-transform:uppercase;')}>{role === 'staff' ? 'Staff' : 'Admin'}</div>
             </div>
           </div>
@@ -134,7 +134,7 @@ export function AdminLayout() {
         <div className="agx-scroll" style={css('flex:1;display:flex;flex-direction:column;min-width:0;')}>
           <div className="agx-admin-header" style={css('flex:none;padding:20px 30px;border-bottom:1px solid var(--ag-border-soft);display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;background:var(--ag-surface);z-index:6;')}>
             <div style={css('min-width:0;')}>
-              <div className="agx-admin-header-title" style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:28px;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;")}>{active.title}</div>
+              <div className="agx-admin-header-title" style={css("font-family:var(--ag-display);font-weight:700;font-size:28px;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;")}>{active.title}</div>
               <div style={css('color:var(--ag-muted);font-size:13px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{active.sub}</div>
             </div>
             <div style={css('display:flex;align-items:center;gap:14px;flex:none;')}>

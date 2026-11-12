@@ -89,7 +89,7 @@ export function Orders() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);padding-bottom:20px;')}>
       <div style={css('padding:6px 20px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Orders</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;")}>Orders</h1>
         {all.length > 0 && (
           <button onClick={exportCsv} style={css('display:flex;align-items:center;gap:5px;min-height:44px;padding:0 13px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:11px;font-weight:800;font-size:12.5px;cursor:pointer;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>download</span>Export

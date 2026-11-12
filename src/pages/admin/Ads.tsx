@@ -320,7 +320,7 @@ export function Ads() {
         <div onClick={() => setPreview(null)} style={css('position:fixed;inset:0;background:rgba(42,26,32,.5);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px;')}>
           <div onClick={(e) => e.stopPropagation()} style={css('width:460px;max-width:100%;max-height:90vh;overflow-y:auto;background:var(--ag-surface);border-radius:20px;padding:22px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
             <div style={css('display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:4px;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Ad preview</div>
+              <div style={css("font-weight:700;font-size:20px;")}>Ad preview</div>
               <button onClick={() => setPreview(null)} style={css('width:34px;height:34px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);cursor:pointer;')}>
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
               </button>
@@ -493,7 +493,7 @@ function AdComposer({ placements, onClose, onCreated }: { placements: AdPlacemen
     <div onClick={onClose} style={css('position:fixed;inset:0;background:rgba(42,26,32,.5);display:flex;align-items:center;justify-content:center;z-index:70;padding:20px;')}>
       <div onClick={(e) => e.stopPropagation()} style={css('width:520px;max-width:100%;max-height:92vh;overflow-y:auto;background:var(--ag-surface);border-radius:20px;padding:22px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
         <div style={css('display:flex;justify-content:space-between;align-items:center;gap:10px;')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Create ad</div>
+          <div style={css("font-weight:700;font-size:20px;")}>Create ad</div>
           <button onClick={onClose} style={css('width:34px;height:34px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);cursor:pointer;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
           </button>
@@ -754,7 +754,7 @@ function AdEditor({ campaign, onClose, onSaved }: { campaign: AdCampaignAdmin; o
     <div onClick={onClose} style={css('position:fixed;inset:0;background:rgba(42,26,32,.5);display:flex;align-items:center;justify-content:center;z-index:70;padding:20px;')}>
       <div onClick={(e) => e.stopPropagation()} style={css('width:480px;max-width:100%;max-height:92vh;overflow-y:auto;background:var(--ag-surface);border-radius:20px;padding:22px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
         <div style={css('display:flex;justify-content:space-between;align-items:center;gap:10px;')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Edit ad</div>
+          <div style={css("font-weight:700;font-size:20px;")}>Edit ad</div>
           <button onClick={onClose} style={css('width:34px;height:34px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-muted);cursor:pointer;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>close</span>
           </button>
@@ -878,7 +878,7 @@ function CreativePreview({ c }: { c: AdCampaignAdmin }) {
           <div style={css('position:absolute;inset:0;background:linear-gradient(90deg,rgba(30,6,16,.72),rgba(30,6,16,.15));')} />
           <div style={css('position:absolute;inset:0;padding:16px 18px;display:flex;flex-direction:column;justify-content:center;color:#fff;')}>
             {c.tag && <div style={css('align-self:flex-start;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#F4D9A6;')}>{c.tag}</div>}
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;line-height:1.15;margin-top:10px;text-shadow:0 1px 8px rgba(45,8,24,.5);")}>{title}</div>
+            <div style={css("font-weight:700;font-size:21px;line-height:1.15;margin-top:10px;text-shadow:0 1px 8px rgba(45,8,24,.5);")}>{title}</div>
             {c.subtext && <div style={css('font-size:12px;opacity:.92;margin-top:6px;max-width:250px;text-shadow:0 1px 8px rgba(45,8,24,.5);')}>{c.subtext}</div>}
             <span style={css('align-self:flex-start;margin-top:12px;background:var(--ag-surface);color:var(--ag-crimson);border-radius:10px;padding:7px 14px;font-weight:800;font-size:12px;display:inline-flex;align-items:center;gap:5px;')}>
               {c.cta_label || 'Shop now'}<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>arrow_forward</span>
@@ -911,11 +911,11 @@ function CreativePreview({ c }: { c: AdCampaignAdmin }) {
     <div style={css(frame)}>
       <div style={css('width:100%;max-width:340px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:13px 14px;display:flex;align-items:center;gap:12px;')}>
         <div style={css('width:52px;height:52px;flex:none;border-radius:14px;background:linear-gradient(135deg,var(--ag-surface-2),var(--ag-surface-3));overflow:hidden;display:flex;align-items:center;justify-content:center;')}>
-          {c.boutique?.logo_url ? <img src={c.boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;color:var(--ag-crimson);")}>{(c.boutique?.name ?? 'B').slice(0, 2).toUpperCase()}</span>}
+          {c.boutique?.logo_url ? <img src={c.boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : <span style={css("font-weight:700;font-size:19px;color:var(--ag-crimson);")}>{(c.boutique?.name ?? 'B').slice(0, 2).toUpperCase()}</span>}
         </div>
         <div style={css('min-width:0;flex:1;')}>
           <div style={css('display:flex;align-items:center;gap:6px;')}>
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{c.boutique?.name}</span>
+            <span style={css("font-weight:700;font-size:16px;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{c.boutique?.name}</span>
             <span style={css('flex:none;' + A_PILL)}><span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:11px;")}>bolt</span>Promoted</span>
           </div>
         </div>
@@ -930,7 +930,7 @@ function SummaryTile({ label, value, icon, highlight }: { label: string; value: 
       <div style={css('display:flex;align-items:center;gap:8px;color:var(--ag-muted-soft);font-size:12px;font-weight:700;')}>
         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:#D6336C;")}>{icon}</span>{label}
       </div>
-      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:6px;color:var(--ag-ink);")}>{value}</div>
+      <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:6px;color:var(--ag-ink);")}>{value}</div>
     </div>
   );
 }

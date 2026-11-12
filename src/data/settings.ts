@@ -53,6 +53,13 @@ export interface PlatformSettings {
    *  middleware.js at the edge with HTTP 503. Distinct from `maintenance_mode`,
    *  which only adds a banner to a site that keeps working. */
   coming_soon: boolean;
+  /** How many reviews a product or boutique needs before the storefront prints
+   *  its star rating (migration 0111). Below it the badge is omitted entirely,
+   *  which is what stops a brand-new shop being shown as "★ 0". 1 = show as
+   *  soon as a real review exists; a large value hides every rating
+   *  platform-wide. The rule itself lives in `src/lib/ratingDisplay.ts` and is
+   *  mirrored by `src/lib/schema.ts` and `middleware.js` — they must agree. */
+  min_reviews_to_show: number;
   updated_at: string | null;
 }
 
@@ -72,6 +79,11 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   // failing OPEN is right here: the alternative is a missing migration hiding a
   // live marketplace behind a launch page.
   coming_soon: false,
+  // 1 is the behaviour the app always intended — a rating appears once a real
+  // review exists. A deployment without migration 0111 lands here and is not
+  // broken, only un-tunable. Failing LOW rather than high is deliberate: a
+  // database blip must never blank the ratings shops have earned.
+  min_reviews_to_show: 1,
   updated_at: null,
 };
 
@@ -194,6 +206,39 @@ export async function setComingSoon(on: boolean, updatedBy?: string | null): Pro
     return { ok: false, error: 'Could not change coming-soon mode. Please try again.' };
   }
   publish({ ...current, coming_soon: on });
+  return { ok: true };
+}
+
+/**
+ * Set how many reviews a product or boutique needs before its rating is shown.
+ *
+ * Its own write, for the same reason as `setComingSoon` and
+ * `setRazorpayAccount`: it writes a column added in migration 0111, and sending
+ * it inside the main settings patch would make the ENTIRE form fail to save on
+ * any database that has not run 0111 — taking commission, the return window and
+ * the payout hold down with an unrelated cosmetic setting. Isolated, a missing
+ * column breaks only this control, and says so.
+ *
+ * Clamped here as well as by the database's CHECK constraint. The constraint is
+ * the real guarantee; this exists so a mistyped 0 comes back as a sane number
+ * rather than as a Postgres error string in the admin UI.
+ */
+export async function setMinReviewsToShow(n: number, updatedBy?: string | null): Promise<SaveResult> {
+  const value = Math.min(9999, Math.max(1, Math.floor(n) || 1));
+  const { error } = await supabase
+    .from('platform_settings')
+    .update({ min_reviews_to_show: value, updated_at: new Date().toISOString(), updated_by: updatedBy ?? null })
+    .eq('id', 1);
+  if (error) {
+    if (isMissingTable(error)) return { ok: false, error: 'Settings are not enabled yet — apply migration 0048.' };
+    // PGRST204 = "column not found in schema cache", i.e. 0111 hasn't been run.
+    if (error.code === 'PGRST204' || /min_reviews_to_show/i.test(error.message ?? '')) {
+      return { ok: false, error: 'The rating threshold needs migration 0111 applied first.' };
+    }
+    console.error('setMinReviewsToShow failed:', error.message);
+    return { ok: false, error: 'Could not change the rating threshold. Please try again.' };
+  }
+  publish({ ...current, min_reviews_to_show: value });
   return { ok: true };
 }
 

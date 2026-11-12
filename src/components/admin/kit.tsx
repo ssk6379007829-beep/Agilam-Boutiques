@@ -119,7 +119,7 @@ export function StatCard({
         </div>
         {sub && <span style={css(`font-size:12px;font-weight:800;color:${T.muted};`)}>{sub}</span>}
       </div>
-      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:30px;line-height:1;margin-top:14px;")}>{value}</div>
+      <div style={css("font-family:var(--ag-display);font-weight:700;font-size:30px;line-height:1;margin-top:14px;")}>{value}</div>
       <div style={css(`color:${T.muted};font-size:12.5px;font-weight:600;margin-top:3px;`)}>{label}</div>
       {bars && bars.length > 0 && (
         <div style={css('display:flex;align-items:flex-end;gap:3px;height:34px;margin-top:12px;')}>
@@ -370,7 +370,7 @@ export function Drawer({ open, onClose, title, children, footer }: { open: boole
     <div onClick={onClose} className="agx-adm-scrim" data-open={String(shown)} style={css('position:fixed;inset:0;background:rgba(42,26,32,.45);z-index:50;display:flex;justify-content:flex-end;')}>
       <div onClick={(e) => e.stopPropagation()} className="agx-scroll agx-adm-drawer" data-open={String(shown)} style={css('width:460px;max-width:100%;height:100%;background:var(--ag-bg);display:flex;flex-direction:column;box-shadow:-30px 0 70px -30px rgba(107,20,54,.6);')}>
         <div style={css(`flex:none;padding:20px 22px;background:var(--ag-surface);border-bottom:1px solid ${T.border};display:flex;align-items:center;justify-content:space-between;`)}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>{title}</div>
+          <div style={css("font-weight:700;font-size:20px;")}>{title}</div>
           <button type="button" onClick={onClose} style={css(`width:36px;height:36px;border-radius:10px;border:1.5px solid ${T.field};background:var(--ag-surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ag-label);`)}><Icon name="close" size={18} /></button>
         </div>
         <div className="agx-scroll" style={css('flex:1;overflow-y:auto;padding:20px 22px;')}>{children}</div>
@@ -393,7 +393,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', 
   return (
     <div onClick={onCancel} className="agx-adm-scrim" data-open={String(shown)} style={css('position:fixed;inset:0;background:rgba(42,26,32,.45);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px;')}>
       <div onClick={(e) => e.stopPropagation()} className="agx-adm-dialog" data-open={String(shown)} style={css('width:400px;max-width:100%;background:var(--ag-surface);border-radius:20px;padding:24px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;")}>{title}</div>
+        <div style={css("font-weight:700;font-size:21px;")}>{title}</div>
         <div style={css(`color:${T.muted};font-size:13.5px;margin-top:8px;line-height:1.5;`)}>{message}</div>
         {children}
         <div style={css('display:flex;gap:10px;margin-top:22px;')}>
@@ -424,7 +424,7 @@ export function BulkBar({ count, children }: { count: number; children: ReactNod
 export function Avatar({ name, tone }: { name: string; tone: number }) {
   const TONES = ['#F4D6E2', 'var(--ag-gold-border)', '#E2DAEF', '#D7E7DE', 'var(--ag-gold-border)', '#E7D9E6', '#DCE4EF', 'var(--ag-border)'];
   return (
-    <div style={css(`width:36px;height:36px;flex:none;border-radius:11px;background:${TONES[tone % TONES.length]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:rgba(42,26,32,.55);`)}>
+    <div style={css(`width:36px;height:36px;flex:none;border-radius:11px;background:${TONES[tone % TONES.length]};display:flex;align-items:center;justify-content:center;font-weight:700;color:rgba(42,26,32,.55);`)}>
       {(name?.trim()?.[0] ?? '?').toUpperCase()}
     </div>
   );

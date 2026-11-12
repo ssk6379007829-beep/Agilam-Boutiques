@@ -222,6 +222,64 @@ async function isComingSoon() {
   return comingSoonCache.on;
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Rating visibility (migration 0111)
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * How many reviews a product or boutique needs before its rating may appear.
+ *
+ * THE THIRD MIRROR. `src/lib/ratingDisplay.ts` applies this rule to the badges
+ * and `src/lib/schema.ts` to the client-rendered JSON-LD; this is the copy that
+ * crawlers actually read, because they do not run the React app. All three must
+ * give the same answer for the same row, which is why the number is a column in
+ * `platform_settings` rather than a constant duplicated by hand — that is
+ * precisely how src/lib/pricing.ts and api/_pricing.js drift apart.
+ *
+ * WHY IT MATTERS MORE HERE THAN ANYWHERE ELSE
+ * If the edge emits `aggregateRating` for a product whose page shows no stars,
+ * the result is structured data claiming something the visible page does not —
+ * Google's definition of a review-snippet manual action. The badges going quiet
+ * while the markup kept talking would be invisible in testing and expensive to
+ * discover.
+ *
+ * FAILS LOW (to 1), DELIBERATELY, and this is the opposite choice to
+ * `isComingSoon` above — which fails OPEN so a database blip cannot take the
+ * marketplace down. Here the risk runs the other way: falling back to a HIGH
+ * number on a failed read would strip `aggregateRating` from every page on the
+ * site during a Supabase blip, handing Google a mass removal of rich-result
+ * markup. Falling back to 1 reproduces the behaviour this code had before 0111
+ * existed, which is also what a deployment without the migration gets — a 400
+ * for the unknown column leaves the cached value alone rather than reading as
+ * a change.
+ *
+ * The TTL is longer than coming-soon's ten seconds because nothing about this
+ * is urgent: it is a cosmetic threshold an admin changes once, not a switch
+ * someone is watching a page for.
+ */
+const RATING_TTL_MS = 60_000;
+let minReviewsCache = { at: 0, value: 1 };
+
+async function minReviewsToShow() {
+  const now = Date.now();
+  if (now - minReviewsCache.at < RATING_TTL_MS) return minReviewsCache.value;
+  const { ok, rows } = await dbTry("platform_settings?id=eq.1&select=min_reviews_to_show");
+  const raw = ok ? Number(rows[0]?.min_reviews_to_show) : NaN;
+  // Only a query that actually succeeded AND returned a sane number may change
+  // the answer; anything else keeps the last known value.
+  const value = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : minReviewsCache.value;
+  minReviewsCache = { at: now, value };
+  return value;
+}
+
+/**
+ * The rule itself. Mirrors `ratingIsPublic()` in src/lib/ratingDisplay.ts —
+ * change one, change the other.
+ */
+function ratingIsPublic(rating, reviews, min) {
+  return (Number(reviews) || 0) >= min && (Number(rating) || 0) > 0;
+}
+
 /**
  * Paths that still work while the site is hidden.
  *
@@ -814,7 +872,13 @@ async function metaForProduct(slug, origin) {
   // Only worth a round trip when the product actually has reviews on file —
   // `reviews_count` is maintained on the row, so an unreviewed piece (most of
   // the catalogue) costs nothing and the hot path is unchanged.
-  const reviews = (p.reviews_count ?? 0) > 0 ? await productReviewNodes(p.id) : [];
+  // Both the `review` nodes and the visible <noscript> review text come off
+  // this array, so gating it here keeps the markup and the body in step — and
+  // in step with the React app, which hides the same reviews. Fetched only when
+  // it will be used.
+  const minReviews = await minReviewsToShow();
+  const ratingPublic = ratingIsPublic(p.rating, p.reviews_count, minReviews);
+  const reviews = ratingPublic ? await productReviewNodes(p.id) : [];
   const canonicalPath = productPath(p);
   const url = `${origin}${canonicalPath}`;
   const inStock = (p.stock ?? 0) > 0;
@@ -866,8 +930,10 @@ async function metaForProduct(slug, origin) {
             priceValidUntil: priceValidUntil(),
             seller: { "@type": "Organization", name: shop }
           },
-          // Only when a rating is real — a fabricated one is a manual-action risk.
-          aggregateRating: (p.reviews_count ?? 0) > 0 && (p.rating ?? 0) > 0 ? {
+          // Only when the rating is real AND the storefront is showing it.
+          // A fabricated rating is a manual-action risk; so is a true one the
+          // page does not display. See minReviewsToShow() above.
+          aggregateRating: ratingPublic ? {
             "@type": "AggregateRating",
             ratingValue: Number(p.rating),
             reviewCount: p.reviews_count,
@@ -1071,7 +1137,9 @@ async function metaForBoutique(slug, origin) {
               : `${inr(Math.min(...prices))}\u2013${inr(Math.max(...prices))}`
             : void 0,
           parentOrganization: { "@id": `${origin}/#organization` },
-          aggregateRating: (b.reviews_count ?? 0) > 0 && (b.rating ?? 0) > 0 ? {
+          // Same gate as the product page, for the same reason: never claim a
+          // rating the storefront is not showing. See minReviewsToShow().
+          aggregateRating: ratingIsPublic(b.rating, b.reviews_count, await minReviewsToShow()) ? {
             "@type": "AggregateRating",
             ratingValue: Number(b.rating),
             reviewCount: b.reviews_count,

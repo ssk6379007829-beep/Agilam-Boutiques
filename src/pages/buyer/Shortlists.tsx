@@ -58,7 +58,7 @@ export function Shortlists() {
       <div style={css('display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:4px 0 6px;')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Decided together</div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(27px,3.2vw,42px);line-height:1.1;padding-bottom:2px;margin:6px 0 0;letter-spacing:-.01em;")}>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(27px,3.2vw,42px);line-height:1.1;padding-bottom:2px;margin:6px 0 0;letter-spacing:-.01em;")}>
             My shortlists
           </h1>
         </div>
@@ -178,7 +178,7 @@ function Empty({
       <div style={css('width:82px;height:82px;border-radius:50%;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 26px -12px rgba(214,51,108,.55);')}>
         <Icon name={icon} style={{ fontSize: 38, color: 'var(--ag-crimson)' }} />
       </div>
-      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;margin-top:20px;")}>{title}</div>
+      <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;margin-top:20px;")}>{title}</div>
       <div style={css('color:var(--ag-muted);font-size:14.5px;margin-top:8px;max-width:360px;line-height:1.55;')}>{body}</div>
       <button
         type="button"

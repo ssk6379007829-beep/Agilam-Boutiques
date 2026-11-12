@@ -10,7 +10,7 @@ import { fmt } from '@/data/demo';
 import {
   fetchAllCouriers, saveCourier, fetchDeliveryDisputes, resolveDeliveryDispute,
   fetchStalledShipments, buildTrackingUrl,
-  fetchShiprocketShops, saveBoutiqueShiprocket, fetchPlatformSwitches, savePlatformSwitches,
+  fetchShiprocketShops, saveBoutiqueShiprocket, saveBoutiqueShadowfax, fetchPlatformSwitches, savePlatformSwitches,
   pickupAddressText, registerShiprocketPickup,
   type Courier, type DeliveryIssueRow, type StalledShipmentRow, type ShiprocketShopRow,
 } from '@/data/shipments';
@@ -66,7 +66,7 @@ export function Deliveries() {
   const [shop, setShop] = useState<ShiprocketShopRow | null>(null);
   const [registering, setRegistering] = useState(false);
 
-  const toggleSwitch = async (key: 'shiprocket_enabled', on: boolean) => {
+  const toggleSwitch = async (key: 'shiprocket_enabled' | 'shadowfax_enabled', on: boolean) => {
     try {
       await savePlatformSwitches({ [key]: on });
       showToast(on ? 'Switched on' : 'Switched off');
@@ -106,6 +106,12 @@ export function Deliveries() {
         shiprocket_enabled: shop.shiprocket_enabled,
         shiprocket_pickup_location: shop.shiprocket_pickup_location,
       });
+      // Separate call, and only when 0110 is applied: folding the column into
+      // the Shiprocket update would make the whole save fail on a database
+      // that does not have it, losing the pickup nickname too.
+      if (shop.shadowfax_enabled !== undefined) {
+        await saveBoutiqueShadowfax(shop.id, { shadowfax_enabled: shop.shadowfax_enabled });
+      }
       showToast(`${shop.name} saved`);
       setShop(null);
       reloadShops();
@@ -350,6 +356,42 @@ export function Deliveries() {
             </Card>
           )}
 
+          {/* Shadowfax sits BELOW Shiprocket because that is the order the
+              booking function tries them in: Shadowfax first, Shiprocket as the
+              fallback. `undefined` — not false — means 0110 has not been
+              applied, which must read as "nothing to switch" rather than as a
+              switch that silently does nothing when toggled. */}
+          {switches && switches.shadowfax_enabled === undefined ? (
+            <Card style="padding:16px 18px;margin-bottom:14px;">
+              <div style={css('font-weight:800;font-size:14px;')}>Shadowfax booking</div>
+              <div style={css(`font-size:13px;color:${T.muted};line-height:1.6;margin-top:4px;`)}>
+                Migration <strong>0110</strong> has not been applied to this database yet, so there is
+                nothing to switch. Apply it in the Supabase SQL editor first.
+              </div>
+            </Card>
+          ) : switches ? (
+            <Card style="padding:16px 18px;margin-bottom:14px;">
+              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;')}>
+                <div style={css('flex:1;min-width:240px;')}>
+                  <div style={css('font-weight:800;font-size:14px;')}>Shadowfax booking</div>
+                  <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.6;margin-top:4px;`)}>
+                    The second rung: Shiprocket is tried first, and Shadowfax picks up the orders it
+                    declines — so turning this on strands fewer orders on manual docket entry, and never
+                    strands more. Parcels go surface. Needs the book-parcel, shadowfax-book and
+                    shadowfax-tracking Edge Functions deployed and the Shadowfax secrets set.
+                  </div>
+                </div>
+                <GhostButton
+                  icon={switches.shadowfax_enabled ? 'toggle_on' : 'toggle_off'}
+                  tone={switches.shadowfax_enabled ? 'primary' : undefined}
+                  onClick={() => toggleSwitch('shadowfax_enabled', !switches.shadowfax_enabled)}
+                >
+                  {switches.shadowfax_enabled ? 'On' : 'Off'}
+                </GhostButton>
+              </div>
+            </Card>
+          ) : null}
+
           <DataTable
             columns={shopCols}
             rows={shops ?? []}
@@ -479,6 +521,33 @@ export function Deliveries() {
         <div style={css(`font-size:12px;color:${T.muted};margin-top:6px;line-height:1.55;`)}>
           Turning this off leaves the shop on manual docket entry. Parcels already booked keep their tracking.
         </div>
+
+        {/* Hidden entirely when 0110 has not been applied: a checkbox that
+            cannot be saved is worse than no checkbox. */}
+        {shop?.shadowfax_enabled !== undefined && (
+          <>
+            <div style={css('display:flex;align-items:center;gap:10px;margin-top:18px;')}>
+              <input
+                id="shop-shadowfax"
+                type="checkbox"
+                checked={shop?.shadowfax_enabled ?? false}
+                onChange={(e) => setShop((s) => (s ? { ...s, shadowfax_enabled: e.target.checked } : s))}
+                style={css('width:18px;height:18px;accent-color:var(--ag-crimson);')}
+              />
+              <label htmlFor="shop-shadowfax" style={css('font-size:13.5px;font-weight:700;cursor:pointer;')}>
+                Fall back to Shadowfax for this shop
+              </label>
+            </div>
+            <div style={css(`font-size:12px;color:${T.muted};margin-top:6px;line-height:1.55;`)}>
+              No pickup location to register — every booking sends this shop&rsquo;s own address and map pin.
+              {!shop?.map_url && !shop?.pincode
+                ? ' This shop has neither a pincode nor a map pin, so nothing can be booked for it yet.'
+                : !shop?.map_url
+                  ? ' This shop has no map pin, so the pickup is routed from the text address alone — check it before turning this on.'
+                  : ''}
+            </div>
+          </>
+        )}
       </Drawer>
 
       <ConfirmDialog

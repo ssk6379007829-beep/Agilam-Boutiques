@@ -68,7 +68,7 @@ export function Customers() {
         <button onClick={goBack} aria-label="Back" className="agx-con-icon">
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;")}>Customer Orders</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;")}>Customer Orders</h1>
       </div>
 
       {groups.length > 0 && (
@@ -96,7 +96,7 @@ export function Customers() {
           return (
             <div key={c.key} style={css('background:var(--ag-surface);border-radius:16px;padding:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
               <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : c.key)} style={css('display:flex;gap:11px;align-items:center;cursor:pointer;width:100%;text-align:left;background:none;border:none;padding:0;font:inherit;color:inherit;')}>
-                <div style={css(`width:48px;height:48px;flex:none;border-radius:14px;background:${TONES[c.tone]};display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:rgba(42,26,32,.5);`)}>{c.name[0]?.toUpperCase()}</div>
+                <div style={css(`width:48px;height:48px;flex:none;border-radius:14px;background:${TONES[c.tone]};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;color:rgba(42,26,32,.5);`)}>{c.name[0]?.toUpperCase()}</div>
                 <div style={css('flex:1;min-width:0;')}>
                   <div style={css('font-weight:800;font-size:14px;')}>{c.name}</div>
                   <div style={css('font-size:12px;color:var(--ag-muted);')}>{c.orders.length} order{c.orders.length === 1 ? '' : 's'} · Last {fmtDate(c.lastAt)}</div>

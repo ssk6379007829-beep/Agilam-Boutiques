@@ -189,7 +189,7 @@ function Chip({ label, count, on, onClick }: { label: string; count: number; on:
       style={css(`flex:none;display:flex;align-items:center;gap:6px;border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;`)}
     >
       {label}
-      <span style={css(`font-family:'IBM Plex Mono',monospace;font-size:11px;color:${on ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};`)}>{count}</span>
+      <span style={css(`font-variant-numeric:tabular-nums;font-size:11px;color:${on ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};`)}>{count}</span>
     </button>
   );
 }

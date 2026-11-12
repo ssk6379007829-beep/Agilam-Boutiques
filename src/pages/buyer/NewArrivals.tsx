@@ -202,9 +202,9 @@ function BucketedGrid({
       {groups.map((g, gi) => (
         <div key={`${g.label}-${gi}`}>
           <div style={css(`display:flex;align-items:center;gap:10px;margin:${gi === 0 ? '0' : '30px'} 2px 14px;`)}>
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;color:var(--ag-ink);white-space:nowrap;")}>{g.label}</span>
+            <span style={css("font-weight:700;font-size:17px;color:var(--ag-ink);white-space:nowrap;")}>{g.label}</span>
             <span style={css('flex:1;height:1px;background:var(--ag-surface-3);')} />
-            <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);")}>{g.items.length}</span>
+            <span style={css("font-variant-numeric:tabular-nums;font-size:11px;color:var(--ag-muted-soft);")}>{g.items.length}</span>
           </div>
           <div className="agx-rgrid">
             {g.items.map((p) => (
@@ -230,7 +230,7 @@ function Chip({ label, count, on, onClick }: { label: string; count: number; on:
       style={css(`flex:none;display:flex;align-items:center;gap:6px;border:1px solid ${on ? 'transparent' : 'var(--ag-border-soft)'};background:${on ? 'linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44)' : 'var(--ag-surface)'};color:${on ? '#fff' : 'var(--ag-ink-3)'};cursor:pointer;padding:9px 15px;border-radius:999px;font-size:12.5px;font-weight:700;font-family:inherit;white-space:nowrap;`)}
     >
       {label}
-      <span style={css(`font-family:'IBM Plex Mono',monospace;font-size:11px;color:${on ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};`)}>{count}</span>
+      <span style={css(`font-variant-numeric:tabular-nums;font-size:11px;color:${on ? 'rgba(255,255,255,.75)' : 'var(--ag-muted-soft)'};`)}>{count}</span>
     </button>
   );
 }

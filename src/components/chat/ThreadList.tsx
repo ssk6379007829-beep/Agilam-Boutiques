@@ -17,7 +17,7 @@ export function ThreadList({ threads, chatBase }: { threads: Thread[]; chatBase:
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);')}>
       <div style={css('padding:6px 20px 12px;')}>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:28px;margin:0;")}>Messages</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:28px;margin:0;")}>Messages</h1>
       </div>
 
       {threads.length === 0 && (
@@ -25,7 +25,7 @@ export function ThreadList({ threads, chatBase }: { threads: Thread[]; chatBase:
           <div style={css('width:82px;height:82px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:38px;color:var(--ag-crimson);")}>forum</span>
           </div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:18px;")}>No messages yet</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;margin-top:18px;")}>No messages yet</div>
           <div style={css('color:var(--ag-muted);font-size:14px;margin-top:8px;max-width:320px;line-height:1.55;')}>
             Chats you start with a boutique appear here — ask about sizing, custom stitching or an order any time.
           </div>

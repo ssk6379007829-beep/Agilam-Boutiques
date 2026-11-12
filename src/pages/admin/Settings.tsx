@@ -4,7 +4,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useShop } from '@/state/ShopContext';
 import { useAuth } from '@/auth/AuthContext';
 import {
-  fetchSettings, saveSettings, setRazorpayAccount, setComingSoon,
+  fetchSettings, saveSettings, setRazorpayAccount, setComingSoon, setMinReviewsToShow,
   type PlatformSettings, type RazorpayAccount,
 } from '@/data/settings';
 import { logAdminAction } from '@/data/activityLog';
@@ -74,7 +74,10 @@ export function Settings() {
     // ComingSoonCard and `setComingSoon`). Sending it here would also mean a
     // database without migration 0096 could no longer save the commission rate
     // at all — the whole form would fail on the one unknown column.
-    const { updated_at: _u, razorpay_account: _r, coming_soon: _c, ...patch } = form;
+    // `min_reviews_to_show` is excluded on the same grounds (migration 0111 —
+    // see RatingVisibilityCard): one unknown column would fail the whole form
+    // and take the commission rate down with a cosmetic threshold.
+    const { updated_at: _u, razorpay_account: _r, coming_soon: _c, min_reviews_to_show: _m, ...patch } = form;
     const res = await saveSettings(patch, profile?.id);
     setSaving(false);
     if (!res.ok) { showToast(res.error, 'error'); return; }
@@ -127,6 +130,8 @@ export function Settings() {
       </Card>
 
       <ComingSoonCard initial={form.coming_soon} />
+
+      <RatingVisibilityCard initial={form.min_reviews_to_show} />
 
       <PaymentAccountCard initial={form.razorpay_account} />
 
@@ -466,6 +471,112 @@ function PaymentAccountCard({ initial }: { initial: RazorpayAccount }) {
         onConfirm={() => pending && applySwitch(pending)}
         onCancel={() => setPending(null)}
       />
+    </Card>
+  );
+}
+
+/**
+ * How many reviews before a star rating is shown to a buyer (migration 0111).
+ *
+ * WHAT THIS IS FOR
+ * `products.rating` and `boutiques.rating` default to 0, so a shop that opened
+ * this morning was being advertised across the storefront as "★ 0" — which
+ * reads to a shopper as a shop rated zero, not as a shop nobody has reviewed.
+ * Below the threshold the badge is omitted entirely; nothing takes its place.
+ *
+ * WHY A NUMBER AND NOT AN ON/OFF SWITCH
+ * A platform-wide "hide ratings" toggle cannot tell a new shop's 0 from an
+ * established shop's 4.8 — it would hide the second to protect the first, and
+ * nothing would ever prompt anyone to switch it back. A threshold is
+ * self-healing: each shop crosses it on its own as real buyers review it. The
+ * blanket blackout is still available by setting a large number, so nothing is
+ * given up.
+ *
+ * Reviews are ALWAYS collected regardless of this setting — the review form and
+ * the "No reviews yet" panel stay live at every value, so ratings accumulate
+ * from day one and appear the moment a shop crosses the line. And it never
+ * applies to the seller or admin consoles: a seller always sees their own true
+ * average.
+ *
+ * Its own write, like the two cards above it — see `setMinReviewsToShow`.
+ */
+function RatingVisibilityCard({ initial }: { initial: number }) {
+  const { showToast } = useShop();
+  const { profile } = useAuth();
+  const [saved, setSaved] = useState(initial);
+  const [value, setValue] = useState(String(initial));
+  const [busy, setBusy] = useState(false);
+
+  const parsed = Math.min(9999, Math.max(1, Math.floor(Number(value)) || 1));
+  const dirty = parsed !== saved;
+  // Past roughly this many reviews no shop on a young marketplace qualifies, so
+  // the setting has stopped being a quality bar and become a blackout. Saying
+  // so plainly is the point — it is the one position an admin can pick by
+  // accident and not notice.
+  const blackout = parsed >= 50;
+
+  const apply = async () => {
+    setBusy(true);
+    const res = await setMinReviewsToShow(parsed, profile?.id);
+    setBusy(false);
+    if (!res.ok) { showToast(res.error, 'error'); return; }
+    setSaved(parsed);
+    setValue(String(parsed));
+    showToast(
+      blackout
+        ? 'Star ratings are now hidden across the storefront'
+        : `Ratings now show once a piece or shop has ${parsed} review${parsed === 1 ? '' : 's'}`,
+    );
+    void logAdminAction({
+      actor_id: profile?.id,
+      actor_name: profile?.full_name ?? 'Admin',
+      action: 'settings.min_reviews_to_show',
+      entity_type: 'settings',
+    });
+  };
+
+  return (
+    <Card style={blackout ? 'border:1.5px solid var(--ag-gold-border);' : ''}>
+      <div style={css('display:flex;align-items:center;gap:14px;')}>
+        <div style={css(`width:44px;height:44px;border-radius:13px;background:${blackout ? 'var(--ag-warn-bg)' : 'var(--ag-surface-2)'};display:flex;align-items:center;justify-content:center;flex:none;`)}>
+          <Icon name="star_half" size={24} color={blackout ? 'var(--ag-gold-text)' : T.muted} />
+        </div>
+        <div style={css('flex:1;min-width:0;')}>
+          <div style={css('font-weight:800;font-size:14.5px;')}>Show ratings after</div>
+          <div style={css(`font-size:12.5px;color:${T.muted};margin-top:2px;line-height:1.55;`)}>
+            {blackout
+              ? 'No star ratings appear anywhere on the storefront at this number. Buyers can still leave reviews, and they will show the moment you lower it.'
+              : `A piece or a shop shows its stars once ${saved} buyer${saved === 1 ? ' has' : 's have'} reviewed it. Below that no badge appears at all, so a new boutique is never shown as “★ 0”.`}
+          </div>
+        </div>
+        <div className="agx-field" style={css(`display:flex;align-items:center;gap:6px;border:1.5px solid ${T.field};border-radius:11px;padding:0 12px;height:42px;background:var(--ag-surface);flex:none;`)}>
+          <input
+            type="number"
+            min={1}
+            max={9999}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            aria-label="Reviews required before a rating is shown"
+            style={css('border:none;background:none;width:64px;text-align:right;font-size:14px;font-weight:800;font-family:inherit;font-variant-numeric:tabular-nums;color:var(--ag-ink);')}
+          />
+          <span style={css(`font-size:12px;color:${T.muted};font-weight:700;`)}>reviews</span>
+        </div>
+      </div>
+
+      {/* The Apply button exists only while there is something to apply — this
+          card saves on its own, not through the form's "Save changes". */}
+      {dirty && (
+        <div style={css('display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:14px;')}>
+          <GhostButton onClick={() => setValue(String(saved))}>Cancel</GhostButton>
+          <button
+            onClick={() => void apply()}
+            disabled={busy}
+            style={css(`height:38px;padding:0 18px;border:none;border-radius:11px;background:var(--ag-crimson);color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:${busy ? 'not-allowed' : 'pointer'};opacity:${busy ? '.6' : '1'};`)}
+          >
+            {busy ? 'Saving…' : `Show after ${parsed}`}
+          </button>
+        </div>
+      )}
     </Card>
   );
 }

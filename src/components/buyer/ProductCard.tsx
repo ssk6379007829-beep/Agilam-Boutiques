@@ -2,6 +2,7 @@ import { Icon } from '@/components/ui/Icon';
 import { WishButton } from '@/components/buyer/WishButton';
 import { imageFallback, imageSrcSet } from '@/lib/imageUrl';
 import { fmtInr, toneHex } from '@/lib/tokens';
+import { useShowsRating } from '@/lib/ratingDisplay';
 import type { ProductWithBoutique } from '@/data/types';
 
 type Props = {
@@ -20,6 +21,7 @@ type Props = {
  * shared heart so the two can't drift apart.
  */
 export function ProductCard({ product: p, onOpen, wished, onToggleWish, showRating, showBoutique, width }: Props) {
+  const showsRating = useShowsRating();
   return (
     <div onClick={onOpen} className="cursor-pointer" style={width ? { flex: 'none', width } : undefined}>
       <div className="agx-prod-media shadow-soft" style={{ background: toneHex(p.tone) }}>
@@ -47,7 +49,9 @@ export function ProductCard({ product: p, onOpen, wished, onToggleWish, showRati
         {showBoutique && <div className="agx-card-sub mt-0.5 text-xs text-rose-muted">{p.boutique?.name}</div>}
         <div className="mt-1 flex items-center justify-between">
           <span className="text-[15px] font-extrabold text-rose-primaryDark">{fmtInr(p.price)}</span>
-          {showRating && (
+          {/* The caller opting in is necessary but not sufficient — the
+              platform threshold still decides. See src/lib/ratingDisplay.ts. */}
+          {showRating && showsRating(p.rating, p.reviews_count) && (
             <span className="flex items-center gap-0.5 text-[11.5px] font-bold text-rose-label">
               <Icon name="star" className="text-sm" style={{ color: 'var(--ag-star)' }} />
               {p.rating}

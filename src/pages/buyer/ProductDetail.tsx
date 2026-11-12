@@ -16,6 +16,7 @@ import { sortSizes } from '@/lib/sizes';
 import { occasionLabel } from '@/lib/vocabulary';
 import { usePageMeta } from '@/lib/pageMeta';
 import { useGoBack } from '@/hooks/useGoBack';
+import { useShowsRating } from '@/lib/ratingDisplay';
 import { matchesProductSlug, productIdFromSlug, routes, clampDescription } from '@/lib/seo';
 import { breadcrumbSchema, graph, organizationSchema, productSchema } from '@/lib/schema';
 import { TONES, fmt } from '@/data/demo';
@@ -68,6 +69,8 @@ export function ProductDetail() {
   // Declared up here with the other hooks: the loading and not-found branches
   // below return early, and a hook after them would change call order.
   const goBack = useGoBack('/');
+  /** Whether a rating may be printed at all — see src/lib/ratingDisplay.ts. */
+  const showsRating = useShowsRating();
   /**
    * The route is `/products/:slug`, where slug is `title-slug-idprefix`. The id
    * prefix is read straight back out, so a product page resolves without a
@@ -278,7 +281,7 @@ export function ProductDetail() {
         <div style={css('width:88px;height:88px;border-radius:26px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:44px;color:#D6336C;")}>search_off</span>
         </div>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:20px 0 0;")}>This piece isn’t available</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;margin:20px 0 0;")}>This piece isn’t available</h1>
         <p style={css('color:var(--ag-muted);font-size:14px;margin:6px 0 0;max-width:380px;')}>
           It may have sold out or been taken down by the boutique. There is plenty more to see.
         </p>
@@ -428,9 +431,12 @@ export function ProductDetail() {
           <span style={css('font-weight:700;font-size:14.5px;')}>{ap.boutique}</span>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A8DD6;")}>verified</span>
         </div>
-        <div style={css('color:var(--ag-muted);font-size:12.5px;')}>{ap.city} · ★ {ap.rating}</div>
+        {/* The star is appended only when it may be shown; otherwise the strip
+            is the city alone rather than "Coimbatore · ★ 0".
+            See src/lib/ratingDisplay.ts. */}
+        <div style={css('color:var(--ag-muted);font-size:12.5px;')}>{ap.city}{showsRating(ap.rating, ap.reviews) ? ` · ★ ${ap.rating}` : ''}</div>
       </div>
-      <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--ag-crimson);")}>VISIT →</span>
+      <span style={css("font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--ag-crimson);")}>VISIT →</span>
     </>
   );
   const openChat = () => {
@@ -579,10 +585,12 @@ export function ProductDetail() {
           <div className="agx-card-title" style={css('font-size:14px;font-weight:700;')}>{p.title}</div>
           <div className="agx-card-sub" style={css('font-size:12px;color:var(--ag-muted);margin-top:2px;')}>{p.boutique}</div>
           <div style={css('display:flex;align-items:center;justify-content:space-between;margin-top:6px;')}>
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(p.price)}</span>
-            <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>{p.rating}
-            </span>
+            <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(p.price)}</span>
+            {showsRating(p.rating, p.reviews) && (
+              <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);")}>star</span>{p.rating}
+              </span>
+            )}
           </div>
         </div>
       </CardLink>
@@ -723,21 +731,27 @@ export function ProductDetail() {
 
         <div style={css('padding:clamp(20px,3vw,40px) clamp(16px,4vw,44px);display:flex;flex-direction:column;')}>
           <div className="agx-eyebrow" style={css('font-size:11px;color:var(--ag-crimson);')}>{ap.cat} · {ap.occasion}</div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(30px,3.2vw,46px);line-height:1.06;letter-spacing:-.015em;margin:10px 0 0;padding-bottom:2px;")}>{ap.title}</h1>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(30px,3.2vw,46px);line-height:1.06;letter-spacing:-.015em;margin:10px 0 0;padding-bottom:2px;")}>{ap.title}</h1>
           <div style={css('display:flex;align-items:center;gap:14px;margin-top:12px;flex-wrap:wrap;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:clamp(26px,2.8vw,38px);")}>{fmt(ap.price)}</div>
+            <div style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:clamp(26px,2.8vw,38px);")}>{fmt(ap.price)}</div>
             {hasMrp && (
               <>
                 <span style={css('text-decoration:line-through;color:var(--ag-muted-soft);font-size:16px;font-weight:700;')}>{fmt(ap.mrp as number)}</span>
                 <span style={css('background:var(--ag-good-bg);color:var(--ag-good-text);font-size:11px;font-weight:800;padding:5px 9px;border-radius:8px;')}>{discountPct}% off</span>
               </>
             )}
+            {/* Nothing is lost by hiding this below the threshold: it is a
+                shortcut to the Ratings & reviews panel, which is still on the
+                page and still invites the first review.
+                See src/lib/ratingDisplay.ts. */}
+            {showsRating(ap.rating, ap.reviews) && (
             <button
               onClick={jumpToReviews}
               style={css('display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--ag-ink-2);background:var(--ag-bg);border:1px solid var(--ag-surface-3);border-radius:10px;padding:6px 10px;cursor:pointer;')}
             >
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>{ap.rating} <span style={css('color:var(--ag-muted);font-weight:500;')}>· {reviewsF(ap.reviews)} {ap.reviews === 1 ? 'review' : 'reviews'}</span>
             </button>
+            )}
             <span style={css(`font-size:12.5px;font-weight:800;color:${stockFg};`)}>{stockLabel}</span>
           </div>
 
@@ -1047,7 +1061,7 @@ export function ProductDetail() {
             {/* Ratings and reviews are one thing to the buyer — the score, the
                 spread, then the reviews themselves — so they share one panel. */}
             <div ref={reviewsRef}>
-              {renderPanel('ratings', 'star', 'Ratings & reviews', `${ap.rating} ★ · ${reviewsF(ap.reviews)}`, (
+              {renderPanel('ratings', 'star', 'Ratings & reviews', showsRating(ap.rating, ap.reviews) ? `${ap.rating} ★ · ${reviewsF(ap.reviews)}` : '', (
                 <ProductReviews productId={ap.id} boutiqueId={boutiqueId} />
               ))}
             </div>
@@ -1062,7 +1076,7 @@ export function ProductDetail() {
             <BoutiqueLogo name={ap.boutique} src={boutique?.logo} size={44} radius={13} />
             <div style={css('flex:1;min-width:0;')}>
               <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>From the same shop</div>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(22px,2.6vw,32px);line-height:1.08;margin-top:2px;")}>More from {ap.boutique}</div>
+              <div style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(22px,2.6vw,32px);line-height:1.08;margin-top:2px;")}>More from {ap.boutique}</div>
             </div>
             <a href="#" onClick={(e) => { e.preventDefault(); openBoutique(); }} style={css('display:flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:var(--ag-crimson);border:1.5px solid var(--ag-border);border-radius:999px;padding:9px 15px;')}>
               Visit shop<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>arrow_forward</span>
@@ -1078,7 +1092,7 @@ export function ProductDetail() {
       <div style={css('max-width:1300px;margin:0 auto;padding:clamp(24px,4vw,44px) clamp(16px,4vw,44px) clamp(28px,4vw,56px);')}>
         <div>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Complete the look</div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3vw,38px);line-height:1.06;margin-top:6px;")}>You may also like</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(26px,3vw,38px);line-height:1.06;margin-top:6px;")}>You may also like</div>
           <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>
             {youMayLike.length} more {youMayLike.length === 1 ? 'piece' : 'pieces'} to explore — tap the heart to save any for later.
           </div>
@@ -1135,7 +1149,7 @@ export function ProductDetail() {
             <div style={css('display:flex;align-items:flex-start;justify-content:space-between;gap:14px;')}>
               <div>
                 <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Fit guide</div>
-                <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1.1;margin-top:4px;")}>Size chart</div>
+                <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;line-height:1.1;margin-top:4px;")}>Size chart</div>
                 <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:4px;')}>{isSaree ? 'Blouse measurements in inches' : 'Body measurements in inches'}</div>
               </div>
               <button onClick={() => setShowSizeChart(false)} style={css('width:38px;height:38px;flex:none;border-radius:11px;border:none;background:var(--ag-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;')}>

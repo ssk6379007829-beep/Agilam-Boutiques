@@ -11,6 +11,7 @@ import { CatalogError } from '@/components/buyer/CatalogError';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { AdImpression } from '@/components/buyer/AdImpression';
 import { PromotedBadge } from '@/components/buyer/PromotedBadge';
+import { useShowsRating } from '@/lib/ratingDisplay';
 import { useLiveAds } from '@/hooks/useLiveAds';
 import { trackAdClick } from '@/data/ads';
 
@@ -143,8 +144,39 @@ export function Boutiques() {
     [BOUTIQUES, following],
   );
 
+  /** Whether a shop's stars may be printed at all — see src/lib/ratingDisplay.ts. */
+  const showsRating = useShowsRating();
+
+  /**
+   * "Top rated" is only offered once at least one shop has a rating a buyer can
+   * actually see.
+   *
+   * Until then every boutique sits at the default `rating = 0` from migration
+   * 0014's trigger, so the sort orders the whole directory by a number that is
+   * identical for everyone and printed nowhere — a ranking the buyer cannot
+   * check, verify or disagree with. Offering it would be dishonest, and it was
+   * also the DEFAULT sort, so it was the first thing anyone saw.
+   *
+   * "Most styles" takes over as the default in that case: it is a real,
+   * visible, non-zero difference between shops on day one.
+   */
+  const ratedBoutiques = useMemo(
+    () => BOUTIQUES.filter((b) => showsRating(b.rating, b.reviews)).length,
+    [BOUTIQUES, showsRating],
+  );
+  const canSortByRating = ratedBoutiques > 0;
+  const defaultSort: SortKey = canSortByRating ? 'rating' : 'products';
+  // Covers the buyer who picked "Top rated" a moment before the last review was
+  // hidden, or before the settings row landed — never sort by a hidden number.
+  const effectiveSort: SortKey = sort === 'rating' && !canSortByRating ? defaultSort : sort;
+
+  const sortOptions = useMemo(
+    () => (canSortByRating ? SORTS : SORTS.filter((s) => s.key !== 'rating')),
+    [canSortByRating],
+  );
+
   const activeFilters =
-    (city ? 1 : 0) + (verifiedOnly ? 1 : 0) + (sort !== 'rating' ? 1 : 0);
+    (city ? 1 : 0) + (verifiedOnly ? 1 : 0) + (effectiveSort !== defaultSort ? 1 : 0);
 
   /**
    * The cities offered under the search box: everything matching what has been
@@ -174,7 +206,7 @@ export function Boutiques() {
     });
 
     list = [...list].sort((a, b) => {
-      switch (sort) {
+      switch (effectiveSort) {
         case 'reviews':
           return b.reviews - a.reviews;
         case 'products':
@@ -187,7 +219,7 @@ export function Boutiques() {
       }
     });
     return list;
-  }, [BOUTIQUES, query, city, verifiedOnly, sort, followingOnly, following]);
+  }, [BOUTIQUES, query, city, verifiedOnly, effectiveSort, followingOnly, following]);
 
   // Promoted boutiques bubble to the top while still respecting the active
   // filters/search (a promoted shop that doesn't match is not forced in).
@@ -205,7 +237,7 @@ export function Boutiques() {
   }
 
   function clearFilters() {
-    setSort('rating');
+    setSort(defaultSort);
     setVerifiedOnly(false);
     setCityQuery('');
     // The city lives in the URL now, so clearing it is a navigation back to the
@@ -219,7 +251,7 @@ export function Boutiques() {
       {/* Screen header */}
       <div style={css('padding:2px 0 4px;')}>
         <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>The directory</div>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(26px,3.2vw,40px);line-height:1.1;margin:6px 0 0;letter-spacing:-.01em;")}>Boutiques</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(26px,3.2vw,40px);line-height:1.1;margin:6px 0 0;letter-spacing:-.01em;")}>Boutiques</h1>
       </div>
 
       {/* Search bar with a filter action on the right, per the design */}
@@ -277,7 +309,7 @@ export function Boutiques() {
       {showFilters && (
         <div style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:20px;padding:16px;margin-top:12px;box-shadow:0 18px 40px -32px rgba(107,20,54,.55);')}>
           <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:15px;color:var(--ag-ink);")}>Filters</div>
+            <div style={css("font-weight:700;font-size:15px;color:var(--ag-ink);")}>Filters</div>
             {!!activeFilters && (
               <button onClick={clearFilters} style={css('border:none;background:none;cursor:pointer;color:var(--ag-crimson);font-size:12.5px;font-weight:700;font-family:inherit;')}>
                 Clear all
@@ -288,8 +320,12 @@ export function Boutiques() {
           {/* Sort */}
           <div style={css('font-size:10px;color:var(--ag-muted-soft);letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin:14px 0 8px;')}>Sort by</div>
           <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
-            {SORTS.map((s) => {
-              const on = sort === s.key;
+            {sortOptions.map((s) => {
+              // effectiveSort, not sort: when no shop has a visible rating the
+              // "Top rated" chip is not rendered at all, so a buyer still
+              // holding sort==='rating' would see NO chip selected while the
+              // list is quietly sorted by the fallback.
+              const on = effectiveSort === s.key;
               return (
                 <button
                   key={s.key}
@@ -387,10 +423,10 @@ export function Boutiques() {
 
       {/* Section label */}
       <div style={css('display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:20px 2px 6px;')}>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-ink);")}>
+        <div style={css("font-weight:700;font-size:16px;color:var(--ag-ink);")}>
           {followingOnly ? 'Following' : query || activeFilters ? 'Results' : 'All Boutiques'}
         </div>
-        <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;")}>
+        <div style={css("font-variant-numeric:tabular-nums;font-size:11px;color:var(--ag-muted-soft);letter-spacing:.04em;")}>
           {filtered.length} {filtered.length === 1 ? 'boutique' : 'boutiques'}
         </div>
       </div>
@@ -422,15 +458,21 @@ export function Boutiques() {
 
             <div style={css('flex:1;min-width:0;')}>
               <div style={css('display:flex;align-items:center;gap:6px;')}>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.15;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
+                <span style={css("font-weight:700;font-size:17px;line-height:1.15;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
                 {b.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3E9BE0;flex:none;")}>verified</span>}
                 {adId && <PromotedBadge label="Promoted" style={{ flex: 'none' }} />}
               </div>
-              <div style={css('display:flex;align-items:center;gap:5px;margin-top:5px;')}>
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>
-                <span style={css('font-size:13px;font-weight:700;color:var(--ag-ink);')}>{b.rating}</span>
-                <span style={css('font-size:12.5px;color:var(--ag-muted-soft);font-weight:600;')}>({formatCount(b.reviews)})</span>
-              </div>
+              {/* Omitted entirely below the threshold rather than rendered as
+                  "★ 0 (0)", which reads as a shop rated zero. See
+                  src/lib/ratingDisplay.ts. The row below moves up to take the
+                  space; nothing is substituted in its place. */}
+              {showsRating(b.rating, b.reviews) && (
+                <div style={css('display:flex;align-items:center;gap:5px;margin-top:5px;')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:var(--ag-star);")}>star</span>
+                  <span style={css('font-size:13px;font-weight:700;color:var(--ag-ink);')}>{b.rating}</span>
+                  <span style={css('font-size:12.5px;color:var(--ag-muted-soft);font-weight:600;')}>({formatCount(b.reviews)})</span>
+                </div>
+              )}
               <div style={css('display:flex;align-items:center;gap:4px;margin-top:5px;color:var(--ag-muted);font-size:12.5px;')}>
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;")}>location_on</span>
                 <span style={css('white-space:nowrap;overflow:hidden;text-overflow:ellipsis;')}>{b.area && b.area !== b.city ? `${b.area}, ${b.city}` : b.city}</span>

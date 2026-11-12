@@ -120,7 +120,7 @@ export function Coupons() {
       width: '1.4fr',
       render: (c) => (
         <div style={css('min-width:0;')}>
-          <div style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13.5px;color:var(--ag-crimson);letter-spacing:.03em;")}>{c.code}</div>
+          <div className="agx-code" style={css("font-weight:600;font-size:13.5px;color:var(--ag-crimson);letter-spacing:.03em;")}>{c.code}</div>
           <div style={css('font-size:12px;color:var(--ag-muted);font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{c.description || '—'}</div>
         </div>
       ),

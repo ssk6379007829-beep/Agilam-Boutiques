@@ -25,7 +25,7 @@ export function CatalogError({ onRetry, what = 'this page' }: { onRetry?: () => 
           cloud_off
         </span>
       </div>
-      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:16px;")}>
+      <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;margin-top:16px;")}>
         We couldn’t load {what}
       </div>
       <div style={css('color:var(--ag-muted);font-size:14px;margin-top:6px;max-width:340px;line-height:1.55;')}>

@@ -61,7 +61,7 @@ function Shell({ icon, heading, sub, children }: { icon: string; heading: string
         <div style={css('width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;margin:0 auto;')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:29px;")}>{icon}</span>
         </div>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;text-align:center;margin-top:15px;line-height:1.15;color:var(--ag-ink);")}>{heading}</div>
+        <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;text-align:center;margin-top:15px;line-height:1.15;color:var(--ag-ink);")}>{heading}</div>
         <div style={css('text-align:center;color:var(--ag-muted);font-size:13.5px;margin-top:9px;line-height:1.55;')}>{sub}</div>
         <div style={css('display:flex;flex-direction:column;gap:14px;margin-top:22px;')}>{children}</div>
       </div>

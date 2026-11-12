@@ -107,12 +107,12 @@ export function ProfileHub() {
             that used to sit beside it was duplicating. */}
         <div style={css('display:flex;align-items:center;gap:14px;')}>
           <button onClick={() => navigate('/seller/boutique')} aria-label="Edit boutique profile" style={css('flex:1;min-width:0;display:flex;align-items:center;gap:14px;border:none;background:none;color:inherit;cursor:pointer;text-align:left;padding:0;font-family:inherit;')}>
-            <span style={css("width:64px;height:64px;flex:none;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>
+            <span style={css("width:64px;height:64px;flex:none;border-radius:20px;overflow:hidden;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:var(--ag-display);font-weight:700;font-size:28px;")}>
               {boutique?.logo_url ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} /> : initial}
             </span>
             <span style={css('min-width:0;')}>
               <span style={css('display:flex;align-items:center;gap:5px;')}>
-                <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;")}>{boutiqueName || '…'}</span>
+                <span style={css("font-family:var(--ag-display);font-weight:700;font-size:23px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;")}>{boutiqueName || '…'}</span>
                 {boutique?.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>verified</span>}
               </span>
               {subline && <span style={css('display:block;opacity:.85;font-size:13px;')}>{subline}</span>}

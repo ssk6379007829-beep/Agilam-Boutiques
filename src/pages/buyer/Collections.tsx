@@ -103,7 +103,7 @@ export function Collections() {
               <span style={css('position:absolute;left:14px;right:14px;bottom:14px;color:#fff;')}>
                 <span style={css('display:flex;align-items:center;gap:6px;')}>
                   <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:#F4D9A6;")}>{c.icon}</span>
-                  <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:19px;line-height:1.1;")}>{c.name}</span>
+                  <span style={css("font-weight:700;font-size:19px;line-height:1.1;")}>{c.name}</span>
                 </span>
                 <span style={css('display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;font-weight:600;opacity:.92;')}>
                   <span>{c.count} {c.count === 1 ? 'piece' : 'pieces'}</span>
@@ -162,7 +162,7 @@ export function Collections() {
                 style={css('display:flex;align-items:center;gap:12px;width:100%;padding:16px;border:1px solid var(--ag-surface-3);background:linear-gradient(140deg,var(--ag-surface),var(--ag-surface-2));border-radius:18px;cursor:pointer;text-align:left;text-decoration:none;color:inherit;font-family:inherit;box-shadow:0 14px 32px -28px rgba(107,20,54,.6);')}
               >
                 <span style={css('min-width:0;flex:1;')}>
-                  <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;color:var(--ag-crimson);line-height:1.1;")}>{b.label}</span>
+                  <span style={css("display:block;font-weight:700;font-size:20px;color:var(--ag-crimson);line-height:1.1;")}>{b.label}</span>
                   <span style={css('display:block;font-size:12px;color:var(--ag-muted);margin-top:4px;')}>{b.count} {b.count === 1 ? 'piece' : 'pieces'}</span>
                 </span>
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;color:#D8BFCA;flex:none;")}>arrow_forward</span>
@@ -187,7 +187,7 @@ export function Collections() {
               >
                 <span className="agx-circle-ring" style={css(`display:block;width:62px;height:62px;border-radius:50%;background:${c.hex};box-shadow:0 12px 26px -14px ${c.hex};border:3px solid #fff;`)} />
                 <span style={css('font-size:12.5px;font-weight:800;color:var(--ag-ink-2);')}>{c.name}</span>
-                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--ag-muted-soft);margin-top:-5px;")}>{c.count}</span>
+                <span style={css("font-variant-numeric:tabular-nums;font-size:10.5px;color:var(--ag-muted-soft);margin-top:-5px;")}>{c.count}</span>
               </Link>
             ))}
           </div>
@@ -209,7 +209,7 @@ export function Collections() {
                 style={css('display:flex;align-items:center;gap:7px;border:1px solid var(--ag-border-soft);background:var(--ag-surface);color:var(--ag-ink-3);cursor:pointer;padding:10px 16px;border-radius:999px;font-size:13px;font-weight:700;font-family:inherit;text-decoration:none;')}
               >
                 {f.name}
-                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ag-muted-soft);")}>{f.count}</span>
+                <span style={css("font-variant-numeric:tabular-nums;font-size:11px;color:var(--ag-muted-soft);")}>{f.count}</span>
               </Link>
             ))}
           </div>

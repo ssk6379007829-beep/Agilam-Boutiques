@@ -95,7 +95,7 @@ export function Checkout() {
       <div style={css('max-width:980px;margin:0 auto;')}>
         <div style={css('padding:4px 0 2px;')}>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Step 2 of 3 · Delivery</div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>Where should we deliver?</h1>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>Where should we deliver?</h1>
         </div>
 
         <div className="agx-cart-grid" style={css('display:grid;gap:22px;align-items:start;margin-top:18px;')}>
@@ -169,7 +169,7 @@ export function Checkout() {
           </div>
 
           <div className="agx-cart-sticky" style={css('background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:22px;padding:20px;box-shadow:0 20px 44px -30px rgba(107,20,54,.55);position:sticky;top:80px;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Summary</div>
+            <div style={css("font-weight:700;font-size:20px;")}>Summary</div>
             <div style={css('display:flex;flex-direction:column;gap:11px;margin-top:16px;font-size:14px;')}>
               <div style={css('display:flex;justify-content:space-between;color:var(--ag-ink-2);')}><span>Subtotal</span><span style={css('font-weight:700;')}>{fmt(subtotal)}</span></div>
               {discount > 0 && (
@@ -191,7 +191,7 @@ export function Checkout() {
             <div style={css('height:1px;background:var(--ag-surface-3);margin:16px 0;')} />
             <div style={css('display:flex;justify-content:space-between;align-items:baseline;')}>
               <span style={css('font-weight:800;')}>Total</span>
-              <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
+              <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
             </div>
             {touched && invalid && (
               <div style={css('color:#C0455E;font-size:12px;font-weight:700;margin-top:16px;text-align:center;')}>

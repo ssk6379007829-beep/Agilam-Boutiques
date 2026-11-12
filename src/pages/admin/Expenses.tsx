@@ -192,7 +192,7 @@ export function Expenses() {
       render: (r) => (
         <div style={css('min-width:0;')}>
           <div style={css('font-size:12.5px;font-weight:700;')}>{paymentLabel(r.payment_method)}</div>
-          {r.reference && <div style={css(`font-size:11px;color:${T.muted};font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`)}>{r.reference}</div>}
+          {r.reference && <div className="agx-code" style={css(`font-size:11px;color:${T.muted};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`)}>{r.reference}</div>}
         </div>
       ),
     },
@@ -489,7 +489,7 @@ function ProofViewer({ row, onClose }: { row: ExpenseRow | null; onClose: () => 
       <div onClick={(e) => e.stopPropagation()} className="agx-scroll" style={css('width:560px;max-width:100%;max-height:88vh;overflow-y:auto;background:var(--ag-surface);border-radius:20px;padding:22px;box-shadow:0 30px 70px -30px rgba(107,20,54,.7);')}>
         <div style={css('display:flex;align-items:flex-start;justify-content:space-between;gap:12px;')}>
           <div style={css('min-width:0;')}>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:21px;")}>{row.title}</div>
+            <div style={css("font-weight:700;font-size:21px;")}>{row.title}</div>
             <div style={css(`color:${T.muted};font-size:12.5px;font-weight:600;margin-top:3px;`)}>
               {fmtInr(row.amount)} · {fmtDate(row.spent_on)} · {paymentLabel(row.payment_method)}
               {row.created_by_name ? ` · filed by ${row.created_by_name}` : ''}

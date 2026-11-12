@@ -83,7 +83,7 @@ export function Unsubscribe() {
   };
 
   const card = 'max-width:520px;margin:0 auto;padding:32px 24px 48px;text-align:center;';
-  const title = "font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:var(--ag-ink);line-height:1.3;margin:0 0 10px;";
+  const title = 'font-family:var(--ag-display);font-size:26px;font-weight:700;color:var(--ag-ink);line-height:1.3;margin:0 0 10px;';
   const para = 'font-size:14.5px;line-height:1.75;color:var(--ag-label);margin:0 0 14px;';
 
   return (

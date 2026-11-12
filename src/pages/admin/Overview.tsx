@@ -232,7 +232,7 @@ function PlatformBooks() {
               <Icon name={c.icon} size={20} color={c.hot ? 'var(--ag-danger-text)' : 'var(--ag-crimson)'} />
             </div>
             <div style={css('min-width:0;')}>
-              <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;line-height:1;")}>{c.value}</div>
+              <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;line-height:1;")}>{c.value}</div>
               <div style={css(`color:${T.muted};font-size:12px;font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`)}>{c.label}</div>
             </div>
             {c.hot && <span style={css('position:absolute;top:12px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--ag-danger-text);')} />}
@@ -314,7 +314,7 @@ function PnlRow({ label, value, kind }: { label: string; value: number; kind: 'i
   return (
     <div style={css(`display:flex;align-items:center;justify-content:space-between;gap:12px;padding:${total ? '13px 0 2px' : '9px 0'};${strong ? `border-top:1px solid ${T.border};margin-top:${total ? '4px' : '2px'};` : ''}`)}>
       <span style={css(`font-size:${total ? '14px' : '13px'};font-weight:${strong ? 800 : 600};color:${strong ? T.ink : T.muted};`)}>{label}</span>
-      <span style={css(`font-size:${total ? '19px' : '13.5px'};font-weight:800;color:${color};${total ? "font-family:'Playfair Display',serif;" : ''}`)}>
+      <span style={css(`font-size:${total ? '19px' : '13.5px'};font-weight:800;color:${color};font-variant-numeric:tabular-nums;`)}>
         {value < 0 ? '−' : ''}{fmtInr(Math.abs(value))}
       </span>
     </div>
@@ -567,7 +567,7 @@ function HeroCard({
           </span>
         )}
       </div>
-      <div style={css(`font-family:'Playfair Display',serif;font-weight:700;font-size:30px;line-height:1;margin-top:14px;${negative ? 'color:var(--ag-danger-text);' : ''}`)}>{value}</div>
+      <div style={css(`font-family:var(--ag-display);font-weight:700;font-size:30px;line-height:1;margin-top:14px;${negative ? 'color:var(--ag-danger-text);' : ''}`)}>{value}</div>
       <div style={css(`color:${T.muted};font-size:12.5px;font-weight:600;margin-top:3px;`)}>{label}</div>
       {vs && <div style={css(`color:${T.muted};font-size:10.5px;font-weight:600;margin-top:2px;opacity:.8;`)}>{vs}</div>}
       {foot && <div style={css(`color:${T.muted};font-size:10.5px;font-weight:600;margin-top:8px;opacity:.9;`)}>{foot}</div>}
@@ -586,7 +586,7 @@ function InsightTile({ label, value, foot, icon, bar, good, danger }: {
         <Icon name={icon} size={18} color={T.muted} />
         <span style={css(`font-size:12px;font-weight:700;color:${T.muted};`)}>{label}</span>
       </div>
-      <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;line-height:1;margin-top:10px;")}>{value}</div>
+      <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;line-height:1;margin-top:10px;")}>{value}</div>
       {bar !== undefined && (
         <div style={css('height:6px;border-radius:99px;background:var(--ag-surface-2);margin-top:10px;overflow:hidden;')}>
           <div style={css(`height:100%;border-radius:99px;background:${barColor};width:${Math.min(100, Math.max(2, bar))}%;`)} />
@@ -605,7 +605,7 @@ function PaySplit({ online, cod }: { online: number; cod: number }) {
       <div style={css('position:relative;width:120px;height:120px;border-radius:50%;')}>
         <div style={css(`position:absolute;inset:0;border-radius:50%;background:conic-gradient(#D6336C ${pct}%, var(--ag-border) 0);`)} />
         <div style={css('position:absolute;inset:14px;border-radius:50%;background:var(--ag-surface);display:flex;flex-direction:column;align-items:center;justify-content:center;')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1;")}>{pct}%</div>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:22px;line-height:1;")}>{pct}%</div>
           <div style={css('font-size:10px;color:var(--ag-muted);')}>online</div>
         </div>
       </div>

@@ -34,7 +34,7 @@ export function SellModal() {
         <div style={css('width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#D6336C,#B02454);display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 16px 34px -16px rgba(214,51,108,.8);')}>
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:30px;")}>storefront</span>
         </div>
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:26px;text-align:center;margin-top:16px;line-height:1.1;")}>
+        <div style={css("font-family:var(--ag-display);font-weight:700;font-size:26px;text-align:center;margin-top:16px;line-height:1.1;")}>
           Are you a Boutique Owner?
         </div>
         <div style={css('text-align:center;color:var(--ag-muted);font-size:14px;margin-top:9px;line-height:1.55;max-width:340px;margin-left:auto;margin-right:auto;')}>

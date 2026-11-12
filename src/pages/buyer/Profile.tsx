@@ -185,11 +185,11 @@ export function Profile() {
               onto its own line when the row runs out of width, and the name is
               allowed two lines before it truncates. */}
           <div className="agx-profile-id" style={css('display:flex;align-items:center;gap:15px;margin-top:12px;position:relative;flex-wrap:wrap;')}>
-            <div style={css("width:66px;height:66px;flex:none;border-radius:20px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:30px;backdrop-filter:blur(4px);")}>
+            <div style={css("width:66px;height:66px;flex:none;border-radius:20px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-family:var(--ag-display);font-weight:700;font-size:30px;backdrop-filter:blur(4px);")}>
               {initial || <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:34px;opacity:.9;")}>person</span>}
             </div>
             <div style={css('flex:1 1 150px;min-width:0;')}>
-              <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(20px,5.5vw,24px);line-height:1.12;margin:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;")}>{name}</h1>
+              <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(20px,5.5vw,24px);line-height:1.12;margin:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;")}>{name}</h1>
               <div style={css('opacity:.88;font-size:13px;margin-top:4px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;')}>{subline}</div>
             </div>
             <button
@@ -211,7 +211,7 @@ export function Profile() {
               style={css(`flex:1;background:none;border:none;cursor:pointer;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;${i < stats.length - 1 ? 'border-right:1px solid var(--ag-border-soft);' : ''}`)}
             >
               <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#D6336C;font-size:22px;")}>{s.icon}</span>
-              <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;color:var(--ag-ink);line-height:1;")}>{s.value}</span>
+              <span style={css("font-family:var(--ag-display);font-weight:700;font-size:22px;color:var(--ag-ink);line-height:1;")}>{s.value}</span>
               <span style={css('font-size:11.5px;font-weight:700;color:var(--ag-muted);')}>{s.label}</span>
             </button>
           ))}
@@ -277,8 +277,8 @@ export function Profile() {
         {/* Build stamp — the first thing support asks for. Injected from
             package.json at build time, so it can't drift from what's deployed. */}
         <div style={css('margin:18px 20px 0;text-align:center;color:var(--ag-muted-soft);')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ag-muted-soft);")}>{COMPANY.brand}</div>
-          <div style={css("font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:5px;letter-spacing:.06em;")}>
+          <div style={css("font-weight:700;font-size:16px;color:var(--ag-muted-soft);")}>{COMPANY.brand}</div>
+          <div style={css("font-size:11px;margin-top:5px;letter-spacing:.06em;")}>
             Version {APP_VERSION}
           </div>
           <div style={css('font-size:11.5px;margin-top:6px;')}>

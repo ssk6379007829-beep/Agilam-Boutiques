@@ -893,8 +893,16 @@ function EmailPreview({
               </span>
             </div>
           )}
-          {/* Heading centred, body left — matches shell() in the Edge Function. */}
-          <div style={css("font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:18px;line-height:1.3;color:var(--ag-ink);text-align:center;")}>
+          {/* Heading centred, body left — matches shell() in the Edge Function.
+
+              Georgia spelled out, NOT `var(--ag-display)`. This is a preview of
+              an email, and `shell()` in `supabase/functions/broadcast-email`
+              sets its <h1> in `Georgia,'Times New Roman',serif` as the real
+              face, not a fallback — an inbox loads no webfont and resolves no
+              custom property. The stack here was `'Playfair Display',Georgia`,
+              so the preview was rendering the app's display face over a heading
+              that every recipient saw in Georgia. */}
+          <div style={css("font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:18px;line-height:1.3;color:var(--ag-ink);text-align:center;")}>
             {heading.trim() || subject.trim() || 'Your heading'}
           </div>
 

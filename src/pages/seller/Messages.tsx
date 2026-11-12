@@ -68,7 +68,7 @@ export function Messages() {
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);')} onClick={() => menu && setMenu(null)}>
       <div style={css('padding:6px 20px 10px;')}>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:28px;")}>Messages</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:28px;")}>Messages</h1>
       </div>
 
       {/* Search */}
@@ -109,7 +109,7 @@ export function Messages() {
           <div style={css('width:78px;height:78px;border-radius:50%;background:linear-gradient(145deg,var(--ag-surface-2),var(--ag-surface-2));display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 3px rgba(255,255,255,.7),0 12px 26px -12px rgba(214,51,108,.55);')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:36px;color:var(--ag-crimson);")}>forum</span>
           </div>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;margin-top:16px;")}>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:22px;margin-top:16px;")}>
             {search || tab !== 'All' ? 'Nothing here' : 'No messages yet'}
           </div>
           <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:6px;max-width:320px;line-height:1.55;')}>

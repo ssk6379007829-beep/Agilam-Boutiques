@@ -236,6 +236,9 @@ export interface Database {
            *  it in by hand. `_error` holds the last refusal, verbatim. */
           shiprocket_pickup_registered_at: string | null;
           shiprocket_pickup_error: string | null;
+          /** Shadowfax (migration 0110). No pickup nickname to register — the
+           *  booking sends this shop's own address and map pin every time. */
+          shadowfax_enabled: boolean;
           /**
            * Withheld from anon/authenticated by 0021's column-level SELECT
            * grants: writable by the owner, but only readable through the
@@ -704,6 +707,13 @@ export interface Database {
            *  admin console is exempt so the switch stays reachable. Stronger
            *  than `maintenance_mode`, which only adds a banner. */
           coming_soon: boolean;
+          /** How many reviews a product or boutique needs before the storefront
+           *  prints its star rating (migration 0111). Below it the badge is
+           *  omitted entirely, so a brand-new shop is never shown as "★ 0".
+           *  Mirrored by src/lib/ratingDisplay.ts, src/lib/schema.ts and
+           *  middleware.js, which must agree or Google sees a rating the page
+           *  does not show. CHECK-constrained to 1…9999. */
+          min_reviews_to_show: number;
           support_email: string;
           /** Which Razorpay merchant account collects money (migration 0064).
            *  Names an env-var slot, never a key. */
@@ -714,6 +724,9 @@ export interface Database {
           /** Master Shiprocket switch (migration 0067). Off by default — an
            *  admin turns it on once credentials are set. */
           shiprocket_enabled: boolean;
+          /** Master Shadowfax switch (migration 0110). Off by default. Booking
+           *  needs this AND the shop's own flag. */
+          shadowfax_enabled: boolean;
           /** Master WhatsApp switch (migration 0090). Off by default. False
            *  makes wa_claim_batch return nothing, so the triggers keep queueing
            *  and the wa-drain Edge Function sends none of it. */
@@ -817,7 +830,7 @@ export interface Database {
           // ── Aggregator booking (migration 0067) ───────────────────────────
           /** 'manual' = the seller typed the docket. 'shiprocket' = we booked
            *  it, so a courier scan drives the timeline instead of the seller. */
-          provider: 'manual' | 'shiprocket';
+          provider: 'manual' | 'shiprocket' | 'shadowfax';
           sr_order_id: string | null;
           sr_shipment_id: string | null;
           sr_courier_name: string | null;
@@ -830,6 +843,22 @@ export interface Database {
            *  order list needs no join per row. */
           last_status: string | null;
           last_status_at: string | null;
+          /** Shadowfax (migration 0110). 'hyperlocal' is an intracity run
+           *  measured in hours, 'surface' the multi-day parcel. NULL on manual
+           *  and Shiprocket parcels, which have no such split. */
+          service_level: 'hyperlocal' | 'surface' | null;
+          sfx_order_id: string | null;
+          sfx_shipment_id: string | null;
+          /** Assigned after booking on a hyperlocal run, so it arrives by
+           *  webhook rather than in the booking response. */
+          sfx_rider_name: string | null;
+          sfx_rider_phone: string | null;
+          /** What a return-to-origin cost us, and who an admin decided bears
+           *  it. NULL bearer = undecided, where every RTO starts. */
+          rto_freight_charge: number | null;
+          rto_bearer: 'seller' | 'platform' | null;
+          rto_decided_at: string | null;
+          rto_decided_by: string | null;
         };
         Insert: Partial<Database['public']['Tables']['shipments']['Row']> & {
           order_id: string; boutique_id: string; courier_name: string; awb: string;

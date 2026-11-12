@@ -76,7 +76,7 @@ export function SiteFooter() {
           {/* Identity + contact */}
           <div style={css('max-width:340px;')}>
             {/*
-              The wordmark, not the name set in Playfair.
+              The wordmark, not the name set in the display face.
 
               Same file the header already loads on every screen, so it is served
               from cache here and costs no extra request — and `width`/`height`

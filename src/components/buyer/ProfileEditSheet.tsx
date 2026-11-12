@@ -62,7 +62,7 @@ export function ProfileEditSheet({
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:#fff;font-size:24px;")}>person_edit</span>
           </div>
           <div>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:22px;line-height:1.1;")}>Your details</div>
+            <div style={css("font-family:var(--ag-display);font-weight:700;font-size:22px;line-height:1.1;")}>Your details</div>
             <div style={css('color:var(--ag-muted);font-size:12.5px;margin-top:3px;')}>Used for chat &amp; delivery</div>
           </div>
         </div>

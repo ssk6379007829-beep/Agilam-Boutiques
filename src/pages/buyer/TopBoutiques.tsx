@@ -16,6 +16,7 @@ import {
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { scoreBoutiques, compactCount, RATING_CONFIDENCE_BOUTIQUE } from '@/lib/ranking';
+import { useShowsRating } from '@/lib/ratingDisplay';
 import { TONES } from '@/data/demo';
 
 const PAGE = 12;
@@ -42,6 +43,8 @@ export function TopBoutiques() {
   const navigate = useNavigate();
   const { follows, toggleFollow, showToast } = useShop();
   const { boutiques: BOUTIQUES, loading } = useCatalog();
+  /** Whether a rating may be printed at all — see src/lib/ratingDisplay.ts. */
+  const showsRating = useShowsRating();
 
   const [city, setCity] = useState<string | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
@@ -156,7 +159,7 @@ export function TopBoutiques() {
                 {/* `.agx-bgrid` is one card per row on a phone, so the cover is
                     full-bleed there — not the half-width tile ImageSlot assumes. */}
                 <ImageSlot src={b.image} placeholder={`${b.name} — cover`} sizes="(min-width: 1060px) 33vw, (min-width: 620px) 50vw, 100vw" style={css('position:absolute;inset:0;')} />
-                <span style={css("position:absolute;left:12px;top:12px;min-width:28px;height:28px;padding:0 8px;border-radius:10px;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(176,36,84,.9);")}>
+                <span style={css("position:absolute;left:12px;top:12px;min-width:28px;height:28px;padding:0 8px;border-radius:10px;background:linear-gradient(140deg,#E14A7E,#B02454 70%,#8E1C44);color:#fff;font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px -6px rgba(176,36,84,.9);")}>
                   {i + 1}
                 </span>
               </div>
@@ -166,7 +169,7 @@ export function TopBoutiques() {
                   <BoutiqueLogo name={b.name} src={b.logo} size={44} />
                   <div style={css('min-width:0;flex:1;')}>
                     <div style={css('display:flex;align-items:center;gap:5px;')}>
-                      <span style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
+                      <span style={css("font-weight:700;font-size:17px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>{b.name}</span>
                       {b.verified && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;color:#3A9BE0;flex:none;")}>verified</span>}
                     </div>
                     <div style={css('color:var(--ag-muted);font-size:12px;display:flex;align-items:center;gap:3px;margin-top:2px;')}>
@@ -189,7 +192,12 @@ export function TopBoutiques() {
                 {/* The numbers behind the rank, stated plainly. A leaderboard
                     that will not show its working is just an advert. */}
                 <div style={css('display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:13px;padding-top:12px;border-top:1px solid var(--ag-border-soft);')}>
-                  <Stat icon="star" tint="var(--ag-star)" value={String(b.rating)} sub={`${compactCount(b.reviews)} reviews`} />
+                  {/* The rating Stat is dropped below the threshold rather than
+                      shown as "0 · 0 reviews". The row is flex-wrap, so the
+                      remaining stats close the gap. See src/lib/ratingDisplay.ts. */}
+                  {showsRating(b.rating, b.reviews) && (
+                    <Stat icon="star" tint="var(--ag-star)" value={String(b.rating)} sub={`${compactCount(b.reviews)} reviews`} />
+                  )}
                   {(b.unitsSold ?? 0) > 0 && (
                     <Stat icon="local_fire_department" tint="var(--ag-good)" value={compactCount(b.unitsSold ?? 0)} sub="sold" />
                   )}

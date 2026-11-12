@@ -123,7 +123,7 @@ export function Coupons() {
 
         <div style={css('padding:2px 0 6px;')}>
           <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>Save more</div>
-          <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>Coupons &amp; offers</h1>
+          <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.05;margin:4px 0 0;")}>Coupons &amp; offers</h1>
           <div style={css('color:var(--ag-muted);font-size:13px;margin-top:6px;')}>
             {emptyBag
               ? 'Your bag is empty — add a piece to use a coupon.'
@@ -176,7 +176,7 @@ export function Coupons() {
               </div>
               <div style={css('flex:1;min-width:0;padding:15px;')}>
                 <div style={css('display:flex;align-items:center;gap:9px;flex-wrap:wrap;')}>
-                  <span style={css("font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;color:var(--ag-crimson);letter-spacing:.04em;")}>{c.code}</span>
+                  <span className="agx-code" style={css("font-weight:600;font-size:15px;color:var(--ag-crimson);letter-spacing:.04em;")}>{c.code}</span>
                   {c.boutique_id && (
                     <span style={css('font-size:10px;font-weight:800;color:#8A5A20;background:var(--ag-gold-bg);border-radius:6px;padding:2px 7px;')}>{boutiqueName(c.boutique_id)}</span>
                   )}
@@ -213,7 +213,7 @@ export function Coupons() {
             <div style={css('height:1px;background:var(--ag-surface-3);margin:15px 0;')} />
             <div style={css('display:flex;justify-content:space-between;align-items:baseline;')}>
               <span style={css('font-weight:800;')}>Total</span>
-              <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
+              <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:26px;")}>{fmt(total)}</span>
             </div>
             <button onClick={() => navigate(from)} style={css('width:100%;height:52px;margin-top:16px;border:none;border-radius:15px;background:linear-gradient(135deg,#D6336C,#B02454);color:#fff;font-weight:800;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 16px 34px -16px rgba(214,51,108,.85);')}>
               Back to {backLabel}<span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>arrow_forward</span>

@@ -101,7 +101,7 @@ export function BoutiqueProfileEdit() {
         <button onClick={goBack} aria-label="Go back" className="agx-con-icon">
           <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-crimson);")}>arrow_back</span>
         </button>
-        <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:23px;")}>Boutique Profile</h1>
+        <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:23px;")}>Boutique Profile</h1>
       </div>
 
       {cropper}
@@ -112,13 +112,13 @@ export function BoutiqueProfileEdit() {
         <button type="button" aria-label="Change your cover image" onClick={() => boutique && coverInput.current?.click()} style={css('height:110px;border-radius:16px;background:var(--ag-surface-2);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;')}>
           {boutique?.cover_url && <img src={boutique.cover_url} alt="" style={css('position:absolute;inset:0;width:100%;height:100%;object-fit:cover;')} />}
           {!boutique?.cover_url && <div style={css('position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.3) 0 1px,transparent 1px 16px);')} />}
-          <span style={css("font-family:'IBM Plex Mono',monospace;font-size:12px;color:rgba(42,26,32,.5);background:rgba(255,255,255,.7);padding:4px 10px;border-radius:8px;position:relative;")}>
+          <span style={css("font-size:12px;color:rgba(42,26,32,.5);background:rgba(255,255,255,.7);padding:4px 10px;border-radius:8px;position:relative;")}>
             {uploading === 'cover' ? 'uploading…' : 'cover image · tap to change'}
           </span>
         </button>
 
         <div style={css('display:flex;align-items:center;gap:12px;margin-top:-24px;padding-left:6px;position:relative;')}>
-          <button type="button" aria-label="Change your logo" onClick={() => boutique && logoInput.current?.click()} title="Tap to change your logo" style={css("width:70px;height:70px;border-radius:20px;background:var(--ag-purple-bg);border:3px solid var(--ag-bg);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:28px;color:rgba(42,26,32,.5);cursor:pointer;overflow:hidden;")}>
+          <button type="button" aria-label="Change your logo" onClick={() => boutique && logoInput.current?.click()} title="Tap to change your logo" style={css("width:70px;height:70px;border-radius:20px;background:var(--ag-purple-bg);border:3px solid var(--ag-bg);display:flex;align-items:center;justify-content:center;font-family:var(--ag-display);font-weight:700;font-size:28px;color:rgba(42,26,32,.5);cursor:pointer;overflow:hidden;")}>
             {boutique?.logo_url
               ? <img src={boutique.logo_url} alt="" style={css('width:100%;height:100%;object-fit:cover;')} />
               : uploading === 'logo' ? '…' : initial}

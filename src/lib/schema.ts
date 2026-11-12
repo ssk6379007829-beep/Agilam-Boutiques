@@ -9,8 +9,11 @@
  * Rules this module holds to, because Google's validator is unforgiving:
  *   · never emit a field we don't actually have (an empty `Offer.price` is a
  *     hard error, and a wrong `AggregateRating` is a manual-action risk)
- *   · `aggregateRating` only when there is at least one real review — the
- *     single most common cause of a "Review snippet" penalty
+ *   · `aggregateRating` only when the STOREFRONT is showing that rating —
+ *     `showsRating()` from src/lib/ratingDisplay.ts, which is the admin
+ *     threshold from migration 0111 and not merely "has a review". Claiming a
+ *     rating the visible page does not show is the single most common cause of
+ *     a "Review snippet" penalty
  *   · absolute URLs everywhere; `@id` values that are stable page URLs, so the
  *     graph joins up across pages
  *
@@ -21,6 +24,7 @@
 import { COMPANY } from '@/data/company';
 import { SITE_NAME, SITE_URL, absoluteUrl, canonicalUrl, routes } from '@/lib/seo';
 import type { Boutique, Product } from '@/data/demo';
+import { showsRating } from '@/lib/ratingDisplay';
 
 export type JsonLd = Record<string, unknown>;
 
@@ -236,9 +240,21 @@ export function productSchema(
         },
       },
     }),
-    // Only when it is real. A fabricated rating is a manual-action risk.
+    /*
+     * Only when it is real, AND only when the page itself is showing it.
+     *
+     * The first half has always been here: a fabricated rating is a
+     * manual-action risk. The second half arrived with migration 0111, and is
+     * the same risk from the other direction — Google treats structured data
+     * that claims a rating the visible page does not show as a review-snippet
+     * violation. `showsRating` is the identical predicate the badges use, so
+     * the markup cannot advertise stars the buyer never sees.
+     *
+     * `middleware.js` carries the third copy of this rule and is the one
+     * crawlers actually read. All three must agree — see src/lib/ratingDisplay.ts.
+     */
     aggregateRating:
-      product.reviews > 0 && product.rating > 0
+      showsRating(product.rating, product.reviews)
         ? {
             '@type': 'AggregateRating',
             ratingValue: Number(product.rating.toFixed(1)),
@@ -247,7 +263,13 @@ export function productSchema(
             worstRating: 1,
           }
         : undefined,
-    review: reviews?.length
+    /*
+     * Individual reviews ride on the same switch as the aggregate. Emitting
+     * them while the aggregate is suppressed would put star-rated review
+     * snippets in the result for a page that shows no stars — the very
+     * mismatch the gate above exists to prevent.
+     */
+    review: reviews?.length && showsRating(product.rating, product.reviews)
       ? reviews.slice(0, 5).map((r) => compact({
           '@type': 'Review',
           author: { '@type': 'Person', name: r.author },
@@ -302,8 +324,9 @@ export function boutiqueSchema(boutique: Boutique, productCount?: number): JsonL
     sameAs: boutique.insta
       ? [boutique.insta.startsWith('http') ? boutique.insta : `https://instagram.com/${boutique.insta.replace(/^@/, '')}`]
       : undefined,
+    // Same gate as the product above, for the same reason (migration 0111).
     aggregateRating:
-      boutique.reviews > 0 && boutique.rating > 0
+      showsRating(boutique.rating, boutique.reviews)
         ? {
             '@type': 'AggregateRating',
             ratingValue: Number(boutique.rating.toFixed(1)),

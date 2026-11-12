@@ -12,6 +12,37 @@
    Semantic names, not colour names, so a card stays "surface" in both.
    ------------------------------------------------------------------ */
 :root {
+  /* ---- Typefaces -------------------------------------------------------
+     Not a colour, so this is declared once and never overridden by the dark
+     block — but it lives here because the 250-odd call sites that want the
+     display face set it inline, exactly like every `--ag-*` colour, and a
+     hardcoded family is the same trap as a hardcoded hex: changing it meant
+     editing every one of them. It is one line now.
+
+     Fraunces replaced Playfair Display. Playfair is a Didone cut for 24px and
+     up, and the UI was setting it at 13–21px for nav labels, avatar initials
+     and prices, where its hairlines fall below a device pixel and go muddy —
+     see the "lining zeros read as capital O" finding in the 2026-08 UI audit.
+     So the rule is now strict: `--ag-display` is for titles and headings
+     ONLY. Money is set in Archivo with tabular figures, and anything at or
+     below 21px simply inherits the body face.
+
+     Fraunces is variable on `opsz` (9–144), which browsers drive from the
+     font-size automatically via the default `font-optical-sizing: auto` — so
+     the same token stays legible at 18px and dramatic at 52px, which is the
+     whole reason it was picked over another static Didone. Its WONK and SOFT
+     axes are deliberately left at their defaults (0): the swashed `g` and `a`
+     are the showy end of the family and read as novelty here.
+
+     Georgia is the fallback rather than a generic `serif` because it is on
+     every Windows and Mac machine and is the nearest sturdy, large-x-height
+     serif — so the pre-swap paint is close to the final one, not a Times
+     flash. The email templates in `supabase/functions/*` set Georgia as their
+     REAL face, not a fallback, and are intentionally not part of this token:
+     an inbox loads no webfont and resolves no custom property. */
+  --ag-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+
+
   --ag-bg: #FBF6F2;          /* page background */
   --ag-surface: #FFFFFF;     /* cards / panels (background:#fff) */
   --ag-surface-2: #FDEEF4;   /* rose-tinted cards & chips */
@@ -27,7 +58,15 @@
      put the MRP a buyer compares against the sale price close to invisible.
      Now 5.52:1 and 4.53:1 — the visual hierarchy between them is preserved. */
   --ag-muted: #775D66;       /* muted text */
-  --ag-muted-soft: #836B74;  /* softest text / placeholders */
+  --ag-muted-soft: #836B74;  /* softest text (placeholders have their own) */
+  /* Placeholder hint. Lighter than `--ag-muted-soft` ON PURPOSE and against
+     the usual advice: the owner wants the example text to read clearly as a
+     hint rather than as something already typed (2026-11-12). It lands at
+     3.17:1 on a white field, which clears WCAG's 3:1 bar for large text and
+     UI components but NOT the 4.5:1 one for body text. That is a deliberate,
+     eyes-open trade, which is why it is its own token and not a tweak to
+     `--ag-muted-soft` — nothing else should follow it down here. */
+  --ag-placeholder: #9E8C93;
   --ag-label: #6B5560;       /* field labels */
   --ag-crimson: #B02454;     /* deep-crimson text/icons (brightened on dark) */
   --ag-deep: #8E1C44;        /* deepest crimson text (brightened on dark) */
@@ -88,6 +127,9 @@
   --ag-ink-2: #D8C4CD;
   --ag-muted: #A98D99;
   --ag-muted-soft: #9A8089;  /* was #8A7078 — 4.34:1 on the dark page, now 5.41:1 */
+  /* Darker than the light value, not lighter: on a dark ground, fading a
+     hint toward the background means going DOWN. 3.22:1 on the surface. */
+  --ag-placeholder: #776169;
   --ag-label: #B79AA6;
   --ag-crimson: #E85088;
   --ag-deep: #F06A96;
@@ -127,13 +169,67 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-body { font-family: 'Manrope', system-ui, sans-serif; color: var(--ag-ink); letter-spacing: -0.005em; -webkit-font-smoothing: antialiased; background: var(--ag-bg); }
+/* Archivo, inherited by everything that is not a heading. It replaced Manrope,
+   which was this app's UI face everywhere — all three consoles.
+
+   Archivo is already the public seller site's only typeface (`FACE` in
+   `src/pages/sell/type.ts`, which calls it "a workhorse" — a grotesque drawn
+   for high-reproduction print and forms). That is the right register for a
+   marketplace: a console is a counter and a ledger. Adopting it here means one
+   face across the storefront, the three consoles and /sell, and it costs
+   nothing to load because the stylesheet was already fetching it.
+
+   The stack matches `FACE` deliberately, so the two cannot drift. Archivo is
+   requested as a variable font, so every weight from 100 to 900 is available
+   without naming any — where Manrope cost five static weights.
+
+   The -0.005em was tuned for Manrope and is kept only because it is far too
+   small to see either way (0.08px at 16px); it is not an endorsement. */
+body { font-family: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--ag-ink); letter-spacing: -0.005em; -webkit-font-smoothing: antialiased; background: var(--ag-bg); }
 a { color: #D6336C; text-decoration: none; }
 a:hover { color: #B02454; }
 ::-webkit-scrollbar { width: 0; height: 0; }
 .agx-scroll { scrollbar-width: none; }
 input, textarea, select, button { font-family: inherit; }
 input:focus, textarea:focus { outline: none; }
+
+/* Placeholders, across 244 fields. Nothing in this file had ever styled them,
+   so they were inheriting Tailwind's preflight: `input::placeholder,
+   textarea::placeholder { opacity:1; color:#9ca3af }`. The selector below
+   matches that one exactly — same specificity, declared later — because a bare
+   `::placeholder` is (0,0,1) against preflight's (0,0,2) and would silently
+   lose.
+ *
+ * WEIGHT IS THE FIX, not colour, which is the opposite of what it looks like.
+ * A placeholder inherits the field's weight, and these fields are set inline
+ * at 600, several at 700 and 800 — so the hint rendered BOLD, and a bold grey
+ * string reads as something already typed rather than as an example. Declaring
+ * the weight on the pseudo-element beats the inline weight on the input: they
+ * are different elements, so the input's style attribute never enters this
+ * cascade.
+ *
+ * Colour is `--ag-placeholder`, a token of its own, and it sits BELOW the
+ * 4.5:1 body-text floor at roughly 3.2:1 in every theme. That is a deliberate
+ * decision by the owner, not an oversight: the hint should read as a hint. It
+ * still clears WCAG's 3:1 bar for large text and UI components, and the weight
+ * drop above is doing most of the work of separating it from real input.
+ *
+ * It is a separate token rather than a lighter `--ag-muted-soft` so that the
+ * other things that token dresses — the softest body copy — are not dragged
+ * under the contrast floor with it.
+ *
+ * It also replaces a theme bug. #9ca3af was one hardcoded cool grey for both
+ * themes — a blue-grey in a cream-and-crimson palette, and 7.21:1 on the dark
+ * surface where everything else is tuned near 5:1, so dark-mode placeholders
+ * shouted while light-mode ones whispered. The dark value is DARKER than the
+ * light one, because fading toward a dark ground means going down.
+ *
+ * `opacity: 1` is carried over from preflight on purpose, and matters more now
+ * than it did. Firefox's UA sheet puts `opacity: .54` on placeholders; dropping
+ * it would composite #9E8C93 down to #CBC1C5 — 1.75:1, which on a white field
+ * is close to not being there at all. The token is the whole story; no engine
+ * gets to fade it further. */
+input::placeholder, textarea::placeholder { color: var(--ag-placeholder); font-weight: 400; opacity: 1; }
 /* Browsers paint autofilled fields with their own light background (Chrome's
    pale blue), which overrides our inline surface colour and looks broken in
    dark mode. Force the field back to the theme surface + ink in both themes.
@@ -244,7 +340,39 @@ select:-webkit-autofill {
 .agx-sd-split > * { min-width: 0; }
 @media (min-width: 1000px) { .agx-sd-split { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); } }
 /* ---------- v2 elevation system ---------- */
-.agx-eyebrow { font-family:'IBM Plex Mono',monospace; font-weight:600; letter-spacing:.24em; text-transform:uppercase; }
+/* The section label above a heading — "THE DIRECTORY", "FRESH OFF THE LOOM",
+   "STEP 1 OF 3 · BAG". 75 call sites, which only ever set the size and colour.
+
+   No font-family, so it inherits Archivo. This was `'IBM Plex Mono'` at
+   weight 600 with .24em of tracking: a typewriter face, uppercased and spaced
+   out, at 7.5–10.5px. Mono earns its place on a code someone has to read back
+   (see `.agx-code`); on a label it just reads as a terminal, which is the wrong
+   register for a shop.
+
+   700 and .14em, which is deliberately close to the seller site's LABEL role
+   (`src/pages/sell/type.ts`) — the same job, in the same typeface, already
+   tuned. 700 rather than the 800 this briefly carried while the UI face was
+   Manrope: Archivo is a grotesque drawn for print and forms, so its small caps
+   are already sturdier than Manrope's geometric ones and 800 over-darkens
+   them. .14em rather than mono's .24em because a proportional face does not
+   need that much air to keep uppercase from looking cramped — and the narrower
+   tracking matters, since several of these labels are `white-space:nowrap`. */
+.agx-eyebrow { font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+
+/* A string the buyer reads back, dictates or retypes: a coupon code, an order
+   id, an expense reference, a hex field. Nine call sites.
+ *
+ * No font-family, so these are Archivo like everything else. They were IBM
+ * Plex Mono, and dropping it takes the last typewriter face out of the app —
+ * the same move the seller site made (see `.agx-sell-table th`), and the
+ * reason the font request is now two families instead of four.
+ *
+ * What a code actually needs is not a monospace, it is for the digits to be
+ * one width so `MM-1180` and `MM-0007` are the same length, and a little air
+ * so a run of capitals does not read as a word. That is what these three
+ * declarations buy; `tnum` is set both ways because the shorthand and the
+ * feature flag are not reliably interchangeable across engines. */
+.agx-code { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; letter-spacing: .04em; }
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:2.5px solid #C7275E; outline-offset:2px; border-radius:10px; }
 /* Composite fields — a borderless <input> sitting inside a bordered shell with
    an icon and/or a clear button (search bars, the +91 phone rows, the chat
@@ -273,17 +401,30 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:top .18s ease;
 }
 .agx-skip-link:focus { top:0; }
-.agx-lift { transition: transform .4s cubic-bezier(.2,.7,.2,1), box-shadow .4s ease; }
-.agx-lift:hover { transform: translateY(-6px); box-shadow: 0 30px 60px -34px rgba(107,20,54,.55) !important; }
+/* `.agx-lift` no longer styles anything — product cards have NO hover response
+   (owner's call, 2026-11-12). It used to lift the card and cast a shadow; that
+   and the `.agx-zoom` photo scale were both removed on the same day.
+
+   The class is still in the markup on ~30 elements. It is left there as a
+   marker for "this is a card that could respond to pointing at it", so a
+   future hover is one rule here rather than 30 edits. Nothing renders
+   differently for it today. */
+
 /* Home "Shop by collection": ringed circles. The ring lifts and brightens on
    hover; the label stays put so the rail doesn't feel jumpy. */
 .agx-circle-ring { transition: transform .38s cubic-bezier(.2,.7,.2,1), box-shadow .38s ease; }
 .agx-circle:hover .agx-circle-ring { transform: translateY(-5px) scale(1.04); box-shadow: 0 22px 40px -18px rgba(107,20,54,.95); }
 .agx-circle:focus-visible { outline:none; }
 .agx-circle:focus-visible .agx-circle-ring { outline:2.5px solid #C7275E; outline-offset:3px; }
+/* Clips its child to the rounded corner. The name is now a slight lie: it used
+   to also scale the photo to 1.06 over .8s on hover, and that is gone — the
+   card's lift is the whole hover response.
+
+   The class stays rather than being renamed across its 16 call sites because
+   `overflow:hidden` is doing real work on six of them that carry no other
+   clipping class; the nine `.agx-prod-media` cards and the one `.agx-thumb-media`
+   would survive losing it, the other six would spill. */
 .agx-zoom { overflow:hidden; }
-.agx-zoom > .agx-zoomable, .agx-zoom image-slot { transition: transform .8s cubic-bezier(.2,.7,.2,1); }
-.agx-zoom:hover .agx-zoomable, .agx-zoom:hover image-slot { transform: scale(1.06); }
 @keyframes agx-rise { from { opacity:0; transform: translateY(18px); } to { opacity:1; transform:none; } }
 @keyframes agx-pop { 0%{transform:scale(1);} 45%{transform:scale(1.4);} 100%{transform:scale(1);} }
 /* Scroll-in reveal (see components/layout/ScrollReveal.tsx).
@@ -893,7 +1034,7 @@ body.agx-chatting .agx-maintenance-notice { position: fixed; left: 0; right: 0; 
   /* Let the page scroll instead of two nested scroll regions. */
   .agx-wa-list, .agx-wa-msgs { max-height: none; min-height: 0; overflow-y: visible; }
 }
-@media (prefers-reduced-motion: reduce){ *{ animation-duration:.001ms !important; transition:none !important; } .agx-lift:hover{ transform:none; } .agx-zoom:hover .agx-zoomable{ transform:none; } }
+@media (prefers-reduced-motion: reduce){ *{ animation-duration:.001ms !important; transition:none !important; } }
 @keyframes agxLogoIn{ 0%{ opacity:0; transform:scale(.86) translateY(10px); } 100%{ opacity:1; transform:scale(1) translateY(0); } }
 @keyframes agxBar{ 0%{ transform:translateX(-130%); } 100%{ transform:translateX(340%); } }
 
@@ -1250,7 +1391,8 @@ span[style*="Material Symbols Outlined"] {
   --ag-ink-2: #4A423D;       /* body copy - 8.8:1 */
   --ag-ink-3: #5C534D;       /* secondary */
   --ag-muted: #6E655E;       /* captions, labels - 5.1:1 */
-  --ag-muted-soft: #7C736C;  /* softest text / placeholders */
+  --ag-muted-soft: #7C736C;  /* softest text (placeholders have their own) */
+  --ag-placeholder: #968F89;  /* 3.19:1 — the /sell mirror of the :root value */
   --ag-label: #6E655E;
 
   /* The two that carry the whole discipline. Crimson never touches a heading, a
@@ -1579,7 +1721,9 @@ span[style*="Material Symbols Outlined"] {
    loses to the inline `color`, so it does not land either. The result is a
    marketing page whose entire job is the button, and whose buttons are inert
    under the cursor. Colour only — no lift, no scale: this site is meant to
-   read as printed, and `.agx-lift`'s 6px hop belongs to the storefront. */
+   read as printed. (The storefront's cards used to answer the cursor with a
+   6px hop and a photo zoom; both were removed on 2026-11-12, so these buttons
+   are now the only hover response anywhere in the app.) */
 @media (hover: hover) and (pointer: fine) {
   .agx-sell-cta:hover { background: var(--ag-crimson) !important; }
   .agx-sell-cta-deep:hover { background: var(--ag-gold-bg) !important; }

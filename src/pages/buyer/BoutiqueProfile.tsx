@@ -15,6 +15,7 @@ import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { subscribeToBoutiqueFollowers } from '@/data/boutiques';
 import { TONES, fmt } from '@/data/demo';
+import { useShowsRating } from '@/lib/ratingDisplay';
 
 /**
  * Buyer-facing boutique profile — premium layout from design mock "09".
@@ -41,6 +42,8 @@ function compact(n: number): string {
 
 export function BoutiqueProfile() {
   const navigate = useNavigate();
+  /** Whether a rating may be printed at all — see src/lib/ratingDisplay.ts. */
+  const showsRating = useShowsRating();
   /**
    * One route, `/boutique/:slug`, which accepts either the boutique's real slug
    * (migration 0003) or its id. Both `/b/:slug` and `/buyer/boutique/:id` 301
@@ -256,7 +259,7 @@ export function BoutiqueProfile() {
 
           {/* Name + verified */}
           <div style={css('display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;text-align:center;')}>
-            <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(24px,3.4vw,34px);line-height:1.1;letter-spacing:-.01em;margin:0;")}>{ab.name}</h1>
+            <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(24px,3.4vw,34px);line-height:1.1;letter-spacing:-.01em;margin:0;")}>{ab.name}</h1>
             {ab.verified && (
               <span aria-hidden="true" title="Verified boutique" style={css("font-family:'Material Symbols Outlined';font-size:22px;color:#3A9BE0;")}>verified</span>
             )}
@@ -265,7 +268,14 @@ export function BoutiqueProfile() {
           {/* Rating — and the way to the reviews it summarises.
               It stated a number and offered no way to the evidence, which is
               the one thing a reader wants the moment they read it. Tapping it
-              takes them to the rail at the bottom of the page. */}
+              takes them to the rail at the bottom of the page.
+
+              Hidden below the threshold: this is the largest rating on the
+              whole site, directly under the shop's name, so "★ 0 (0 Reviews)"
+              did the most damage here of anywhere. Nothing replaces it — the
+              location line moves up — and no affordance is lost, because
+              there are no reviews to scroll to. See src/lib/ratingDisplay.ts. */}
+          {showsRating(ab.rating, ab.reviews) && (
           <button
             onClick={scrollToReviews}
             aria-label={`${ab.rating} out of 5 from ${ab.reviews} reviews — read them`}
@@ -276,6 +286,7 @@ export function BoutiqueProfile() {
             <span style={css('color:var(--ag-muted);font-weight:600;')}>({compact(ab.reviews)} Reviews)</span>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;color:var(--ag-crimson);")}>expand_more</span>
           </button>
+          )}
 
           {/* Location */}
           <div style={css('display:flex;align-items:center;justify-content:center;gap:5px;margin-top:8px;color:var(--ag-muted);font-size:14px;')}>
@@ -296,7 +307,7 @@ export function BoutiqueProfile() {
           </div>
 
           {/* Description */}
-          <p style={css("text-align:center;color:var(--ag-ink-2);font-size:clamp(14px,1.3vw,16px);line-height:1.6;margin:16px auto 0;max-width:420px;font-family:'Playfair Display',serif;font-style:italic;")}>
+          <p style={css("text-align:center;color:var(--ag-ink-2);font-size:clamp(14px,1.3vw,16px);line-height:1.6;margin:16px auto 0;max-width:420px;font-family:var(--ag-display);font-style:italic;")}>
             {ab.desc}
           </p>
 
@@ -308,7 +319,7 @@ export function BoutiqueProfile() {
               { value: `${ab.positiveRating}%`, label: 'Positive Rating' },
             ].map((s, i) => (
               <div key={s.label} style={css(`flex:1;text-align:center;${i > 0 ? 'border-left:1px solid var(--ag-border-soft);' : ''}`)}>
-                <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(20px,2.6vw,26px);color:var(--ag-ink);line-height:1;")}>{s.value}</div>
+                <div style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(20px,2.6vw,26px);color:var(--ag-ink);line-height:1;")}>{s.value}</div>
                 <div style={css('font-size:12px;color:var(--ag-muted);margin-top:6px;font-weight:600;')}>{s.label}</div>
               </div>
             ))}
@@ -361,9 +372,9 @@ export function BoutiqueProfile() {
       {/* ---------- Collections ---------- */}
       <div style={css('max-width:900px;margin:0 auto;padding:0 clamp(14px,4vw,28px);')}>
         <div style={css('display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:32px;')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;")}>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;")}>
             Collections
-            <span style={css("font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--ag-muted);letter-spacing:0;margin-left:8px;")}>· {ab.products} styles</span>
+            <span style={css("font-variant-numeric:tabular-nums;font-size:12px;font-weight:500;color:var(--ag-muted);letter-spacing:0;margin-left:8px;")}>· {ab.products} styles</span>
           </div>
           {bqFilter !== 'All' && (
             <button onClick={() => setBqFilter('All')} style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:13.5px;cursor:pointer;white-space:nowrap;')}>
@@ -425,10 +436,11 @@ export function BoutiqueProfile() {
                 <div style={css('padding:12px 2px 0;')}>
                   <div className="agx-card-title" style={css('font-size:14.5px;font-weight:700;')}>{p.title}</div>
                   <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;')}>
-                    <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
-                    {/* Guarded on `reviews`, as the old badge was: an unrated
-                        piece would otherwise advertise "★ 0". */}
-                    {p.reviews > 0 && (
+                    <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:19px;")}>{fmt(p.price)}</span>
+                    {/* Guarded so an unrated piece never advertises "★ 0",
+                        now against the admin threshold rather than a bare
+                        count. See src/lib/ratingDisplay.ts. */}
+                    {showsRating(p.rating, p.reviews) && (
                       <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
                         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>
                         {p.rating}
@@ -442,7 +454,7 @@ export function BoutiqueProfile() {
         ) : (
           <div style={css('display:flex;flex-direction:column;align-items:center;text-align:center;padding:54px 24px;')}>
             <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:40px;color:var(--ag-border);")}>checkroom</span>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;margin-top:12px;")}>Nothing here yet</div>
+            <div style={css("font-weight:700;font-size:20px;margin-top:12px;")}>Nothing here yet</div>
             <div style={css('color:var(--ag-muted);font-size:13.5px;margin-top:5px;')}>
               {bqFilter === 'All' ? 'This boutique hasn’t listed any styles yet.' : `No ${bqFilter.toLowerCase()} in this collection.`}
             </div>
@@ -458,7 +470,7 @@ export function BoutiqueProfile() {
             `scroll-margin-top` clears the sticky app header, which would
             otherwise sit over the heading the jump just landed on. */}
         <div ref={reviewsRef} style={css('scroll-margin-top:84px;')}>
-          <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;margin-top:38px;")}>
+          <div style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;margin-top:38px;")}>
             What buyers say
           </div>
         </div>
@@ -467,7 +479,7 @@ export function BoutiqueProfile() {
         {/* ---------- Other boutiques ---------- */}
         {nearby.length > 0 && (
           <>
-            <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;margin-top:38px;")}>
+            <div style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;margin-top:38px;")}>
               {nearbyInCity ? `More boutiques in ${ab.city}` : 'More boutiques'}
             </div>
             <div className="agx-scroll" style={css('display:flex;gap:12px;overflow-x:auto;padding:16px 0 8px;')}>
@@ -481,7 +493,7 @@ export function BoutiqueProfile() {
                   <BoutiqueLogo name={b.name} src={b.logo} size={54} ring={2} />
                   <span style={css('font-weight:800;font-size:13.5px;line-height:1.25;color:var(--ag-ink);width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>{b.name}</span>
                   <span style={css('display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>
-                    {b.reviews > 0 && (
+                    {showsRating(b.rating, b.reviews) && (
                       <>
                         <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:13px;color:var(--ag-star);")}>star</span>
                         {b.rating} ·

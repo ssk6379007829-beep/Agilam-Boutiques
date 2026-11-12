@@ -14,3 +14,4 @@ daily-report.log
 vite-dev.*.log
 playwright-browsers
 daily-report-preview.html
+.playwright-mcp

@@ -7,6 +7,7 @@ import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { useShop } from '@/state/ShopContext';
 import { shareProduct } from '@/lib/share';
 import { TONES, fmt } from '@/data/demo';
+import { useShowsRating } from '@/lib/ratingDisplay';
 import type { FeedProduct } from '@/data/feed';
 
 /** "2 mins ago" / "1 hour ago" / "3 Jul" — feed-style relative stamps. */
@@ -87,10 +88,10 @@ function SizeSheet({
             <ImageSlot src={image} placeholder={title} alt={title} className="agx-prod-fill" sizes="56px" />
           </span>
           <span style={css('flex:1;min-width:0;')}>
-            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:16.5px;color:var(--ag-ink);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;")}>
+            <span style={css("display:block;font-weight:700;font-size:16.5px;color:var(--ag-ink);line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;")}>
               {title}
             </span>
-            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:19px;margin-top:4px;")}>
+            <span style={css("display:block;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ag-crimson);font-size:19px;margin-top:4px;")}>
               {fmt(price)}
             </span>
           </span>
@@ -154,6 +155,8 @@ export function FeedPostCard({
 }) {
   const navigate = useNavigate();
   const { showToast, addToCart, cart, cartQty, isFollowing, toggleFollow } = useShop();
+  /** Whether a rating may be printed at all — see src/lib/ratingDisplay.ts. */
+  const showsRating = useShowsRating();
 
   const [slide, setSlide] = useState(0);
   const [askSize, setAskSize] = useState(false);
@@ -341,7 +344,7 @@ export function FeedPostCard({
 
         {images.length > 1 && (
           <>
-            <div style={css("position:absolute;right:12px;top:12px;background:rgba(36,16,25,.55);backdrop-filter:blur(6px);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;")}>
+            <div style={css("position:absolute;right:12px;top:12px;background:rgba(36,16,25,.55);backdrop-filter:blur(6px);color:#fff;font-variant-numeric:tabular-nums;font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px;")}>
               {slide + 1}/{images.length}
             </div>
             <div style={css('position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;align-items:center;gap:5px;padding:6px 9px;border-radius:999px;background:rgba(36,16,25,.4);backdrop-filter:blur(6px);')}>
@@ -412,12 +415,12 @@ export function FeedPostCard({
         {/* Title (single line) + price */}
         <div style={css('display:flex;align-items:flex-start;gap:12px;')}>
           <button onClick={openProduct} style={css('flex:1;min-width:0;border:none;background:none;padding:0;cursor:pointer;text-align:left;')}>
-            <span style={css("display:block;font-family:'Playfair Display',serif;font-weight:700;font-size:18px;line-height:1.25;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>
+            <span style={css("display:block;font-weight:700;font-size:18px;line-height:1.25;color:var(--ag-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;")}>
               {product.title}
             </span>
           </button>
           <span style={css('flex:none;display:flex;align-items:baseline;gap:6px;')}>
-            <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:21px;line-height:1;")}>{fmt(price)}</span>
+            <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:21px;line-height:1;")}>{fmt(price)}</span>
             {hasMrp && <span style={css('text-decoration:line-through;color:var(--ag-muted-soft);font-size:12.5px;font-weight:700;')}>{fmt(mrp as number)}</span>}
           </span>
         </div>
@@ -433,10 +436,12 @@ export function FeedPostCard({
             second tap adjusts the count instead of silently re-adding. */}
         <div style={css('display:flex;align-items:center;gap:12px;margin-top:11px;')}>
           <div style={css('flex:1;min-width:0;display:flex;align-items:center;gap:9px;')}>
-            <span style={css('display:inline-flex;align-items:center;gap:4px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);color:#B8892B;font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:9px;')}>
-              {product.rating}
-              <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);font-variation-settings:'FILL' 1;")}>star</span>
-            </span>
+            {showsRating(product.rating, product.reviews_count) && (
+              <span style={css('display:inline-flex;align-items:center;gap:4px;background:var(--ag-gold-bg);border:1px solid var(--ag-gold-border);color:#B8892B;font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:9px;')}>
+                {product.rating}
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;color:var(--ag-star);font-variation-settings:'FILL' 1;")}>star</span>
+              </span>
+            )}
             {lowStock && <span style={css('font-size:11.5px;font-weight:800;color:var(--ag-gold-text);')}>Only {product.stock} left</span>}
           </div>
 

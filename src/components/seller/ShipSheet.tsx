@@ -76,7 +76,7 @@ export function ShipSheet({
         onClick={(e) => e.stopPropagation()}
         style={css('width:100%;max-width:520px;background:var(--ag-surface);border-radius:20px 20px 0 0;padding:18px 20px 22px;box-shadow:0 -12px 40px -18px rgba(107,20,54,.6);max-height:88vh;overflow-y:auto;')}
       >
-        <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:20px;")}>Ship this order</div>
+        <div style={css("font-weight:700;font-size:20px;")}>Ship this order</div>
         <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:3px;line-height:1.5;')}>
           The courier and tracking number are required — they are what the customer follows, and what proves the parcel left your shop.
         </div>

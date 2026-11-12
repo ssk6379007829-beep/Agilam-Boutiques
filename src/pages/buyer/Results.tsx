@@ -199,9 +199,9 @@ export function Results() {
           <div style={css('display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:12px;')}>
             <div>
               <div className="agx-eyebrow" style={css('font-size:10.5px;color:var(--ag-crimson);')}>{eyebrow}</div>
-              <h1 style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:clamp(28px,3.2vw,42px);line-height:1.06;letter-spacing:-.01em;margin:6px 0 0;")}>
+              <h1 style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(28px,3.2vw,42px);line-height:1.06;letter-spacing:-.01em;margin:6px 0 0;")}>
                 {collectionTitle}{' '}
-                <span style={css("font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;color:var(--ag-muted);letter-spacing:0;")}>
+                <span style={css("font-variant-numeric:tabular-nums;font-size:14px;font-weight:500;color:var(--ag-muted);letter-spacing:0;")}>
                   · {results.length} {results.length === 1 ? 'piece' : 'pieces'}
                 </span>
               </h1>
@@ -335,7 +335,7 @@ export function Results() {
                     <div className="agx-card-title" style={css('font-size:14px;font-weight:700;')}>{p.title}</div>
                     <div className="agx-card-sub" style={css('font-size:12.5px;color:var(--ag-muted);')}>{p.boutique}</div>
                     <div style={css('display:flex;align-items:center;gap:8px;margin-top:6px;')}>
-                      <span style={css("font-family:'Playfair Display',serif;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(p.price)}</span>
+                      <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:18px;")}>{fmt(p.price)}</span>
                       <span style={css(`font-size:11px;font-weight:800;color:${stockFg(p.stock)};`)}>{stockLabel(p.stock)}</span>
                     </div>
                   </div>
@@ -351,7 +351,7 @@ export function Results() {
                 <div style={css('width:74px;height:74px;border-radius:24px;background:var(--ag-surface-2);display:flex;align-items:center;justify-content:center;')}>
                   <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:38px;color:#D6336C;")}>search_off</span>
                 </div>
-                <div style={css("font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-top:16px;")}>No matches found</div>
+                <div style={css("font-family:var(--ag-display);font-weight:700;font-size:24px;margin-top:16px;")}>No matches found</div>
                 <div style={css('color:var(--ag-muted);font-size:14px;margin-top:6px;max-width:320px;line-height:1.55;')}>
                   {query.trim()
                     ? `Nothing matched “${query.trim()}”. Try a different spelling, or browse the full collection.`
