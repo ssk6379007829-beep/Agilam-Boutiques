@@ -148,9 +148,11 @@
 
      PRELOADER (`html.ag-pre`) — the first page of a storefront visit only
      (set 2026-11-13, modelled on Tubik's SPYLT preloader: dark panel, the
-     wordmark "writes itself on" letter by letter with a coloured leading edge
-     that cools to cream, a percentage that tracks real boot progress, then the
-     panel dissolves into the page). It holds for at least 2.2 s so the
+     wordmark in Fraunces italic "writes itself on" letter by letter, each
+     letter brushed in rose or gold and cooling to cream, a percentage that
+     tracks real boot progress, then the panel dissolves into the page. The
+     owner chose this over a roman cut and a curtain-lift exit from a
+     side-by-side preview that day). It holds for at least 2.2 s so the
      write-on completes, dismisses the instant the app has mounted after that,
      and gives up at 4 s regardless — nobody on slow 3G waits behind a brand
      moment. The gate skips it when the path is a seller/admin/auth surface,
@@ -203,37 +205,54 @@
 
   /* ── Preloader face ─────────────────────────────────────────────────── */
   #ag-boot .ag-pre{display:none}
-  html.ag-pre #ag-boot{background:#120A0E;gap:0;transition:opacity .55s cubic-bezier(.4,0,.2,1)}
+  html.ag-pre #ag-boot{background:#120A0E;gap:0;
+    transition:background-color .7s cubic-bezier(.4,0,.2,1),opacity .4s ease .45s}
   html.ag-pre #ag-boot .ag-boot-mark,html.ag-pre #ag-boot .ag-boot-ring{display:none}
   html.ag-pre #ag-boot .ag-pre{display:block}
   /* React mounting must NOT retire this face — the script does, on its own
-     clock. Specificity (2,3,1) beats the retire rule's (2,1,0); `.ag-pre-out`
-     hands control back so the same rule then fades it. */
+     clock. Specificity (2,3,1) beats the retire rule's (2,1,0). */
   html.ag-pre #root:not(:empty)~#ag-boot:not(.ag-pre-out){opacity:1;visibility:visible;pointer-events:auto}
-  html.ag-pre #ag-boot.ag-pre-out{opacity:0;pointer-events:none}
-  html.ag-pre #ag-boot.ag-pre-out .ag-pre-mark{transform:translateY(-8px)}
-  .ag-pre-mark{display:block;font-family:'Fraunces',Georgia,'Times New Roman',serif;
-    font-size:clamp(42px,10.5vw,96px);font-weight:700;line-height:1.1;letter-spacing:-.025em;
-    white-space:nowrap;text-align:center;transition:transform .55s cubic-bezier(.4,0,.2,1)}
-  /* Each letter is painted by a gradient clipped to its glyph: cream, then a
-     narrow band of the brand colour, then nothing. The gradient starts parked
-     to the right so the glyph shows the "nothing" third; sliding it left pulls
-     the coloured edge across the letter first and the cream in behind it —
-     ink laid by a brush, cooling as it dries. "Mangai" leads with the brand
-     rose and "Mart" with the logo's gold, as the lockup itself is coloured. */
-  .ag-pre-mark span{display:inline-block;color:transparent;
-    background-image:linear-gradient(100deg,#FBF6F2 0%,#FBF6F2 38%,var(--edge) 43%,var(--edge) 50%,transparent 57%,transparent 100%);
-    background-size:300% 100%;background-position:100% 0;background-repeat:no-repeat;
-    -webkit-background-clip:text;background-clip:text}
+  /* The exit, as the reference does it: the dark panel cross-fades to the
+     page's own ground while the wordmark lifts away, then the panel fades so
+     the page underneath comes up through it. `visibility` is pinned here
+     because the retire rule above would otherwise snap the whole thing away
+     the instant the class lands and the dissolve would never be seen. */
+  html.ag-pre #root:not(:empty)~#ag-boot.ag-pre-out,html.ag-pre #ag-boot.ag-pre-out{
+    background:#FBF6F2;opacity:0;visibility:visible;pointer-events:none}
+  html[data-theme="dark"].ag-pre #ag-boot.ag-pre-out,html[data-theme="dark"].ag-pre #root:not(:empty)~#ag-boot.ag-pre-out{background:#120A0E}
+  html.ag-pre #ag-boot.ag-pre-out .ag-pre-mark{opacity:0;transform:translateY(-10px) scale(1.03)}
+  html.ag-pre #ag-boot.ag-pre-out .ag-pre-meter{opacity:0}
+  /* Fraunces italic at its largest optical size: the one face the site
+     already loads has a calligraphic cut in it, and that is what carries the
+     "hand-lettered" feel of the reference without a second font file. The
+     display face is for titles and headings — a brand wordmark is one. */
+  .ag-pre-mark{display:block;font-family:'Fraunces',Georgia,'Times New Roman',serif;font-style:italic;
+    font-size:clamp(42px,11vw,112px);font-weight:600;line-height:1.1;letter-spacing:-.01em;
+    font-variation-settings:'opsz' 144;white-space:nowrap;text-align:center;
+    transition:opacity .5s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+  /* Each letter is revealed by a soft brush mask sweeping along the italic
+     slant, in its edge colour; the colour then cools to cream on its own
+     clock, so the brand colour sits on the stroke for a beat the way wet ink
+     does. "Mangai" leads with the brand rose and "Mart" with the logo's gold,
+     as the lockup itself is coloured. Only the letter spans (`span span`) are
+     masked — the two word wrappers are plain. */
+  .ag-pre-mark span span{display:inline-block;color:var(--edge);opacity:0;
+    -webkit-mask-image:linear-gradient(78deg,#000 0%,#000 36%,transparent 62%,transparent 100%);
+    mask-image:linear-gradient(78deg,#000 0%,#000 36%,transparent 62%,transparent 100%);
+    -webkit-mask-size:300% 100%;mask-size:300% 100%;-webkit-mask-position:100% 0;mask-position:100% 0;
+    -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+    transform:translateY(.06em) scale(.985);transform-origin:50% 80%}
   .ag-pre-mark .ag-pre-w1 span{--edge:#E85088}
   .ag-pre-mark .ag-pre-w2 span{--edge:#D9A441}
-  html.ag-pre-go .ag-pre-mark span{animation:ag-pre-ink .6s cubic-bezier(.45,0,.2,1) both;
-    animation-delay:calc(var(--i) * 95ms)}
-  @keyframes ag-pre-ink{to{background-position:0% 0}}
+  html.ag-pre-go .ag-pre-mark span span{opacity:1;
+    animation:ag-pre-brush .75s cubic-bezier(.5,0,.15,1) both,ag-pre-cool 1.1s cubic-bezier(.4,0,.2,1) both;
+    animation-delay:calc(var(--i) * 95ms),calc(var(--i) * 95ms + 550ms)}
+  @keyframes ag-pre-brush{to{-webkit-mask-position:0% 0;mask-position:0% 0;transform:none}}
+  @keyframes ag-pre-cool{to{color:#FBF6F2}}
   .ag-pre-meter{position:absolute;left:0;right:0;bottom:max(44px,calc(env(safe-area-inset-bottom) + 36px));
     display:flex;flex-direction:column;align-items:center;gap:9px;
     font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:12px;font-weight:500;
-    letter-spacing:.14em;color:#F7ECF0;font-variant-numeric:tabular-nums}
+    letter-spacing:.14em;color:#F7ECF0;font-variant-numeric:tabular-nums;transition:opacity .3s ease}
   .ag-pre-line{width:88px;height:1px;background:rgba(247,236,240,.22);overflow:hidden}
   .ag-pre-fill{height:100%;width:0;background:#F7ECF0;transition:width .18s linear}
 </style>
@@ -275,12 +294,12 @@
   var h=document.documentElement;if(!h.classList.contains('ag-pre'))return;
   try{
     var boot=document.getElementById('ag-boot'),pct=boot.querySelector('.ag-pre-pct'),fill=boot.querySelector('.ag-pre-fill');
-    var t0=performance.now(),target=14,shown=0,mounted=false,inkStart=0,done=false,raf=0;
+    var t0=performance.now(),target=14,shown=0,last=0,mounted=false,inkStart=0,done=false,raf=0;
     var elapsed=function(){return performance.now()-t0};
     var aim=function(n){if(n>target)target=n};
     var go=function(){if(inkStart)return;inkStart=elapsed();h.classList.add('ag-pre-go');aim(40)};
     // Start writing when Fraunces is in, or at 900 ms with the fallback serif.
-    try{document.fonts.load("700 64px 'Fraunces'").then(go,go)}catch(e){}
+    try{document.fonts.load("italic 600 64px 'Fraunces'").then(go,go)}catch(e){}
     setTimeout(go,900);
     document.addEventListener('DOMContentLoaded',function(){aim(72)});
     var root=document.getElementById('root');
@@ -290,14 +309,17 @@
       if(done)return;done=true;cancelAnimationFrame(raf);
       pct.textContent='100 %';fill.style.width='100%';
       setTimeout(function(){boot.classList.add('ag-pre-out');
-        setTimeout(function(){h.classList.remove('ag-pre','ag-pre-go');if(boot.parentNode)boot.parentNode.removeChild(boot)},620)},300)};
+        setTimeout(function(){h.classList.remove('ag-pre','ag-pre-go');if(boot.parentNode)boot.parentNode.removeChild(boot)},900)},300)};
     var tick=function(){
-      var e=elapsed(),fast=mounted?99:target,slow=Math.min(fast+15,99);
+      var e=elapsed(),fast=Math.min(mounted?99:target,e/22),slow=Math.min(fast+15,99),f=(e-last)/16.7;last=e;
       // Glide toward the milestone, then creep a little past it: a stalled
-      // network must never read as a frozen page.
-      if(shown<fast)shown=Math.min(fast,shown+Math.max((fast-shown)*.045,.06));else if(shown<slow)shown+=.025;
+      // network must never read as a frozen page. Capped by the clock too
+      // (e/22 = 99 at the 2.2 s hold), so a cached bundle that mounts in
+      // 120 ms does not pin the counter at 99 for two seconds. Stepped per unit of time,
+      // not per frame, so a throttled tab or a busy phone reads the same.
+      if(shown<fast)shown=Math.min(fast,shown+Math.max((fast-shown)*(1-Math.pow(.955,f)),.06*f));else if(shown<slow)shown=Math.min(slow,shown+.025*f);
       pct.textContent=Math.round(shown)+' %';fill.style.width=shown+'%';
-      var inkDone=inkStart&&e-inkStart>=1500;
+      var inkDone=inkStart&&e-inkStart>=1650;
       if(e>=4000||(mounted&&e>=2200&&inkDone))finish();else raf=requestAnimationFrame(tick)};
     raf=requestAnimationFrame(tick);
   }catch(e){h.classList.remove('ag-pre','ag-pre-go')}
