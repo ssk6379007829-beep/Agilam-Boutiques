@@ -134,12 +134,38 @@
      bundle has run. It exists because on a 3G connection — the normal case for
      this marketplace's audience — the page was a blank white screen for 7.4
      seconds and unusable for 14.8, with no logo and no motion to say the site
-     was alive. Now the brand and a spinner land as soon as the HTML does.
-     Styles are inline and the wordmark is TEXT, not an image: the 93 kB PNG
-     logo cost ~2 s of the very wait this is meant to cover, so the splash now
-     needs exactly zero network requests and paints with the HTML. It removes
-     itself the moment React paints, via #root:not(:empty) — no JS, no timer,
-     no flash. -->
+     was alive. Now the brand lands as soon as the HTML does. Styles are inline
+     and the wordmark is TEXT, not an image: the 93 kB PNG logo cost ~2 s of the
+     very wait this is meant to cover, so the splash needs exactly zero network
+     requests and paints with the HTML.
+
+     It has two faces, chosen by the tiny gate script at the end of <head>:
+
+     QUIET (default) — wordmark + ring on the page ground. Removes itself the
+     moment React paints, via #root:not(:empty) — no JS, no timer, no flash.
+     This is what every console, every auth screen, every repeat load and every
+     reduced-motion visitor gets.
+
+     PRELOADER (`html.ag-pre`) — the first page of a storefront visit only
+     (set 2026-11-13, modelled on Tubik's SPYLT preloader: dark panel, the
+     wordmark "writes itself on" letter by letter with a coloured leading edge
+     that cools to cream, a percentage that tracks real boot progress, then the
+     panel dissolves into the page). It holds for at least 2.2 s so the
+     write-on completes, dismisses the instant the app has mounted after that,
+     and gives up at 4 s regardless — nobody on slow 3G waits behind a brand
+     moment. The gate skips it when the path is a seller/admin/auth surface,
+     when it has already played this session, under prefers-reduced-motion and
+     under Save-Data. The panel is the dark-theme ground in BOTH themes, on
+     purpose: the reference's whole effect is a dark curtain lifting onto the
+     page. Colours here are literal because index.css has not loaded yet and
+     the `--ag-*` tokens do not exist at this point; they are copied from it
+     (page grounds, --ag-crimson dark, and the gold from the logo's "Mart").
+
+     The admin segment is substituted into the gate at build time by Vite's
+     HTML env replacement (the VITE_ADMIN_PATH variable, written between
+     percent signs) so the gate can leave the console alone; that path is
+     already inlined in the JS bundle, so this adds nothing a devtools search
+     would not find — see the obscurity note in src/lib/adminPath.ts. -->
 <style>
   #ag-boot{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:14px;background:#FBF6F2;
@@ -174,15 +200,108 @@
     #ag-boot .ag-boot-ring{animation-duration:2s}
     #ag-boot{transition:none}
   }
+
+  /* ── Preloader face ─────────────────────────────────────────────────── */
+  #ag-boot .ag-pre{display:none}
+  html.ag-pre #ag-boot{background:#120A0E;gap:0;transition:opacity .55s cubic-bezier(.4,0,.2,1)}
+  html.ag-pre #ag-boot .ag-boot-mark,html.ag-pre #ag-boot .ag-boot-ring{display:none}
+  html.ag-pre #ag-boot .ag-pre{display:block}
+  /* React mounting must NOT retire this face — the script does, on its own
+     clock. Specificity (2,3,1) beats the retire rule's (2,1,0); `.ag-pre-out`
+     hands control back so the same rule then fades it. */
+  html.ag-pre #root:not(:empty)~#ag-boot:not(.ag-pre-out){opacity:1;visibility:visible;pointer-events:auto}
+  html.ag-pre #ag-boot.ag-pre-out{opacity:0;pointer-events:none}
+  html.ag-pre #ag-boot.ag-pre-out .ag-pre-mark{transform:translateY(-8px)}
+  .ag-pre-mark{display:block;font-family:'Fraunces',Georgia,'Times New Roman',serif;
+    font-size:clamp(42px,10.5vw,96px);font-weight:700;line-height:1.1;letter-spacing:-.025em;
+    white-space:nowrap;text-align:center;transition:transform .55s cubic-bezier(.4,0,.2,1)}
+  /* Each letter is painted by a gradient clipped to its glyph: cream, then a
+     narrow band of the brand colour, then nothing. The gradient starts parked
+     to the right so the glyph shows the "nothing" third; sliding it left pulls
+     the coloured edge across the letter first and the cream in behind it —
+     ink laid by a brush, cooling as it dries. "Mangai" leads with the brand
+     rose and "Mart" with the logo's gold, as the lockup itself is coloured. */
+  .ag-pre-mark span{display:inline-block;color:transparent;
+    background-image:linear-gradient(100deg,#FBF6F2 0%,#FBF6F2 38%,var(--edge) 43%,var(--edge) 50%,transparent 57%,transparent 100%);
+    background-size:300% 100%;background-position:100% 0;background-repeat:no-repeat;
+    -webkit-background-clip:text;background-clip:text}
+  .ag-pre-mark .ag-pre-w1 span{--edge:#E85088}
+  .ag-pre-mark .ag-pre-w2 span{--edge:#D9A441}
+  html.ag-pre-go .ag-pre-mark span{animation:ag-pre-ink .6s cubic-bezier(.45,0,.2,1) both;
+    animation-delay:calc(var(--i) * 95ms)}
+  @keyframes ag-pre-ink{to{background-position:0% 0}}
+  .ag-pre-meter{position:absolute;left:0;right:0;bottom:max(44px,calc(env(safe-area-inset-bottom) + 36px));
+    display:flex;flex-direction:column;align-items:center;gap:9px;
+    font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:12px;font-weight:500;
+    letter-spacing:.14em;color:#F7ECF0;font-variant-numeric:tabular-nums}
+  .ag-pre-line{width:88px;height:1px;background:rgba(247,236,240,.22);overflow:hidden}
+  .ag-pre-fill{height:100%;width:0;background:#F7ECF0;transition:width .18s linear}
 </style>
+<!-- The gate. Runs before <body> so the right face paints first — deciding
+     after first paint would flash cream, then dark. Nothing here can throw
+     past the try: a failure simply leaves the quiet splash in charge. -->
+<script>try{(function(){
+  var p=location.pathname,a='%VITE_ADMIN_PATH%';if(a.charAt(0)==='%')a='admin';
+  var op=p==='/'+a||p.indexOf('/'+a+'/')===0||p.indexOf('/seller')===0||p.indexOf('/sell')===0||p.indexOf('/auth')===0;
+  var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var sd=navigator.connection&&navigator.connection.saveData;
+  if(op||rm||sd||sessionStorage.getItem('ag-pre-seen'))return;
+  sessionStorage.setItem('ag-pre-seen','1');
+  document.documentElement.classList.add('ag-pre');
+})()}catch(e){}</script>
 </head>
 <body>
 <div id="root"></div>
 <div id="ag-boot" role="status" aria-live="polite">
   <span class="ag-boot-mark">MangaiMart</span>
   <span class="ag-boot-ring" aria-hidden="true"></span>
+  <div class="ag-pre">
+    <span class="ag-pre-mark" role="img" aria-label="MangaiMart"><span class="ag-pre-w1" aria-hidden="true"><span style="--i:0">M</span><span style="--i:1">a</span><span style="--i:2">n</span><span style="--i:3">g</span><span style="--i:4">a</span><span style="--i:5">i</span></span><span class="ag-pre-w2" aria-hidden="true"><span style="--i:6">M</span><span style="--i:7">a</span><span style="--i:8">r</span><span style="--i:9">t</span></span></span>
+    <div class="ag-pre-meter" aria-hidden="true">
+      <span class="ag-pre-pct">0 %</span>
+      <div class="ag-pre-line"><div class="ag-pre-fill"></div></div>
+    </div>
+  </div>
   <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Loading MangaiMart…</span>
 </div>
+<!-- Preloader clock. Only does anything under `html.ag-pre`. The percentage
+     is anchored to real milestones — fonts in, bundle executed (DOMContentLoaded
+     fires after module scripts run), React mounted (#root gains a child) — and
+     glides toward the current one so it is always moving and never lies about
+     being done. Dismissal is the latest of: app mounted, 2.2 s elapsed, the
+     write-on finished; and never later than 4 s. If anything in here throws,
+     the class comes off and the quiet splash's CSS rule takes over. -->
+<script>(function(){
+  var h=document.documentElement;if(!h.classList.contains('ag-pre'))return;
+  try{
+    var boot=document.getElementById('ag-boot'),pct=boot.querySelector('.ag-pre-pct'),fill=boot.querySelector('.ag-pre-fill');
+    var t0=performance.now(),target=14,shown=0,mounted=false,inkStart=0,done=false,raf=0;
+    var elapsed=function(){return performance.now()-t0};
+    var aim=function(n){if(n>target)target=n};
+    var go=function(){if(inkStart)return;inkStart=elapsed();h.classList.add('ag-pre-go');aim(40)};
+    // Start writing when Fraunces is in, or at 900 ms with the fallback serif.
+    try{document.fonts.load("700 64px 'Fraunces'").then(go,go)}catch(e){}
+    setTimeout(go,900);
+    document.addEventListener('DOMContentLoaded',function(){aim(72)});
+    var root=document.getElementById('root');
+    var onMount=function(){mounted=true;aim(100)};
+    if(root.childNodes.length)onMount();else new MutationObserver(function(m,o){if(root.childNodes.length){o.disconnect();onMount()}}).observe(root,{childList:true});
+    var finish=function(){
+      if(done)return;done=true;cancelAnimationFrame(raf);
+      pct.textContent='100 %';fill.style.width='100%';
+      setTimeout(function(){boot.classList.add('ag-pre-out');
+        setTimeout(function(){h.classList.remove('ag-pre','ag-pre-go');if(boot.parentNode)boot.parentNode.removeChild(boot)},620)},300)};
+    var tick=function(){
+      var e=elapsed(),fast=mounted?99:target,slow=Math.min(fast+15,99);
+      // Glide toward the milestone, then creep a little past it: a stalled
+      // network must never read as a frozen page.
+      if(shown<fast)shown=Math.min(fast,shown+Math.max((fast-shown)*.045,.06));else if(shown<slow)shown+=.025;
+      pct.textContent=Math.round(shown)+' %';fill.style.width=shown+'%';
+      var inkDone=inkStart&&e-inkStart>=1500;
+      if(e>=4000||(mounted&&e>=2200&&inkDone))finish();else raf=requestAnimationFrame(tick)};
+    raf=requestAnimationFrame(tick);
+  }catch(e){h.classList.remove('ag-pre','ag-pre-go')}
+})();</script>
 <script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
