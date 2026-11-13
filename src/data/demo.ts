@@ -167,18 +167,14 @@ export const OCCASIONS = ['Bridal', 'Wedding', 'Reception', 'Festive', 'Party', 
 export const SORTS = ['Latest', 'Price: Low to High', 'Price: High to Low', 'Popularity'];
 export const SIZES = ['S', 'M', 'L', 'XL'];
 
-/**
- * Sizes a product is currently available in. Per-variant inventory isn't in the
- * catalogue yet, so this is derived deterministically from the product id
- * (stable across renders) — enough to make the size filter narrow results.
- * Swap the body for a real `sizes` column when variant stock lands in the DB.
- */
-export function productSizes(p: Pick<Product, 'id' | 'stock'>): string[] {
-  if (p.stock === 0) return [];
-  const seed = [...p.id].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-  const sizes = SIZES.filter((_, i) => (seed + i) % 4 !== 0);
-  return sizes.length ? sizes : SIZES;
-}
+// `productSizes()` used to fabricate a product's sizes from a hash of its id,
+// as a stand-in before per-variant inventory existed. Variant stock has since
+// landed (`products.sizes`, migration 0008; per-size `size_stock`, 0103), so
+// every surface now filters on the real `Product.sizes` — the shop grid via
+// `matchesFilters` in @/lib/shopFilter, the Inspire feed via @/lib/feedFilters,
+// and the product page directly. The fabricated helper has been removed so it
+// cannot creep back onto a screen and show sizes a piece does not actually come
+// in. Read `p.sizes` (optionally gated on `p.sizeStock[size] > 0`) instead.
 
 export type Thread = {
   id: string;

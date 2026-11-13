@@ -15,7 +15,6 @@
 
 import type { Filters } from '@/state/ShopContext';
 import { hasTerm } from '@/lib/vocabulary';
-import { productSizes } from '@/data/demo';
 import type { Product } from '@/data/demo';
 
 /** The fields the header search looks through. */
@@ -33,7 +32,11 @@ export function matchesFilters(p: Product, filters: Filters, query = ''): boolea
     (filters.cats.length === 0 || hasTerm(filters.cats, p.cat)) &&
     (filters.colors.length === 0 || hasTerm(filters.colors, p.color)) &&
     (filters.occasions.length === 0 || hasTerm(filters.occasions, p.occasion)) &&
-    (filters.sizes.length === 0 || productSizes(p).some((s) => hasTerm(filters.sizes, s))) &&
+    // The sizes the seller actually listed (`products.sizes`, migration 0008),
+    // the same field the Inspire feed and the product page filter on — never a
+    // value derived from the product id. A piece with no sizes recorded matches
+    // no size filter, which is correct: we cannot claim it comes in that size.
+    (filters.sizes.length === 0 || (p.sizes ?? []).some((s) => hasTerm(filters.sizes, s))) &&
     // The header search narrows the same grid rather than opening a separate
     // screen, so a term and a filter compose instead of fighting.
     (q === '' || searchable(p).some((f) => f?.toLowerCase().includes(q)))

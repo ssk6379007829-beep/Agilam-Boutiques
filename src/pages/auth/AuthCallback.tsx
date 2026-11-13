@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { Role } from '@/types/database';
 import { useAuth } from '@/auth/AuthContext';
 import { FullscreenLoader } from '@/auth/RequireRole';
 import { fetchMyBoutique } from '@/data/boutiques';
@@ -8,14 +9,20 @@ import { safeNext } from '@/auth/SignInGate';
 import { useShop } from '@/state/ShopContext';
 
 /**
- * Landing route for Google OAuth. Supabase exchanges the code for a session on
- * load; once the auth context has it we route by the role the sign-in was
- * started for: buyers to their profile, sellers to their console — or to
+ * Landing route for BOTH Google OAuth and the email-confirmation link of a
+ * password signup (both use `/auth/callback` as their redirect). Supabase
+ * establishes the session on load; once the auth context has it we route by the
+ * account's role: buyers to their profile, sellers to their console — or to
  * boutique onboarding if they signed up as a seller but have no boutique yet.
+ *
+ * Google stashes the chosen role in localStorage before its round-trip, but the
+ * email link carries nothing there — so the role is read from the account itself
+ * (the profile row, seeded from the signup metadata). The stashed OAuth role is
+ * only an extra "this is a seller" signal, used to promote a fresh Google buyer.
  */
 export function AuthCallback() {
   const navigate = useNavigate();
-  const { session, loading, claimRole } = useAuth();
+  const { session, profile, loading, claimRole } = useAuth();
   const { showToast } = useShop();
   const ran = useRef(false);
 
@@ -39,14 +46,28 @@ export function AuthCallback() {
     ran.current = true;
 
     (async () => {
-      const role = readPendingOAuthRole();
+      const pendingOAuthRole = readPendingOAuthRole();
       // Set when Google was reached through a gate (the checkout sign-in
       // requirement), and validated the same way as the ?next= query param so a
       // poisoned localStorage value can't redirect off-site.
       const next = safeNext(readPendingOAuthNext());
       clearPendingOAuthRole();
-      if (role === 'seller') {
-        await claimRole('seller');
+
+      // Google creates every user as a buyer, so an explicit "seller" choice has
+      // to promote the row. For an email seller signup the profile is already a
+      // seller (seeded from the signup metadata), so claimRole is skipped there.
+      if (pendingOAuthRole === 'seller') await claimRole('seller');
+
+      // Treat the account as a seller when EITHER signal says so: the Google
+      // intent flag, the loaded profile role, or the signup metadata that the
+      // email-confirmation link carries in place of any localStorage flag. This
+      // is what sends an email-confirmed seller into onboarding instead of the
+      // buyer storefront.
+      const metaRole = (session.user.user_metadata as { role?: Role } | undefined)?.role;
+      const isSeller =
+        pendingOAuthRole === 'seller' || profile?.role === 'seller' || metaRole === 'seller';
+
+      if (isSeller) {
         // A boutique row can exist while the 7-step setup is still unfinished,
         // so completion — not mere existence — decides where they land.
         const boutique = await fetchMyBoutique(session.user.id).catch(() => null);
@@ -56,7 +77,7 @@ export function AuthCallback() {
         navigate(next ?? '/profile', { replace: true });
       }
     })();
-  }, [session, loading, claimRole, navigate, showToast]);
+  }, [session, profile, loading, claimRole, navigate, showToast]);
 
   return <FullscreenLoader />;
 }

@@ -532,7 +532,7 @@ export function SellerOnboarding() {
         role: 'seller',
       });
       if (confirmationRequired) {
-        showToast('Check your email to confirm your account, then sign in to finish setting up', 'info');
+        showToast('Check your email and click the link to continue setting up your boutique', 'info');
         navigate('/auth/signin/seller', { replace: true });
       }
       // Otherwise there is a session now and the loader takes over.

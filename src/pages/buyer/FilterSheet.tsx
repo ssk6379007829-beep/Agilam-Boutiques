@@ -7,7 +7,7 @@ import { useTaxonomy } from '@/state/TaxonomyContext';
 import { sortSizes } from '@/lib/sizes';
 import { matchesFilters } from '@/lib/shopFilter';
 import { hasTerm, termKey } from '@/lib/vocabulary';
-import { fmt, productSizes } from '@/data/demo';
+import { fmt } from '@/data/demo';
 
 /**
  * Bottom-sheet filter overlay, shown over the results screen on mobile.
@@ -54,7 +54,7 @@ export function FilterSheet() {
   const catsPresent = new Set(PRODUCTS.map((p) => termKey(p.cat)));
   const occasionsPresent = new Set(PRODUCTS.map((p) => termKey(p.occasion)));
   const colorsPresent = new Set(PRODUCTS.map((p) => termKey(p.color)));
-  const sizesPresent = new Set(PRODUCTS.flatMap((p) => productSizes(p).map(termKey)));
+  const sizesPresent = new Set(PRODUCTS.flatMap((p) => (p.sizes ?? []).map(termKey)));
 
   // Canonical ladder (XS · S · M · L · XL · XXL … · Free Size). The vocabulary
   // returns whatever order the rows were approved in, which put XS and XXL after
