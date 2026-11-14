@@ -16,8 +16,8 @@ import { BillReceipt } from '@/components/seller/BillReceipt';
 import { ShipSheet } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import {
-  bookParcel, createShipment, fetchCouriers, fetchShadowfaxAvailability,
-  fetchShipment, fetchShiprocketAvailability,
+  bookParcel, createShipment, fetchCouriers, fetchDtdcAvailability, fetchShadowfaxAvailability,
+  fetchShipment, fetchShiprocketAvailability, signedLabelUrl,
 } from '@/data/shipments';
 import { Skeleton, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { fetchReturnForOrder, resolveReturnRequest, RETURN_REASON_LABEL } from '@/data/returns';
@@ -78,22 +78,45 @@ export function OrderDetail() {
   // never offered. Failing closed matters: the alternative is a seller tapping
   // "Book & ship" and getting a refusal from the Edge Function instead.
   //
-  // Either carrier being on is enough to offer booking. Which one actually
-  // carries the parcel is decided server-side by `book-parcel` — Shiprocket
-  // first because it aggregates several couriers and so covers more rural
-  // pincodes, then Shadowfax, then the manual docket form.
+  // Any carrier being on is enough to offer booking. Which one actually
+  // carries the parcel is decided server-side by `book-parcel` — DTDC first
+  // because it is the platform's contracted carrier, then Shiprocket because
+  // it aggregates several couriers and so covers more rural pincodes, then
+  // Shadowfax, then the manual docket form.
   const { data: courierAvailability } = useAsync(
     async () => {
-      if (!boutique) return { shadowfax: false, shiprocket: false };
-      const [shadowfax, shiprocket] = await Promise.all([
+      if (!boutique) return { dtdc: false, shadowfax: false, shiprocket: false };
+      const [dtdc, shadowfax, shiprocket] = await Promise.all([
+        fetchDtdcAvailability(boutique.id).catch(() => false),
         fetchShadowfaxAvailability(boutique.id).catch(() => false),
         fetchShiprocketAvailability(boutique.id).catch(() => false),
       ]);
-      return { shadowfax, shiprocket };
+      return { dtdc, shadowfax, shiprocket };
     },
     [boutique?.id],
   );
-  const canBookCourier = Boolean(courierAvailability?.shadowfax || courierAvailability?.shiprocket);
+  const canBookCourier = Boolean(
+    courierAvailability?.dtdc || courierAvailability?.shadowfax || courierAvailability?.shiprocket,
+  );
+
+  /**
+   * Open the label PDF. A stored label (DTDC, migration 0114) lives in a
+   * private bucket, so a URL is signed on the click rather than embedded in
+   * the page; a carrier-hosted label (Shiprocket) is a plain link.
+   */
+  const openLabel = async () => {
+    if (!shipment) return;
+    if (shipment.label_path) {
+      const url = await signedLabelUrl(shipment.label_path);
+      if (!url) {
+        showToast('Could not open the label right now — try again in a moment', 'error');
+        return;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    if (shipment.label_url) window.open(shipment.label_url, '_blank', 'noopener,noreferrer');
+  };
 
   // Set when both carriers decline, which drops the sheet onto the manual
   // docket form. The seller is not left holding a packed parcel and no button.
@@ -527,16 +550,33 @@ export function OrderDetail() {
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>content_copy</span>
               </button>
             </div>
-            {shipment.tracking_url && (
-              <a
-                href={shipment.tracking_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={css('display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:12px;height:44px;border-radius:13px;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13.5px;text-decoration:none;')}
-              >
-                Track shipment
-                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>open_in_new</span>
-              </a>
+            {(shipment.tracking_url || shipment.label_path || shipment.label_url) && (
+              <div style={css('display:flex;gap:10px;margin-top:12px;')}>
+                {/* The label is what gets stuck on the parcel before the courier
+                    arrives, so it sits beside tracking rather than behind a
+                    menu. Shown only when a booking actually captured one. */}
+                {(shipment.label_path || shipment.label_url) && (
+                  <button
+                    type="button"
+                    onClick={() => { void openLabel(); }}
+                    style={css('flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:44px;border-radius:13px;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;')}
+                  >
+                    Print label
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>print</span>
+                  </button>
+                )}
+                {shipment.tracking_url && (
+                  <a
+                    href={shipment.tracking_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={css('flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:44px;border-radius:13px;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13.5px;text-decoration:none;')}
+                  >
+                    Track shipment
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>open_in_new</span>
+                  </a>
+                )}
+              </div>
             )}
           </div>
         )}

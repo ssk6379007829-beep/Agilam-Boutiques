@@ -29,12 +29,19 @@ export type Shipment = {
   awb: string;
   tracking_url: string | null;
   shipped_at: string;
-  /** Migrations 0067 and 0110. 'manual' = the seller typed the docket;
-   *  'shiprocket' / 'shadowfax' = we booked it and a courier scan drives the
-   *  timeline. Optional because the column list falls back when 0067 has not
-   *  been applied. */
-  provider?: 'manual' | 'shiprocket' | 'shadowfax';
+  /** Migrations 0067, 0110 and 0114. 'manual' = the seller typed the docket;
+   *  'shiprocket' / 'shadowfax' / 'dtdc' = we booked it and a courier scan
+   *  drives the timeline. Optional because the column list falls back when
+   *  0067 has not been applied. */
+  provider?: 'manual' | 'shiprocket' | 'shadowfax' | 'dtdc';
   label_url?: string | null;
+  /** Migration 0114. Path inside the private `shipping-labels` bucket; the
+   *  console signs a short-lived URL on demand. Set by DTDC bookings, where the
+   *  label arrives as bytes rather than as a public link. */
+  label_path?: string | null;
+  /** Migration 0114. The carrier Shipsy actually allocated — normally "DTDC",
+   *  but their platform can route a lane to a partner. */
+  dtdc_courier_partner?: string | null;
   freight_charge?: number | null;
   last_status?: string | null;
   last_status_at?: string | null;
@@ -67,6 +74,20 @@ const SHIPMENT_COLUMNS_V2 =
  *  rather than losing the tracking card entirely. */
 const SHIPMENT_COLUMNS_V3 =
   `${SHIPMENT_COLUMNS_V2}, service_level, sfx_rider_name, sfx_rider_phone, rto_freight_charge, rto_bearer`;
+
+/** The 0114 columns. One more rung: a deploy with 0110 but not 0114 keeps
+ *  every earlier detail and simply offers no stored label. */
+const SHIPMENT_COLUMNS_V4 = `${SHIPMENT_COLUMNS_V3}, label_path, dtdc_courier_partner`;
+
+/**
+ * A short-lived link to a stored label PDF, or null when the viewer may not
+ * read it (RLS on the bucket: the boutique's owner and admins only).
+ */
+export async function signedLabelUrl(labelPath: string): Promise<string | null> {
+  const { data, error } = await supabase.storage.from('shipping-labels').createSignedUrl(labelPath, 600);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
+}
 
 /**
  * Substitute the AWB into a courier's template.
@@ -126,6 +147,13 @@ export async function saveCourier(
  * the order screens must still render, just without tracking.
  */
 export async function fetchShipment(orderId: string): Promise<Shipment | null> {
+  const v4 = await supabase
+    .from('shipments')
+    .select(SHIPMENT_COLUMNS_V4)
+    .eq('order_id', orderId)
+    .maybeSingle();
+  if (!v4.error) return (v4.data as Shipment | null) ?? null;
+
   const widest = await supabase
     .from('shipments')
     .select(SHIPMENT_COLUMNS_V3)
@@ -162,6 +190,12 @@ export async function fetchShipment(orderId: string): Promise<Shipment | null> {
 export async function fetchShipmentsForOrders(orderIds: string[]): Promise<Record<string, Shipment>> {
   if (orderIds.length === 0) return {};
   const byOrder: Record<string, Shipment> = {};
+
+  const v4 = await supabase.from('shipments').select(SHIPMENT_COLUMNS_V4).in('order_id', orderIds);
+  if (!v4.error) {
+    for (const s of (v4.data ?? []) as unknown as Shipment[]) byOrder[s.order_id] = s;
+    return byOrder;
+  }
 
   const widest = await supabase.from('shipments').select(SHIPMENT_COLUMNS_V3).in('order_id', orderIds);
   if (!widest.error) {
@@ -264,6 +298,9 @@ export type ShipmentBooking = {
   awb: string;
   courierName: string;
   labelUrl: string | null;
+  /** Migration 0114. Where the label PDF was stored, when the carrier hands us
+   *  bytes (DTDC) rather than a public link (Shiprocket). */
+  labelPath?: string | null;
   freightCharge: number | null;
   weightKg: number;
   /** True when at least one line item had no weight of its own and the shop
@@ -291,7 +328,7 @@ export async function fetchShiprocketAvailability(boutiqueId: string): Promise<b
 export type ParcelBooking = ShipmentBooking & {
   /** Which carrier actually took it. The seller does not choose — but they do
    *  have to recognise whoever turns up at their door. */
-  provider: 'shiprocket' | 'shadowfax';
+  provider: 'dtdc' | 'shiprocket' | 'shadowfax';
   serviceLevel?: 'hyperlocal' | 'surface' | null;
   /** True when the first carrier declined and a later one took it. */
   fellBack?: boolean;
@@ -305,12 +342,13 @@ export type ParcelBooking = ShipmentBooking & {
 /**
  * Book the parcel and ship the order, whichever carrier will take it.
  *
- * ONE call. The chain — Shiprocket, then Shadowfax, then the manual docket
- * form — runs server-side in the `book-parcel` Edge Function, so a browser
- * that navigates away mid-flight cannot leave an order paid, packed and
+ * ONE call. The chain — DTDC, then Shiprocket, then Shadowfax, then the manual
+ * docket form — runs server-side in the `book-parcel` Edge Function, so a
+ * browser that navigates away mid-flight cannot leave an order paid, packed and
  * unshipped with no record of why.
  *
- * Shiprocket leads because it is an AGGREGATOR: it routes across several
+ * DTDC leads because it is the platform's contracted carrier (2026-11-14).
+ * Shiprocket follows because it is an AGGREGATOR: it routes across several
  * couriers per pincode, where any single carrier has rural gaps. Shadowfax led
  * until 2026-11-12, when a rural pincode came back unserviceable.
  *
@@ -364,6 +402,30 @@ export async function fetchShadowfaxAvailability(boutiqueId: string): Promise<bo
   );
 }
 
+/** Is DTDC booking available for this shop right now? Both switches must be
+ *  on (migration 0114), and the shop needs a pickup pincode — the booking
+ *  sends the shop's own address inline, so there is nothing to register. */
+export async function fetchDtdcAvailability(boutiqueId: string): Promise<boolean> {
+  const [{ data: settings }, { data: shop }] = await Promise.all([
+    supabase.from('platform_settings').select('dtdc_enabled').eq('id', 1).maybeSingle(),
+    supabase.from('boutiques').select('dtdc_enabled, pincode').eq('id', boutiqueId).maybeSingle(),
+  ]);
+  return Boolean(
+    (settings as { dtdc_enabled?: boolean } | null)?.dtdc_enabled &&
+    (shop as { dtdc_enabled?: boolean } | null)?.dtdc_enabled &&
+    (shop as { pincode?: string | null } | null)?.pincode,
+  );
+}
+
+/** Point a boutique at DTDC, or take it off. */
+export async function saveBoutiqueDtdc(
+  boutiqueId: string,
+  patch: { dtdc_enabled: boolean },
+): Promise<void> {
+  const { error } = await supabase.from('boutiques').update(patch).eq('id', boutiqueId);
+  if (error) throw error;
+}
+
 /** Point a boutique at Shadowfax, or take it off. */
 export async function saveBoutiqueShadowfax(
   boutiqueId: string,
@@ -405,6 +467,8 @@ export type ShiprocketShopRow = {
    *  not been applied — the admin console then shows the Shiprocket columns it
    *  always did rather than an empty table. */
   shadowfax_enabled?: boolean;
+  /** Migration 0114. Same convention: undefined = not applied. */
+  dtdc_enabled?: boolean;
 };
 
 const SHOP_COLUMNS =
@@ -424,6 +488,12 @@ export async function fetchShiprocketShops(): Promise<ShiprocketShopRow[]> {
   // `.catch(() => [])` at the call site — so without this ladder an
   // un-migrated deploy would show an empty boutique table rather than the
   // Shiprocket administration it has always had.
+  const widest = await supabase
+    .from('boutiques')
+    .select(`${SHOP_COLUMNS}, shadowfax_enabled, dtdc_enabled`)
+    .order('name');
+  if (!widest.error) return (widest.data ?? []) as unknown as ShiprocketShopRow[];
+
   const wide = await supabase
     .from('boutiques')
     .select(`${SHOP_COLUMNS}, shadowfax_enabled`)
@@ -517,6 +587,8 @@ export type PlatformSwitches = {
    *  applied, so the console can show "migration not applied" rather than a
    *  switch that silently does nothing when toggled. */
   shadowfax_enabled?: boolean;
+  /** Migration 0114. Same convention. */
+  dtdc_enabled?: boolean;
 };
 
 /**
@@ -534,6 +606,13 @@ export async function fetchPlatformSwitches(): Promise<PlatformSwitches | null> 
   // does not exist yet fails the WHOLE query, so without this ladder a deploy
   // with 0067 but not 0110 would lose the Shiprocket switch too — reporting
   // "migration not applied" for an integration that is in fact live.
+  const widest = await supabase
+    .from('platform_settings')
+    .select('shiprocket_enabled, shadowfax_enabled, dtdc_enabled')
+    .eq('id', 1)
+    .maybeSingle();
+  if (!widest.error) return (widest.data as PlatformSwitches | null) ?? null;
+
   const wide = await supabase
     .from('platform_settings')
     .select('shiprocket_enabled, shadowfax_enabled')

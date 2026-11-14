@@ -239,6 +239,9 @@ export interface Database {
           /** Shadowfax (migration 0110). No pickup nickname to register — the
            *  booking sends this shop's own address and map pin every time. */
           shadowfax_enabled: boolean;
+          /** DTDC (migration 0114). The contracted primary carrier; same
+           *  inline-address model as Shadowfax, nothing to register. */
+          dtdc_enabled: boolean;
           /**
            * Withheld from anon/authenticated by 0021's column-level SELECT
            * grants: writable by the owner, but only readable through the
@@ -727,6 +730,9 @@ export interface Database {
           /** Master Shadowfax switch (migration 0110). Off by default. Booking
            *  needs this AND the shop's own flag. */
           shadowfax_enabled: boolean;
+          /** Master DTDC switch (migration 0114). Off by default. The first
+           *  rung of the booking chain when on. */
+          dtdc_enabled: boolean;
           /** Master WhatsApp switch (migration 0090). Off by default. False
            *  makes wa_claim_batch return nothing, so the triggers keep queueing
            *  and the wa-drain Edge Function sends none of it. */
@@ -828,9 +834,16 @@ export interface Database {
           created_at: string;
           updated_at: string;
           // ── Aggregator booking (migration 0067) ───────────────────────────
-          /** 'manual' = the seller typed the docket. 'shiprocket' = we booked
+          /** 'manual' = the seller typed the docket. Anything else = we booked
            *  it, so a courier scan drives the timeline instead of the seller. */
-          provider: 'manual' | 'shiprocket' | 'shadowfax';
+          provider: 'manual' | 'shiprocket' | 'shadowfax' | 'dtdc';
+          // ── DTDC (migration 0114) ─────────────────────────────────────────
+          /** The carrier Shipsy allocated — "DTDC" normally, a partner on
+           *  some lanes. */
+          dtdc_courier_partner: string | null;
+          /** Path in the private shipping-labels bucket, <boutique>/<awb>.pdf.
+           *  Signed on demand by the seller console. */
+          label_path: string | null;
           sr_order_id: string | null;
           sr_shipment_id: string | null;
           sr_courier_name: string | null;

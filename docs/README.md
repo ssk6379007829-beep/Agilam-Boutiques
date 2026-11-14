@@ -28,6 +28,8 @@ New QA reports and audits go in `archive/<YYYY-MM>/`.
 |---|---|
 | [COURIER_TRACKING_PLAN.md](architecture/COURIER_TRACKING_PLAN.md) | Courier + AWB capture, buyer tracking, payout gating |
 | [SHIPROCKET_INTEGRATION_2026-08-10.md](architecture/SHIPROCKET_INTEGRATION_2026-08-10.md) | Courier booking and scan-based delivery, as Edge Functions |
+| [SHADOWFAX_INTEGRATION_2026-11-12.md](architecture/SHADOWFAX_INTEGRATION_2026-11-12.md) | Shadowfax as a fallback carrier; the book-parcel chain |
+| [DTDC_INTEGRATION_2026-11-14.md](architecture/DTDC_INTEGRATION_2026-11-14.md) | DTDC as the primary carrier: booking, labels, tracking sweep (0114/0115) |
 | [WHATSAPP_AUTOMATION_PLAN.md](architecture/WHATSAPP_AUTOMATION_PLAN.md) | The outbox + triggers design the setup sheet implements |
 | [STAFF_ROLE_2026-08-14.md](architecture/STAFF_ROLE_2026-08-14.md) | The restricted employee console login (migration 0086) |
 | [ASK_MY_PEOPLE_2026-08-12.md](architecture/ASK_MY_PEOPLE_2026-08-12.md) | Shareable shortlist boards; the token is the credential |

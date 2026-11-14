@@ -7,9 +7,16 @@
  *
  * THE CHAIN
  *
- *   Shiprocket  →  Shadowfax  →  the seller types a docket number
+ *   DTDC  →  Shiprocket  →  Shadowfax  →  the seller types a docket number
  *
- * WHY SHIPROCKET FIRST (changed 2026-11-12)
+ * WHY DTDC FIRST (2026-11-14)
+ * DTDC is the platform's contracted primary carrier: one account (GL24686),
+ * one rate card, one monthly invoice, and a pickup from the boutique's own
+ * address on every booking. It goes first because that is the commercial
+ * arrangement, not because it covers more — it is a single carrier and will
+ * decline some rural lanes, which is exactly why the rest of the chain stays.
+ *
+ * WHY SHIPROCKET SECOND (changed 2026-11-12)
  * Shadowfax led until a rural pincode came back unserviceable. That is not a
  * Shadowfax defect, it is what every SINGLE carrier looks like — their own site
  * advertises 16,681 of India's ~19,000 pincodes, and the missing ones are
@@ -19,13 +26,13 @@
  * Swapping one single carrier for another would only have moved which villages
  * failed.
  *
- * Shadowfax stays as the second rung because a second carrier still catches
- * orders the first declines, and each one it catches is an order the seller
+ * Shadowfax stays as the third rung because a further carrier still catches
+ * orders the others decline, and each one it catches is an order the seller
  * does not have to enter a docket number for by hand.
  *
  * HOW IT CALLS THEM
  * Over HTTP, forwarding the seller's own JWT, rather than importing their
- * logic. Both booking functions authenticate the caller themselves and check
+ * logic. Every booking function authenticates the caller itself and checks
  * that the order belongs to them, so this orchestrator gains no authority of
  * its own — it decides order, nothing else. `shiprocket-book` in particular is
  * not modified at all.
@@ -105,18 +112,40 @@ Deno.serve(async (req: Request) => {
 
   const attempts: Attempt[] = [];
 
-  /* ── 1. Shiprocket, the aggregator ──────────────────────────────────────── */
+  /* ── 1. DTDC, the contracted carrier ────────────────────────────────────── */
+  // Declines arrive as `{ declined: true, reason }` 409 — not enabled for the
+  // shop, an unserviceable lane, a rejected field. A configuration or transport
+  // fault arrives as `{ error }` instead; both advance the chain, but the
+  // function logs the second kind as a fault so it gets found.
+  const dt = await tryCarrier('dtdc-book', orderId, authHeader);
+  if (dt.ok) {
+    return json({ ...dt.body, provider: 'dtdc', attempts });
+  }
+  if (isTerminal(dt.status, dt.body)) {
+    // Nothing about the next carrier would change this answer.
+    return json(dt.body ?? { error: 'Could not book this parcel' }, dt.status);
+  }
+  attempts.push({ carrier: 'dtdc', reason: String(dt.body?.reason ?? dt.body?.error ?? `HTTP ${dt.status}`) });
+
+  /* ── 2. Shiprocket, the aggregator ──────────────────────────────────────── */
   const sr = await tryCarrier('shiprocket-book', orderId, authHeader);
   if (sr.ok) {
-    return json({ ...sr.body, provider: 'shiprocket', attempts });
+    return json({
+      ...sr.body,
+      provider: 'shiprocket',
+      // Only a fallback when something declined before it. The seller is told
+      // which courier is coming, not which one said no.
+      fellBack: attempts.length > 0,
+      fallbackReason: attempts[0]?.reason,
+      attempts,
+    });
   }
   if (isTerminal(sr.status, sr.body)) {
-    // Nothing about the next carrier would change this answer.
     return json(sr.body ?? { error: 'Could not book this parcel' }, sr.status);
   }
   attempts.push({ carrier: 'shiprocket', reason: String(sr.body?.error ?? `HTTP ${sr.status}`) });
 
-  /* ── 2. Shadowfax ───────────────────────────────────────────────────────── */
+  /* ── 3. Shadowfax ───────────────────────────────────────────────────────── */
   // skipFallback stops it calling shiprocket-book straight back, which would
   // retry a carrier that has already declined and could book twice.
   const sfx = await tryCarrier('shadowfax-book', orderId, authHeader, { skipFallback: true });
@@ -137,7 +166,7 @@ Deno.serve(async (req: Request) => {
     reason: String(sfx.body?.reason ?? sfx.body?.error ?? `HTTP ${sfx.status}`),
   });
 
-  /* ── 3. Nobody will carry it ────────────────────────────────────────────── */
+  /* ── 4. Nobody will carry it ────────────────────────────────────────────── */
   // The seller's next step is the manual docket form, so say that plainly
   // instead of stacking two carriers' error messages and leaving them to guess.
   console.warn('book-parcel: no carrier accepted', { orderId, attempts });

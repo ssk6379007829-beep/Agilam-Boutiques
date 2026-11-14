@@ -10,7 +10,8 @@ import { fmt } from '@/data/demo';
 import {
   fetchAllCouriers, saveCourier, fetchDeliveryDisputes, resolveDeliveryDispute,
   fetchStalledShipments, buildTrackingUrl,
-  fetchShiprocketShops, saveBoutiqueShiprocket, saveBoutiqueShadowfax, fetchPlatformSwitches, savePlatformSwitches,
+  fetchShiprocketShops, saveBoutiqueShiprocket, saveBoutiqueShadowfax, saveBoutiqueDtdc,
+  fetchPlatformSwitches, savePlatformSwitches,
   pickupAddressText, registerShiprocketPickup,
   type Courier, type DeliveryIssueRow, type StalledShipmentRow, type ShiprocketShopRow,
 } from '@/data/shipments';
@@ -30,9 +31,10 @@ import {
  *      courier tracking pages are form-POST with no addressable URL, so many
  *      rows deliberately ship with no template; fill one in here once you have
  *      verified it opens.
- *   4. **Shiprocket.** The master switch and each shop's pickup location
- *      (migration 0067). A shop cannot book until BOTH switches are on and its
- *      pickup nickname is filled in, so this tab is where an integration that
+ *   4. **Couriers we book.** The master switches for DTDC (0114, the contracted
+ *      primary), Shiprocket (0067) and Shadowfax (0110), plus each shop's own
+ *      flags and Shiprocket pickup location. A shop cannot book on a carrier
+ *      until BOTH its switches are on, so this tab is where an integration that
  *      "does nothing" gets diagnosed.
  *
  * Deliberately a tab here rather than a new sidebar entry — the admin nav is
@@ -66,7 +68,7 @@ export function Deliveries() {
   const [shop, setShop] = useState<ShiprocketShopRow | null>(null);
   const [registering, setRegistering] = useState(false);
 
-  const toggleSwitch = async (key: 'shiprocket_enabled' | 'shadowfax_enabled', on: boolean) => {
+  const toggleSwitch = async (key: 'shiprocket_enabled' | 'shadowfax_enabled' | 'dtdc_enabled', on: boolean) => {
     try {
       await savePlatformSwitches({ [key]: on });
       showToast(on ? 'Switched on' : 'Switched off');
@@ -111,6 +113,9 @@ export function Deliveries() {
       // that does not have it, losing the pickup nickname too.
       if (shop.shadowfax_enabled !== undefined) {
         await saveBoutiqueShadowfax(shop.id, { shadowfax_enabled: shop.shadowfax_enabled });
+      }
+      if (shop.dtdc_enabled !== undefined) {
+        await saveBoutiqueDtdc(shop.id, { dtdc_enabled: shop.dtdc_enabled });
       }
       showToast(`${shop.name} saved`);
       setShop(null);
@@ -238,11 +243,18 @@ export function Deliveries() {
         )
     ) },
     { key: 'ready', header: 'BOOKING', width: '150px', render: (b) => {
-      const ready = Boolean(switches?.shiprocket_enabled && b.shiprocket_enabled && b.shiprocket_pickup_location);
-      const why = !switches?.shiprocket_enabled ? 'Platform off'
-        : !b.shiprocket_enabled ? 'Shop off'
-        : !b.shiprocket_pickup_location ? 'No pickup' : 'Ready';
-      return <StatusPill status={ready ? 'paid' : 'cod'} label={why} />;
+      // DTDC first, as the chain does. A shop on DTDC is "Ready" even with no
+      // Shiprocket pickup registered; the Shiprocket reasons only show when
+      // DTDC is not carrying for this shop.
+      const dtdcReady = Boolean(switches?.dtdc_enabled && b.dtdc_enabled && b.pincode);
+      const srReady = Boolean(switches?.shiprocket_enabled && b.shiprocket_enabled && b.shiprocket_pickup_location);
+      const why = dtdcReady ? 'Ready · DTDC'
+        : srReady ? 'Ready · Shiprocket'
+        : switches?.dtdc_enabled && b.dtdc_enabled && !b.pincode ? 'No pincode'
+        : !switches?.shiprocket_enabled && !switches?.dtdc_enabled ? 'Platform off'
+        : !b.shiprocket_enabled && !b.dtdc_enabled ? 'Shop off'
+        : !b.shiprocket_pickup_location ? 'No pickup' : 'Shop off';
+      return <StatusPill status={dtdcReady || srReady ? 'paid' : 'cod'} label={why} />;
     } },
     { key: 'act', header: '', width: '60px', align: 'right', render: (b) => (
       <IconButton icon="edit" title="Configure" onClick={() => setShop(b)} />
@@ -326,6 +338,43 @@ export function Deliveries() {
 
       {tab === 'shiprocket' && (
         <>
+          {/* DTDC sits FIRST because that is where the booking chain starts.
+              `undefined` — not false — means 0114 has not been applied, which
+              must read as "nothing to switch" rather than as a switch that
+              silently does nothing when toggled. */}
+          {switches && switches.dtdc_enabled === undefined ? (
+            <Card style="padding:16px 18px;margin-bottom:14px;">
+              <div style={css('font-weight:800;font-size:14px;')}>DTDC booking</div>
+              <div style={css(`font-size:13px;color:${T.muted};line-height:1.6;margin-top:4px;`)}>
+                Migration <strong>0114</strong> has not been applied to this database yet, so there is
+                nothing to switch. Apply it in the Supabase SQL editor first — see
+                DTDC_INTEGRATION_2026-11-14.md.
+              </div>
+            </Card>
+          ) : switches ? (
+            <Card style="padding:16px 18px;margin-bottom:14px;">
+              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;')}>
+                <div style={css('flex:1;min-width:240px;')}>
+                  <div style={css('font-weight:800;font-size:14px;')}>DTDC booking</div>
+                  <div style={css(`font-size:12.5px;color:${T.muted};line-height:1.6;margin-top:4px;`)}>
+                    The primary carrier, on the platform&rsquo;s own DTDC account. Tried first for every shop
+                    that is switched on below; a lane DTDC declines falls through to Shiprocket, then
+                    Shadowfax. The pickup is raised from the shop&rsquo;s address on each booking and the
+                    label is stored for the seller to print. Needs the dtdc-book, dtdc-tracking and
+                    dtdc-reconcile Edge Functions deployed and the DTDC secrets set.
+                  </div>
+                </div>
+                <GhostButton
+                  icon={switches.dtdc_enabled ? 'toggle_on' : 'toggle_off'}
+                  tone={switches.dtdc_enabled ? 'primary' : undefined}
+                  onClick={() => toggleSwitch('dtdc_enabled', !switches.dtdc_enabled)}
+                >
+                  {switches.dtdc_enabled ? 'On' : 'Off'}
+                </GhostButton>
+              </div>
+            </Card>
+          ) : null}
+
           {switches === null ? (
             <Card style="padding:16px 18px;margin-bottom:14px;">
               <div style={css(`font-size:13px;color:${T.muted};line-height:1.6;`)}>
@@ -521,6 +570,30 @@ export function Deliveries() {
         <div style={css(`font-size:12px;color:${T.muted};margin-top:6px;line-height:1.55;`)}>
           Turning this off leaves the shop on manual docket entry. Parcels already booked keep their tracking.
         </div>
+
+        {/* Hidden entirely when 0114 has not been applied: a checkbox that
+            cannot be saved is worse than no checkbox. */}
+        {shop?.dtdc_enabled !== undefined && (
+          <>
+            <div style={css('display:flex;align-items:center;gap:10px;margin-top:18px;')}>
+              <input
+                id="shop-dtdc"
+                type="checkbox"
+                checked={shop?.dtdc_enabled ?? false}
+                onChange={(e) => setShop((s) => (s ? { ...s, dtdc_enabled: e.target.checked } : s))}
+                style={css('width:18px;height:18px;accent-color:var(--ag-crimson);')}
+              />
+              <label htmlFor="shop-dtdc" style={css('font-size:13.5px;font-weight:700;cursor:pointer;')}>
+                Book with DTDC for this shop (tried first)
+              </label>
+            </div>
+            <div style={css(`font-size:12px;color:${T.muted};margin-top:6px;line-height:1.55;`)}>
+              Nothing to register — every booking sends this shop&rsquo;s own address and raises the pickup
+              from it, so check the address line and pincode above before turning this on.
+              {!shop?.pincode ? ' This shop has no pincode, so nothing can be booked for it yet.' : ''}
+            </div>
+          </>
+        )}
 
         {/* Hidden entirely when 0110 has not been applied: a checkbox that
             cannot be saved is worse than no checkbox. */}
