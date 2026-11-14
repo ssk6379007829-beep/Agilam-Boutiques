@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { css } from '@/lib/css';
 import { Field } from '@/components/seller/FormKit';
-import { describeCoords, isMapsLink, parseMapCoords } from '@/lib/geolocate';
+import { describeCoords, mapsOpenUrl, parseMapCoords } from '@/lib/geolocate';
 import { verdictForPin, type ExpectedPlace, type PinNote } from '@/lib/pinCheck';
 
 /**
@@ -49,14 +49,17 @@ export function ShopLocationPicker({
     const c = parseMapCoords(v);
     onChange({ mapUrl: v, lat: c ? String(c.lat) : '', lng: c ? String(c.lng) : '' });
     setNote(null);
-    if (!c || !isMapsLink(v)) return;
-    // Checked after the value is committed, never before: the link is the
-    // seller's to keep either way, and this is advice about it, not a gate.
+    // Only a value that resolves to real coordinates can be sanity-checked
+    // against the typed address — a shortened link or a Plus Code carries none,
+    // and is simply kept. The check is advice about the value, never a gate.
+    if (!c) return;
     void describeCoords(c.lat, c.lng).then((place) => {
-      // Ignore a late answer for a link the seller has already replaced.
+      // Ignore a late answer for a value the seller has already replaced.
       setNote((prev) => (prev === null ? verdictForPin(place, expected) : prev));
     });
   };
+
+  const openUrl = mapsOpenUrl(mapUrl);
 
   const noteColor = note?.tone === 'bad'
     ? 'var(--ag-danger-text)'
@@ -70,10 +73,10 @@ export function ShopLocationPicker({
         label={label}
         value={mapUrl}
         onChange={setUrl}
-        placeholder="https://maps.app.goo.gl/…"
+        placeholder="https://maps.app.goo.gl/…  ·  7JWV+8R  ·  11.0168, 76.9558"
         inputMode="url"
         error={error}
-        hint="Open your shop in the Google Maps app → tap Share → Copy link, and paste it here."
+        hint="Paste a Google Maps link (Share → Copy link), a Plus Code, or the coordinates — any of them works."
       />
 
       {note && (
@@ -88,11 +91,12 @@ export function ShopLocationPicker({
         </span>
       )}
 
-      {/* Opening the link is the only way to actually confirm it, so it is one
-          tap away rather than something the seller has to copy back out. */}
-      {mapUrl.trim() && isMapsLink(mapUrl) && (
+      {/* Opening the location is the only way to actually confirm it, so it is
+          one tap away rather than something the seller has to copy back out.
+          Works for a link, a Plus Code or a coordinate pair alike. */}
+      {openUrl && (
         <a
-          href={mapUrl.trim()}
+          href={openUrl}
           target="_blank"
           rel="noreferrer noopener"
           style={css('display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--ag-crimson);text-decoration:none;margin-top:-6px;')}

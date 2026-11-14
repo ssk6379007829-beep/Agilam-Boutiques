@@ -4,20 +4,20 @@ import { css } from '@/lib/css';
 import { focusFirstInvalid } from '@/lib/focusInvalid';
 import { useAuth } from '@/auth/AuthContext';
 import { FullscreenLoader } from '@/auth/RequireRole';
-import { Field, TextArea, ChipPicker, Toggle, SectionCard, Row } from '@/components/seller/FormKit';
+import { Field, TextArea, ChipPicker, SectionCard, Row } from '@/components/seller/FormKit';
 import { resolveDisplayName } from '@/lib/displayName';
 import { KNOWN_CITIES } from '@/lib/cities';
 import { usePincodeLookup } from '@/hooks/usePincodeLookup';
-import { isMapsLink } from '@/lib/geolocate';
+import { isLocationInput } from '@/lib/geolocate';
 import { GST_RE } from '@/lib/gst';
 import { adminPath } from '@/lib/adminPath';
 import { ShopLocationPicker } from '@/components/seller/ShopLocationPicker';
-import { DeliveryRateCard, describeReach, zoneRatesToForm, zoneRatesToPatch, type ZoneRateForm } from '@/components/seller/DeliveryRateCard';
+import { zoneRatesToForm, zoneRatesToPatch, type ZoneRateForm } from '@/components/seller/DeliveryRateCard';
 import { FulfilmentCard, fulfilmentToForm, fulfilmentToPatch, validateFulfilment, type FulfilmentForm } from '@/components/seller/FulfilmentCard';
 import { dispatchLabel, shopFulfilment } from '@/lib/fulfilment';
 import { POLICY_TERMS } from '@/data/company';
 import { CROP, useImageCropper } from '@/components/ui/ImageCropper';
-import { signInWithGoogle, friendlyAuthError } from '@/lib/authMethods';
+import { signInWithGoogle, friendlyAuthError, verifySignupOtp, resendSignupOtp } from '@/lib/authMethods';
 import { ConsentCheckbox, ConsentNotice, PolicyLinks, CONSENT_REQUIRED } from '@/components/legal/Consent';
 import { GoogleIcon } from '@/components/ui/GoogleIcon';
 import { MfaStepUp } from '@/components/auth/MfaStepUp';
@@ -35,9 +35,9 @@ import { WORKING_DAYS, type BoutiqueRow } from '@/data/types';
 import { useShop } from '@/state/ShopContext';
 
 /**
- * Boutique registration — creating the seller's login and the seven steps a
+ * Boutique registration — creating the seller's login and the six steps a
  * boutique completes before it can be submitted for admin verification, in one
- * continuous flow.
+ * continuous flow. (Store settings and payout, once two steps, are now one.)
  *
  * Registration used to start on the shared /auth/signup/seller card, which asked
  * for the boutique name, owner name and city and then handed over to this wizard
@@ -47,8 +47,8 @@ import { useShop } from '@/state/ShopContext';
  * From step 1 on, every step saves to the boutique row as the seller advances
  * rather than buffering the whole form to the end, so an abandoned signup
  * resumes exactly where it stopped: `onboarding_step` records the furthest
- * completed step. Step 7 flips the boutique from `draft` to `pending` for the
- * admin queue.
+ * completed step. The review step flips the boutique from `draft` to `pending`
+ * for the admin queue.
  *
  * GST, business registration and the payout fields are withheld from the public
  * API by migration 0021's column grants, so they are read back through
@@ -60,9 +60,10 @@ const STEPS = [
   { n: 2, title: 'Contact information', sub: 'How customers reach you', icon: 'call' },
   { n: 3, title: 'Shop address', sub: 'Where your boutique is located', icon: 'location_on' },
   { n: 4, title: 'Business information', sub: 'Category and registration details', icon: 'business_center' },
-  { n: 5, title: 'Store settings', sub: 'Timings, delivery and payments', icon: 'schedule' },
-  { n: 6, title: 'Payment details', sub: 'Where your payouts are sent', icon: 'account_balance' },
-  { n: 7, title: 'Review & submit', sub: 'Check everything, then send for verification', icon: 'task_alt' },
+  // Store settings and payout were two steps; they are one now — timings,
+  // dispatch & returns, and the bank/UPI account earnings are paid into.
+  { n: 5, title: 'Store settings & payout', sub: 'Timings, dispatch, returns and where you’re paid', icon: 'account_balance' },
+  { n: 6, title: 'Review & submit', sub: 'Check everything, then send for verification', icon: 'task_alt' },
 ] as const;
 
 /**
@@ -99,6 +100,9 @@ const PIN_RE = /^[1-9][0-9]{5}$/;
 const PHONE_RE = /^[6-9][0-9]{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+// A UPI VPA: handle@bank, e.g. lakshmi@oksbi or 9876543210@ybl. Optional here —
+// a shop is paid by bank transfer; UPI is a convenience fallback.
+const UPI_RE = /^[a-zA-Z0-9.\-_]{2,}@[a-zA-Z]{2,}$/;
 
 type Form = {
   name: string; ownerName: string; description: string; logoUrl: string; coverUrl: string;
@@ -110,7 +114,7 @@ type Form = {
   openTime: string; closeTime: string; workingDays: string[];
   deliveryAvailable: boolean; deliveryAreas: string; rates: ZoneRateForm; freeDeliveryOver: string;
   fulfilment: FulfilmentForm;
-  bankAccountName: string; bankAccountNumber: string; bankAccountNumberConfirm: string; bankIfsc: string;
+  bankAccountName: string; bankAccountNumber: string; bankAccountNumberConfirm: string; bankIfsc: string; upiId: string;
 };
 
 const EMPTY: Form = {
@@ -122,7 +126,7 @@ const EMPTY: Form = {
   openTime: '10:00', closeTime: '20:00', workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   deliveryAvailable: true, deliveryAreas: '', rates: { local: '0', district: '', state: '', national: '' }, freeDeliveryOver: '0',
   fulfilment: { dispatchMin: '1', dispatchMax: '2', returnWindowDays: '7' },
-  bankAccountName: '', bankAccountNumber: '', bankAccountNumberConfirm: '', bankIfsc: '',
+  bankAccountName: '', bankAccountNumber: '', bankAccountNumberConfirm: '', bankIfsc: '', upiId: '',
 };
 
 type Errors = Partial<Record<keyof Form, string>>;
@@ -149,7 +153,9 @@ function validateStep(step: number, f: Form, ifscKnownBad = false): Errors {
   }
   if (step === 2) {
     if (!PHONE_RE.test(f.phone.trim())) e.phone = 'Enter a 10-digit mobile number';
-    if (f.whatsapp.trim() && !PHONE_RE.test(f.whatsapp.trim())) e.whatsapp = 'Enter a 10-digit WhatsApp number';
+    // WhatsApp is now required — buyers and the shop reach each other here.
+    if (!f.whatsapp.trim()) e.whatsapp = 'Enter your WhatsApp number';
+    else if (!PHONE_RE.test(f.whatsapp.trim())) e.whatsapp = 'Enter a 10-digit WhatsApp number';
     if (!EMAIL_RE.test(f.email.trim())) e.email = 'Enter a valid email address';
   }
   if (step === 3) {
@@ -167,7 +173,7 @@ function validateStep(step: number, f: Form, ifscKnownBad = false): Errors {
     // my current location", paste a Maps share link, or drop a pin from the
     // address already typed — so requiring it does not corner anyone.
     if (!f.mapUrl.trim()) e.mapUrl = 'Set your exact shop location on the map';
-    else if (!isMapsLink(f.mapUrl)) e.mapUrl = 'That is not a Google Maps link — use the buttons below, or Maps → Share → Copy link';
+    else if (!isLocationInput(f.mapUrl)) e.mapUrl = 'Paste a Maps link, a Plus Code (e.g. 7JWV+8R) or coordinates (e.g. 11.0168, 76.9558)';
   }
   if (step === 4) {
     if (f.categories.length === 0) e.categories = 'Pick at least one category';
@@ -175,17 +181,17 @@ function validateStep(step: number, f: Form, ifscKnownBad = false): Errors {
     if (f.yearsInBusiness.trim() && Number(f.yearsInBusiness) > 100) e.yearsInBusiness = 'Enter a number between 0 and 100';
   }
   if (step === 5) {
+    // Timings and fulfilment.
     if (!f.openTime) e.openTime = 'Set an opening time';
     if (!f.closeTime) e.closeTime = 'Set a closing time';
     if (f.workingDays.length === 0) e.workingDays = 'Pick at least one working day';
-    if (f.deliveryAvailable && !f.deliveryAreas.trim()) e.deliveryAreas = 'List the areas you deliver to';
     const badFulfilment = validateFulfilment(f.fulfilment);
     if (badFulfilment) e.fulfilment = badFulfilment;
-  }
-  if (step === 6) {
-    // Bank details are now the ONLY payout destination — payouts are made
-    // manually by an admin reading exactly these three fields, so all three are
-    // required and none can be left to "we'll sort it out later".
+
+    // Payout details — merged into this step. Bank transfer is the payout
+    // destination an admin reads to settle, so all three bank fields are
+    // required; UPI is an optional convenience and is only format-checked when
+    // the seller fills it in.
     if (f.bankAccountName.trim().length < 3) {
       e.bankAccountName = 'Enter the account holder name as printed on the passbook';
     } else if (!/^[A-Za-z][A-Za-z.\s'-]{2,}$/.test(f.bankAccountName.trim())) {
@@ -206,6 +212,9 @@ function validateStep(step: number, f: Form, ifscKnownBad = false): Errors {
       // Only a confirmed 404 from the branch directory blocks. A lookup that
       // could not run (offline, outage) never stops the seller finishing setup.
       e.bankIfsc = 'No bank branch found for this IFSC — please check it';
+    }
+    if (f.upiId.trim() && !UPI_RE.test(f.upiId.trim())) {
+      e.upiId = 'Enter a valid UPI ID (e.g. name@oksbi)';
     }
   }
   return e;
@@ -233,8 +242,8 @@ function toPatch(f: Form): BoutiquePatch {
     logo_url: orNull(f.logoUrl),
     cover_url: orNull(f.coverUrl),
     phone: orNull(f.phone),
-    // A blank WhatsApp number falls back to the mobile number — the offline
-    // billing flow sends bills over wa.me and needs something to dial.
+    // WhatsApp is a required field now; the fallback to the mobile number is kept
+    // only to cover an older draft row that never captured one.
     whatsapp: orNull(f.whatsapp) ?? orNull(f.phone),
     email: orNull(f.email),
     instagram: orNull(f.instagram.replace(/^@/, '')),
@@ -269,11 +278,11 @@ function toPatch(f: Form): BoutiquePatch {
     bank_account_name: orNull(f.bankAccountName),
     bank_account_number: orNull(f.bankAccountNumber),
     bank_ifsc: orNull(f.bankIfsc.toUpperCase()),
-    // `upi_id` is deliberately NOT written here. MangaiMart pays out to bank
-    // accounts only, so the wizard no longer collects a UPI ID — but the ~9
-    // boutiques that onboarded with UPI and no bank details still have theirs on
-    // file, and admin needs it to pay them during the transition. Including the
-    // field would send `null` and silently wipe exactly that fallback.
+    // UPI is collected again as an optional convenience alongside the bank
+    // account. It is pre-filled from `fetchBoutiquePrivate` on load, so writing
+    // it back here preserves an existing value rather than wiping it — the ~9
+    // legacy boutiques that onboarded with UPI and no bank details keep theirs.
+    upi_id: orNull(f.upiId),
   };
 }
 
@@ -297,6 +306,11 @@ export function SellerOnboarding() {
   // submission (Seller Agreement + commission) each need explicit opt-in.
   const [accountConsent, setAccountConsent] = useState(false);
   const [sellerConsent, setSellerConsent] = useState(false);
+  // After account creation we verify the email with a 6-digit code (not a
+  // link), still on step 0. `otpEmail` is the address the code was sent to;
+  // `null` means we are still on the account form.
+  const [otpEmail, setOtpEmail] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState('');
   const [step, setStep] = useState(1);
   // True once this boutique has a payout account saved. It gates the second
   // factor on step 6: there is nothing to steal until there is an account on
@@ -417,6 +431,7 @@ export function SellerOnboarding() {
           bankAccountName: priv?.bank_account_name ?? '',
           bankAccountNumber: priv?.bank_account_number ?? '',
           bankIfsc: priv?.bank_ifsc ?? '',
+          upiId: priv?.upi_id ?? '',
           // Pre-filled so an existing seller editing their profile isn't forced
           // to retype a number they already confirmed once.
           bankAccountNumberConfirm: priv?.bank_account_number ?? '',
@@ -424,8 +439,9 @@ export function SellerOnboarding() {
         // Whether there is an established payout destination to protect — see
         // the note on the step 6 block below.
         setBankOnFile(!!priv?.bank_account_number);
-        // Resume on the step after the last completed one, capped at review.
-        setStep(Math.min(7, Math.max(1, (row.onboarding_step ?? 0) + 1)));
+        // Resume on the step after the last completed one, capped at review
+        // (now step 6, since store settings and payout were merged into one).
+        setStep(Math.min(6, Math.max(1, (row.onboarding_step ?? 0) + 1)));
       } catch (e) {
         if (!cancelled) showToast(e instanceof Error ? e.message : 'Could not load your boutique', 'error');
       } finally {
@@ -495,7 +511,7 @@ export function SellerOnboarding() {
   // is deliberately not consulted here: the checklist reflects what the seller
   // still has to fill in, not whether a third-party directory answered.
   const incomplete = useMemo(
-    () => STEPS.slice(0, 6).filter((s) => Object.keys(validateStep(s.n, form)).length > 0),
+    () => STEPS.slice(0, 5).filter((s) => Object.keys(validateStep(s.n, form)).length > 0),
     [form],
   );
 
@@ -532,14 +548,48 @@ export function SellerOnboarding() {
         role: 'seller',
       });
       if (confirmationRequired) {
-        showToast('Check your email and click the link to continue setting up your boutique', 'info');
-        navigate('/auth/signin/seller', { replace: true });
+        // Verify by code, in place, rather than bouncing out to a mailed link.
+        setOtpEmail(account.email.trim());
+        setOtpCode('');
+        showToast('We’ve emailed you a 6-digit code — enter it to continue', 'info');
       }
-      // Otherwise there is a session now and the loader takes over.
+      // Otherwise email confirmation is off and there is a session now; the
+      // loader takes over.
     } catch (e) {
       showToast(e instanceof Error ? friendlyAuthError(e.message) : 'Could not create your account', 'error');
     } finally {
       setBusy(false);
+    }
+  };
+
+  /** Step 0's verify action — confirm the signup with the emailed code. */
+  const verifyAccountOtp = async () => {
+    if (!otpEmail) return;
+    if (!/^\d{6}$/.test(otpCode.trim())) {
+      showToast('Enter the 6-digit code from your email', 'warning');
+      return;
+    }
+    setBusy(true);
+    try {
+      // On success Supabase holds a session; the auth listener fires and the
+      // loader effect creates the draft boutique and moves to step 1.
+      await verifySignupOtp(otpEmail, otpCode);
+      setOtpEmail(null);
+      setOtpCode('');
+    } catch (e) {
+      showToast(e instanceof Error ? friendlyAuthError(e.message) : 'That code did not work', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const resendAccountOtp = async () => {
+    if (!otpEmail) return;
+    try {
+      await resendSignupOtp(otpEmail);
+      showToast('A new code is on its way', 'info');
+    } catch (e) {
+      showToast(e instanceof Error ? friendlyAuthError(e.message) : 'Could not resend the code', 'error');
     }
   };
 
@@ -641,7 +691,7 @@ export function SellerOnboarding() {
           <div style={css('opacity:.88;font-size:13.5px;margin-top:6px;max-width:520px;')}>
             {editMode
               ? 'Update any section — bank & payout, GST, pickup address, timings and more. Changes save as you go and never need re-approval.'
-              : 'Create your login, then eight quick steps to your boutique. Everything after the first step is saved as you go, so you can stop and come back any time.'}
+              : 'Create your login, then six quick steps to your boutique. Everything after the first step is saved as you go, so you can stop and come back any time.'}
           </div>
 
           <div style={css('display:flex;align-items:center;gap:6px;margin-top:22px;overflow-x:auto;padding-bottom:4px;')}>
@@ -693,7 +743,30 @@ export function SellerOnboarding() {
           </div>
         </div>
 
-        {step === 0 && (
+        {step === 0 && otpEmail && (
+          <SectionCard subtitle={`Enter the 6-digit code we emailed to ${otpEmail} to confirm your email and continue.`}>
+            <Field
+              label="6-digit code *"
+              value={otpCode}
+              onChange={(v) => setOtpCode(v.replace(/\D/g, '').slice(0, 6))}
+              placeholder="123456"
+              inputMode="numeric"
+              hint="Didn’t get it? Check spam, or resend below."
+            />
+            <div style={css('text-align:center;font-size:13px;color:var(--ag-muted);font-weight:600;')}>
+              Didn’t get the code?{' '}
+              <button
+                type="button"
+                onClick={resendAccountOtp}
+                style={css('border:none;background:none;color:var(--ag-crimson);font-weight:800;font-size:13px;cursor:pointer;padding:0;font-family:inherit;')}
+              >
+                Resend
+              </button>
+            </div>
+          </SectionCard>
+        )}
+
+        {step === 0 && !otpEmail && (
           <SectionCard subtitle="This is how you sign back in. Your boutique details come next — you only enter them once.">
             <Field label="Your full name *" value={account.fullName} onChange={(v) => setAcct('fullName', v)} placeholder="Lakshmi Priya" error={accountErrors.fullName} />
             <Field label="Email address *" value={account.email} onChange={(v) => setAcct('email', v)} placeholder="you@boutique.com" inputMode="email" error={accountErrors.email} />
@@ -913,33 +986,6 @@ export function SellerOnboarding() {
               <ChipPicker label="Working days *" options={WORKING_DAYS} value={form.workingDays} onChange={(next) => set('workingDays', next)} multiple error={errors.workingDays} />
             </SectionCard>
 
-            {/* Your numbers, charged to the buyer at checkout — MangaiMart adds
-                no delivery fee of its own (migration 0076), and they vary with
-                how far the parcel goes (0077). The rate bands, not the free-text
-                box below them, are what decides who can order. */}
-            <SectionCard title="Delivery" subtitle="What buyers pay you to deliver.">
-              <Toggle label="Delivery available" description="Turn off if buyers must collect from your shop" icon="local_shipping" on={form.deliveryAvailable} onChange={(v) => set('deliveryAvailable', v)} />
-              {form.deliveryAvailable && (
-                <>
-                  <DeliveryRateCard
-                    value={form.rates}
-                    onChange={(next) => set('rates', next)}
-                    places={{ city: form.city, district: form.district, state: form.state }}
-                    freeDeliveryOver={form.freeDeliveryOver}
-                    onFreeDeliveryOverChange={(v) => set('freeDeliveryOver', v)}
-                  />
-                  <TextArea
-                    label="Delivery areas *"
-                    value={form.deliveryAreas}
-                    onChange={(v) => set('deliveryAreas', v)}
-                    placeholder="Coimbatore city, Tirupur, Erode"
-                    error={errors.deliveryAreas}
-                    hint="A description for your shop page. The bands above are what buyers are actually charged."
-                  />
-                </>
-              )}
-            </SectionCard>
-
             <SectionCard title="Dispatch & returns" subtitle="What buyers are promised on every product you list.">
               <FulfilmentCard value={form.fulfilment} onChange={(next) => set('fulfilment', next)} error={errors.fulfilment} />
             </SectionCard>
@@ -958,68 +1004,77 @@ export function SellerOnboarding() {
                 </div>
               </div>
             </SectionCard>
+
+            {/* Payout — merged in from the old separate step. MangaiMart settles
+                your earnings to this bank account (UPI optional). These details
+                stay private: buyers and other sellers can never see them. */}
+            <SectionCard title="Payout details" subtitle="Where your earnings are paid. Private — never shown to buyers or other sellers.">
+              {/*
+                The second factor is asked for here and nowhere else in the seller
+                console, and only once there is an account already saved.
+
+                The fraud worth stopping is a stolen password quietly repointing an
+                established seller's settlements at somebody else's bank — it is
+                silent, and by the time it shows up the money has moved. A seller
+                typing their details in for the first time has nothing to redirect
+                yet, so gating that would buy no security and would drop an
+                authenticator-app QR code into the middle of registration, which is
+                exactly how sellers get lost.
+              */}
+              <MfaStepUp
+                reason="You’re changing where your earnings are paid. Verify with your authenticator app or an emailed code before editing these details."
+                disabled={!bankOnFile}
+              >
+              <Field
+                label="Account holder name"
+                value={form.bankAccountName}
+                onChange={(v) => set('bankAccountName', v)}
+                placeholder="Lakshmi Priya"
+                error={errors.bankAccountName}
+                hint="Exactly as printed on your passbook or cheque book."
+              />
+              <Field
+                label="Bank account number"
+                value={form.bankAccountNumber}
+                onChange={(v) => set('bankAccountNumber', v.replace(/\D/g, '').slice(0, 18))}
+                placeholder="123456789012"
+                inputMode="numeric"
+                error={errors.bankAccountNumber}
+                hint="9–18 digits, exactly as printed in your passbook."
+              />
+              <Field
+                label="Re-enter account number"
+                value={form.bankAccountNumberConfirm}
+                onChange={(v) => set('bankAccountNumberConfirm', v.replace(/\D/g, '').slice(0, 18))}
+                placeholder="123456789012"
+                inputMode="numeric"
+                error={errors.bankAccountNumberConfirm}
+                hint="A typo here is the one mistake we cannot catch for you."
+              />
+              <Field
+                label="IFSC code"
+                value={form.bankIfsc}
+                onChange={(v) => set('bankIfsc', v.toUpperCase().slice(0, 11))}
+                placeholder="HDFC0001234"
+                error={errors.bankIfsc}
+              />
+              <IfscStatusLine status={ifscStatus} />
+              <Field
+                label="UPI ID"
+                value={form.upiId}
+                onChange={(v) => set('upiId', v.trim().slice(0, 64))}
+                placeholder="name@oksbi"
+                error={errors.upiId}
+                hint="Optional — a UPI ID we can pay to as well as your bank account."
+              />
+              </MfaStepUp>
+            </SectionCard>
           </div>
         )}
 
-        {step === 6 && (
-          <SectionCard subtitle="MangaiMart transfers your earnings to this bank account. These details stay private — buyers and other sellers can never see them.">
-            {/*
-              The second factor is asked for here and nowhere else in the seller
-              console, and only once there is an account already saved.
+        {step === 6 && <ReviewStep form={form} incomplete={incomplete} onEdit={goTo} editMode={editMode} />}
 
-              The fraud worth stopping is a stolen password quietly repointing an
-              established seller's settlements at somebody else's bank — it is
-              silent, and by the time it shows up the money has moved. A seller
-              typing their details in for the first time has nothing to redirect
-              yet, so gating that would buy no security and would drop an
-              authenticator-app QR code into the middle of a seven-step
-              registration, which is exactly how sellers get lost.
-            */}
-            <MfaStepUp
-              reason="You’re changing where your earnings are paid. Verify with your authenticator app or an emailed code before editing these details."
-              disabled={!bankOnFile}
-            >
-            <Field
-              label="Account holder name"
-              value={form.bankAccountName}
-              onChange={(v) => set('bankAccountName', v)}
-              placeholder="Lakshmi Priya"
-              error={errors.bankAccountName}
-              hint="Exactly as printed on your passbook or cheque book."
-            />
-            <Field
-              label="Bank account number"
-              value={form.bankAccountNumber}
-              onChange={(v) => set('bankAccountNumber', v.replace(/\D/g, '').slice(0, 18))}
-              placeholder="123456789012"
-              inputMode="numeric"
-              error={errors.bankAccountNumber}
-              hint="9–18 digits, exactly as printed in your passbook."
-            />
-            <Field
-              label="Re-enter account number"
-              value={form.bankAccountNumberConfirm}
-              onChange={(v) => set('bankAccountNumberConfirm', v.replace(/\D/g, '').slice(0, 18))}
-              placeholder="123456789012"
-              inputMode="numeric"
-              error={errors.bankAccountNumberConfirm}
-              hint="A typo here is the one mistake we cannot catch for you."
-            />
-            <Field
-              label="IFSC code"
-              value={form.bankIfsc}
-              onChange={(v) => set('bankIfsc', v.toUpperCase().slice(0, 11))}
-              placeholder="HDFC0001234"
-              error={errors.bankIfsc}
-            />
-            <IfscStatusLine status={ifscStatus} />
-            </MfaStepUp>
-          </SectionCard>
-        )}
-
-        {step === 7 && <ReviewStep form={form} incomplete={incomplete} onEdit={goTo} editMode={editMode} />}
-
-        {step === 7 && !editMode && (
+        {step === 6 && !editMode && (
           <div style={css('margin-top:16px;background:var(--ag-surface);border:1px solid var(--ag-surface-3);border-radius:16px;padding:16px 18px;box-shadow:0 16px 38px -30px rgba(107,20,54,.6);')}>
             <ConsentCheckbox checked={sellerConsent} onChange={setSellerConsent}>
               I have read and agree to the Seller Agreement, <PolicyLinks />, including the {POLICY_TERMS.commissionPct}% platform commission and payout terms.
@@ -1035,7 +1090,11 @@ export function SellerOnboarding() {
               // Step 1 has no Back during first-time setup: the account above it
               // already exists and cannot be re-entered. In edit mode the button
               // instead leaves the wizard back to the profile hub.
-              onClick={() => (step === 0 ? navigate('/') : step === 1 ? navigate('/seller/profile') : goTo(step - 1))}
+              // Step 1 has no Back during first-time setup: the account above it
+              // already exists and cannot be re-entered. On the OTP screen, Back
+              // returns to the account form. In edit mode the button instead
+              // leaves the wizard back to the profile hub.
+              onClick={() => (step === 0 ? (otpEmail ? setOtpEmail(null) : navigate('/')) : step === 1 ? navigate('/seller/profile') : goTo(step - 1))}
               disabled={busy}
               style={css('height:54px;padding:0 22px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:15px;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;')}
             >
@@ -1044,16 +1103,16 @@ export function SellerOnboarding() {
           )}
           <button className="agx-con-btn"
             type="button"
-            onClick={step === 0 ? createAccount : step === 7 ? (editMode ? saveEdits : submit) : saveAndNext}
+            onClick={step === 0 ? (otpEmail ? verifyAccountOtp : createAccount) : step === 6 ? (editMode ? saveEdits : submit) : saveAndNext}
             disabled={busy || uploading != null}
             style={css(`flex:1;height:54px;border:none;border-radius:15px;color:#fff;font-weight:800;font-size:16px;cursor:${busy ? 'default' : 'pointer'};opacity:${busy || uploading ? 0.7 : 1};box-shadow:0 14px 30px -14px rgba(214,51,108,.8);display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;`)}
           >
             {uploading
               ? 'Uploading image…'
               : busy
-                ? step === 0 ? 'Creating account…' : 'Saving…'
-                : step === 0 ? 'Create account & continue' : step === 7 ? (editMode ? 'Save changes' : 'Submit for verification') : 'Save & continue'}
-            {!busy && !uploading && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{step === 7 ? (editMode ? 'check' : 'send') : 'arrow_forward'}</span>}
+                ? step === 0 ? (otpEmail ? 'Verifying…' : 'Creating account…') : 'Saving…'
+                : step === 0 ? (otpEmail ? 'Verify & continue' : 'Create account & continue') : step === 6 ? (editMode ? 'Save changes' : 'Submit for verification') : 'Save & continue'}
+            {!busy && !uploading && <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:20px;")}>{step === 6 ? (editMode ? 'check' : 'send') : 'arrow_forward'}</span>}
           </button>
         </div>
       </div>
@@ -1142,19 +1201,18 @@ function ReviewStep({
       rows: [['Categories', dash(joinCategories(form.categories))], ['GST number', dash(form.gstNumber)], ['Registration', dash(form.businessReg)], ['Years in business', dash(form.yearsInBusiness)]],
     },
     {
-      step: 5, title: 'Store settings',
+      step: 5, title: 'Store settings & payout',
       rows: [
         ['Timing', form.openTime && form.closeTime ? `${form.openTime} – ${form.closeTime}` : '—'],
         ['Working days', form.workingDays.length ? form.workingDays.join(', ') : '—'],
-        ['Delivery', form.deliveryAvailable ? `${describeReach(form.rates, form.city, form.district, form.state)} · from ₹${form.rates.local || 0}${Number(form.freeDeliveryOver) > 0 ? `, free over ₹${form.freeDeliveryOver} nearby` : ''}` : 'Store pickup only'],
         ['Dispatch', dispatchLabel(shopFulfilment({ dispatchMin: Number(form.fulfilment.dispatchMin), dispatchMax: Number(form.fulfilment.dispatchMax) }))],
         ['Returns', Number(form.fulfilment.returnWindowDays) > 0 ? `${form.fulfilment.returnWindowDays} days` : 'Faults only'],
         ['Payments', 'Online only — paid in full before the order reaches you'],
+        ['Account holder', dash(form.bankAccountName)],
+        ['Account number', form.bankAccountNumber ? maskAccount(form.bankAccountNumber) : '—'],
+        ['IFSC', dash(form.bankIfsc)],
+        ['UPI ID', dash(form.upiId)],
       ],
-    },
-    {
-      step: 6, title: 'Payout details',
-      rows: [['Account holder', dash(form.bankAccountName)], ['Account number', form.bankAccountNumber ? maskAccount(form.bankAccountNumber) : '—'], ['IFSC', dash(form.bankIfsc)]],
     },
   ];
 

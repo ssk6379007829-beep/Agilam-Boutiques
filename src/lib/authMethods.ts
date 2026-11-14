@@ -138,3 +138,24 @@ export async function verifyEmailOtp(email: string, code: string): Promise<void>
   const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' });
   if (error) throw new Error(friendlyAuthError(error.message));
 }
+
+/**
+ * Confirm a brand-new signup with the 6-digit code emailed by `supabase.auth
+ * .signUp` (type `'signup'`, not `'email'`). On success the browser holds a
+ * session for the new account and the onboarding loader takes over.
+ *
+ * NOTE: the code only reaches the seller if the project's "Confirm signup" email
+ * template carries `{{ .Token }}` — the same token the magic-link template
+ * already uses for the reset-by-code flow. Without it the email is link-only and
+ * there is no code to type.
+ */
+export async function verifySignupOtp(email: string, code: string): Promise<void> {
+  const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'signup' });
+  if (error) throw new Error(friendlyAuthError(error.message));
+}
+
+/** Re-send the signup confirmation code to an address that hasn't confirmed yet. */
+export async function resendSignupOtp(email: string): Promise<void> {
+  const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim() });
+  if (error) throw new Error(friendlyAuthError(error.message));
+}

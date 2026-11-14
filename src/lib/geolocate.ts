@@ -158,9 +158,11 @@ export function isMapsLink(raw: string): boolean {
 }
 
 /**
- * Coordinates out of a Maps URL, when it carries them (`?q=`, `@lat,lng`, `!3dlat!4dlng`).
- * A shortened `maps.app.goo.gl` link does not, and returns null — which is why
- * the coordinates are stored alongside the link rather than derived from it.
+ * Coordinates out of a Maps URL, when it carries them (`?q=`, `@lat,lng`,
+ * `!3dlat!4dlng`), or a bare "lat, lng" pair the seller pasted on its own.
+ * A shortened `maps.app.goo.gl` link or a Plus Code does not carry readable
+ * coordinates, and returns null — which is why the coordinates are stored
+ * alongside the link rather than derived from it.
  */
 export function parseMapCoords(raw: string): { lat: number; lng: number } | null {
   const v = (raw ?? '').trim();
@@ -168,11 +170,77 @@ export function parseMapCoords(raw: string): { lat: number; lng: number } | null
   const pair =
     v.match(/[?&]q=(-?\d+\.\d+),\s*(-?\d+\.\d+)/) ??
     v.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ??
-    v.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+    v.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) ??
+    // A plain pair on its own — "11.0168, 76.9558" — pasted straight from the
+    // Maps long-press readout. Anchored so it can't pull two numbers out of the
+    // middle of an unrelated URL.
+    v.match(/^(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)$/);
   if (!pair) return null;
   const lat = Number(pair[1]);
   const lng = Number(pair[2]);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
   return { lat, lng };
+}
+
+/**
+ * An Open Location Code ("Plus Code"), the short shareable form Google Maps
+ * offers for places without a street address — e.g. `7JWV+8R` or
+ * `7JWV+8R Coimbatore`. We accept it as a location value and store it as typed;
+ * Google resolves it when opened. The full code is 8 characters + '+' + at least
+ * one; the short form drops the area prefix and is paired with a place name.
+ */
+export function isPlusCode(raw: string): boolean {
+  const v = (raw ?? '').trim();
+  if (!v) return false;
+  // The code itself: 2–8 of the base-20 alphabet, a '+', then 0–3 more. A short
+  // code may be followed by a locality ("7JWV+8R Coimbatore").
+  return /^[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]{0,3}(\s+.+)?$/i.test(v);
+}
+
+/**
+ * Whether a pasted value is an acceptable shop location — broader than a Google
+ * Maps link alone. The field now takes any of:
+ *   • a Maps / maps-provider share link (Google, Apple, OSM, Bing …),
+ *   • a bare `lat, lng` coordinate pair,
+ *   • a Plus Code.
+ * Anything that is a usable location is let through; only empty or plainly-
+ * wrong text (a shop name, a phone number) is rejected.
+ */
+export function isLocationInput(raw: string): boolean {
+  const v = (raw ?? '').trim();
+  if (!v) return false;
+  if (parseMapCoords(v)) return true;
+  if (isPlusCode(v)) return true;
+  if (isMapsLink(v)) return true;
+  // Any other http(s) link to a mapping service — be permissive about the host
+  // rather than maintaining a closed list the seller's provider might miss.
+  try {
+    const u = new URL(v.startsWith('http') ? v : `https://${v}`);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    const host = u.hostname.toLowerCase().replace(/^www\./, '');
+    return /(^|\.)(map|maps|osm|openstreetmap|geo|here|tomtom|mapbox|bing|apple|ozmaps|waze)/.test(host)
+      || host.endsWith('goo.gl') || host.endsWith('onelink.me') || host.includes('map');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The best openable URL for a stored location value. A link opens as-is; a bare
+ * coordinate pair or a Plus Code is wrapped in a Google Maps search so the seller
+ * (and later a buyer) can still tap through to it.
+ */
+export function mapsOpenUrl(raw: string): string | null {
+  const v = (raw ?? '').trim();
+  if (!v) return null;
+  if (isMapsLink(v)) return v.startsWith('http') ? v : `https://${v}`;
+  try {
+    const u = new URL(v.startsWith('http') ? v : `https://${v}`);
+    if (u.protocol === 'http:' || u.protocol === 'https:') return u.toString();
+  } catch { /* not a URL — fall through to a search */ }
+  if (parseMapCoords(v) || isPlusCode(v)) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v)}`;
+  }
+  return null;
 }
