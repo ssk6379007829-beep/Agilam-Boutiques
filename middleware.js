@@ -18,7 +18,7 @@
  * comments and plain block comments are safe; JSDoc is not. Keep prose up here.
  */
 export const config = {
-  matcher: ["/((?!api/|assets/|_vercel|index\\.html|.*\\.[a-zA-Z0-9]+$).*)", "/robots.txt", "/sitemap.xml", "/sitemap-pages.xml", "/sitemap-boutiques.xml", "/sitemap-products.xml", "/merchant-feed.xml"]
+  matcher: ["/((?!api/|assets/|_vercel|index\\.html|.*\\.[a-zA-Z0-9]+$).*)", "/robots.txt", "/llms.txt", "/sitemap.xml", "/sitemap-pages.xml", "/sitemap-boutiques.xml", "/sitemap-products.xml", "/merchant-feed.xml"]
 };
 const SITE_NAME = "MangaiMart";
 const DEFAULT_DESCRIPTION = "Shop verified independent boutiques across India in one place \u2014 sarees, kurta sets, kurtis and more, with direct chat to the shop.";
@@ -1460,6 +1460,41 @@ function websiteNode(origin) {
   };
 }
 
+/**
+ * A `WebPage` node for the written pages — the policies, the About page, the
+ * seller recruitment site.
+ *
+ * These are real documents, not storefront surfaces, and until now they carried
+ * only the shared `Organization` + `WebSite` graph: a crawler could see WHO
+ * publishes the page but nothing that made the page itself an addressable entity
+ * with a name, a description and a place in the site. `WebPage` is the type for
+ * that, and unlike a `Product` or an `AggregateRating` it asserts nothing about
+ * the visible layout — it only restates the title and description already in
+ * the head — so there is no "markup must match what the page shows" risk here.
+ *
+ * `@id` is the page URL plus `#webpage`, distinct from the `#organization` and
+ * `#website` nodes it links to, so the three join into one graph rather than
+ * colliding. Mirrors `articleSchema()` in src/lib/schema.ts — the client copy
+ * React renders — the same way orgNode/websiteNode mirror their counterparts
+ * there. The home page is deliberately excluded: its primary entity is the
+ * `WebSite` node, and a second node claiming the same `/` URL would compete with
+ * it for what the root of the site IS.
+ */
+function webPageNode(pathname, meta, origin) {
+  const url = `${origin}${pathname}`;
+  return {
+    "@type": "WebPage",
+    "@id": `${url}#webpage`,
+    url,
+    name: meta.title,
+    description: meta.description,
+    inLanguage: "en-IN",
+    isPartOf: { "@id": `${origin}/#website` },
+    about: { "@id": `${origin}/#organization` },
+    publisher: { "@id": `${origin}/#organization` }
+  };
+}
+
 /*
  * The /help questions, mirrored from the `help` entry in src/data/policies.ts.
  *
@@ -1893,6 +1928,10 @@ async function resolveMeta(pathname, origin) {
   const staticMeta = STATIC_META[pathname];
   if (staticMeta) {
     const graph = [orgNode(origin), websiteNode(origin)];
+    // Every written page except the root gains a WebPage node naming it. The
+    // home page's primary entity is the WebSite node, so it is left out — see
+    // webPageNode().
+    if (pathname !== "/") graph.push(webPageNode(pathname, staticMeta, origin));
     if (pathname === "/help") graph.push(faqNode(origin));
     return {
       ...staticMeta,
@@ -2118,6 +2157,92 @@ Disallow: /
 # first Sitemap: line and never expand a <sitemapindex>.
 Sitemap: ${origin}/sitemap.xml
 ${SITEMAP_CHILDREN.map((path) => `Sitemap: ${origin}${path}`).join("\n")}
+`;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * /llms.txt  (AI / LLM discovery)
+ * ────────────────────────────────────────────────────────────────────────────
+ *
+ * The emerging convention (llmstxt.org) for telling an AI assistant, in one
+ * curated file, what a site IS and which URLs are worth reading — the same job
+ * robots.txt + the sitemap do for a crawler, but written for a model that is
+ * answering "what is MangaiMart" or "where can I buy a silk saree online"
+ * rather than building an index.
+ *
+ * WHY IT EARNS ITS PLACE HERE
+ * The whole file above already hands non-rendering crawlers real HTML (the
+ * <noscript> prerenders) and a clean entity graph, and robots.txt already lets
+ * GPTBot, OAI-SearchBot, PerplexityBot and ClaudeBot in. This is the one thing
+ * missing from that story: a single hand-written summary a model can read
+ * instead of inferring the business from scattered product pages. It is markdown
+ * by spec, links are absolute, and the facts are the load-bearing ones an
+ * assistant gets wrong about a marketplace — prepaid only, who delivers, the
+ * returns split — stated once, correctly. Keep these in step with CLAUDE.md's
+ * "Rules that bite" and src/data/company.ts; a confident wrong answer is worse
+ * than none.
+ *
+ * It is NOT access control and NOT a ranking lever — adoption is still early and
+ * no major assistant is known to require it. It is cheap, canonical-only, and
+ * forward-looking, which is exactly the bar for serving it.
+ */
+function llmsTxt(origin) {
+  return `# ${SITE_NAME}
+
+> ${SITE_NAME} is an online marketplace for Indian ethnic wear from verified independent boutiques across India — sarees, kurta sets, kurtis, lehengas and more. Every boutique is checked before it can list, every order is paid online before dispatch, and buyers can chat directly with the shop that made the piece.
+
+Key facts for an assistant summarising ${SITE_NAME}:
+
+- Model: a commission on each delivered order plus flat day-rate ad placements. There are no subscriptions and no paid "featured" tiers.
+- Buyers browse without an account. Every order is prepaid online (UPI, card, net banking) before it is packed — there is no cash on delivery.
+- Returns: a 7-day change-of-mind window set by each boutique, plus a 30-day platform cover for a faulty item. Transit time is additional.
+- Delivery is the boutique's own and is priced by distance (local, district, state, national), so the charge depends on the buyer's pincode and the shop.
+- Languages: English and Tamil. Area served: India, with a Tamil Nadu focus.
+- Support: ${SUPPORT_EMAIL}
+
+## Shop
+- [Shop all ethnic wear](${origin}/shop): every piece listed by verified boutiques, filterable by category, occasion, colour, size and budget.
+- [Collections](${origin}/collections): browse by category, occasion, fabric, colour and budget — each is its own landing page.
+- [New arrivals](${origin}/new-arrivals): pieces listed in the last 30 days.
+- [Best sellers](${origin}/best-sellers): the most-bought pieces, ranked by units sold and rating.
+- [Boutiques](${origin}/boutiques): every verified shop, browsable by city and rating.
+- [Top boutiques](${origin}/top-boutiques): the best-selling shops.
+
+## Sell on ${SITE_NAME}
+- [Open your boutique](${origin}/sell): free to join and free to list; a platform fee applies only on a delivered order.
+- [How it works](${origin}/sell/how-it-works)
+- [Seller pricing](${origin}/sell/pricing)
+- [Delivery & payouts](${origin}/sell/delivery-and-payouts)
+- [Seller FAQ](${origin}/sell/faq)
+
+## Policies and help
+- [About ${SITE_NAME}](${origin}/about)
+- [Help & support](${origin}/help)
+- [Privacy policy](${origin}/privacy-policy)
+- [Terms & conditions](${origin}/terms)
+- [Shipping policy](${origin}/shipping-policy)
+- [Delivery policy](${origin}/delivery-policy)
+- [Return & refund policy](${origin}/return-refund-policy)
+- [Cancellation policy](${origin}/cancellation-policy)
+- [Product policy](${origin}/product-policy)
+
+## Full catalogue data
+- [Product sitemap](${origin}/sitemap-products.xml)
+- [Boutique sitemap](${origin}/sitemap-boutiques.xml)
+- [Page sitemap](${origin}/sitemap-pages.xml)
+`;
+}
+
+/*
+ * The preview-deploy copy. A *.vercel.app preview reads the same database and
+ * serves the same catalogue, so its /llms.txt must not hand an assistant a set
+ * of links on the preview host that duplicate the live site — the same reason
+ * previewRobotsTxt() answers `Disallow: /`.
+ */
+function previewLlmsTxt(origin) {
+  return `# ${SITE_NAME} — preview deploy
+
+> This is a preview build at ${origin}, not the live site. Please read ${SITE_NAME} at https://${CANONICAL_HOST} instead.
 `;
 }
 function urlEntry(loc, opts = {}) {
@@ -2607,6 +2732,18 @@ export default async function middleware(request) {
         return new Response("Feed unavailable", { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } });
       }
       return new Response(feed, { headers: sitemapHeaders });
+    }
+    // Sits with the sitemaps, AFTER the coming-soon gate: like them, it
+    // advertises the catalogue, so while the site is hidden it goes dark too.
+    // Must be handled before the extension passthrough below, which would
+    // otherwise send `.txt` straight through untouched.
+    if (pathname === "/llms.txt") {
+      return new Response(preview ? previewLlmsTxt(origin) : llmsTxt(origin), {
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "cache-control": `public, max-age=0, s-maxage=${SITEMAP_CACHE_SECONDS}, stale-while-revalidate=86400`
+        }
+      });
     }
     if (
       pathname.startsWith("/api/") ||

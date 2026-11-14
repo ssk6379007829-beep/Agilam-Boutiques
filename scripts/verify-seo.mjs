@@ -203,6 +203,47 @@ function attr(body, re) {
 }
 
 /*
+ * /llms.txt — the AI/LLM discovery file.
+ *
+ * Served from the edge like robots.txt, so it has the same silent failure mode:
+ * a typo in the matcher or the handler order sends `.txt` straight through the
+ * extension passthrough and the file 404s, which is invisible from a browser
+ * nobody points at it. Asserted on its contents, not just its status, because a
+ * summary that lost its catalogue links or its canonical facts is worse than
+ * absent — an assistant would read and repeat the hollow version.
+ */
+{
+  const res = await middleware(new Request(`${origin}/llms.txt`));
+  const body = res ? await res.text() : '';
+  const problems = [];
+  if (!res || res.status !== 200) problems.push(`status ${res ? res.status : 'none'}`);
+  if (!(res && (res.headers.get('content-type') || '').includes('text/plain'))) problems.push('not text/plain');
+  if (!config.matcher.includes('/llms.txt')) problems.push('/llms.txt is not in config.matcher — it will 404');
+  if (!body.startsWith('# MangaiMart')) problems.push('no H1 title');
+  if (!/^>\s/m.test(body)) problems.push('no blockquote summary');
+  for (const link of ['/shop', '/collections', '/boutiques', '/sell', '/sitemap-products.xml']) {
+    if (!body.includes(`(${origin}${link})`)) problems.push(`no link to ${link}`);
+  }
+  if (!body.includes('no cash on delivery')) problems.push('dropped the prepaid-only fact');
+  results.push(
+    problems.length
+      ? { label: 'llms.txt', status: res ? res.status : '-', FAIL: problems.join('; ') }
+      : { label: 'llms.txt', status: res.status, title: `${body.split('\n').length} lines, summary + section links present` },
+  );
+}
+// The preview copy must be a stub pointing at the canonical host, never the
+// live catalogue links on a *.vercel.app origin.
+{
+  const res = await middleware(new Request('https://mangaimart-git-preview.vercel.app/llms.txt'));
+  const body = res ? await res.text() : '';
+  results.push(
+    /preview deploy/.test(body) && body.includes(`https://${(process.env.VITE_SITE_URL || 'https://mangaimart.com').replace(/^https?:\/\//, '').replace(/\/+$/, '')}`)
+      ? { label: 'preview llms.txt', status: res.status, title: 'stub points at the canonical host' }
+      : { label: 'preview llms.txt', FAIL: 'a *.vercel.app deploy is serving the live catalogue in llms.txt' },
+  );
+}
+
+/*
  * The Google Merchant Center feed.
  *
  * Served from the edge, not api/, because api/ is already at the 12-function
@@ -417,6 +458,9 @@ for (const p of ['/about', '/help', '/privacy-policy', '/terms', '/shipping-poli
     is('own title', (o) => !!o.title && o.title !== 'MangaiMart'),
     is('indexable', (o) => (o.robots || '').startsWith('index')),
     is('canonical', (o) => !!o.canonical),
+    // The WebPage node added alongside Org + WebSite: each written page is now
+    // an addressable entity, not just a page by a known publisher.
+    is('WebPage schema', (o) => (o.schema || '').includes('WebPage')),
   ]);
 }
 
