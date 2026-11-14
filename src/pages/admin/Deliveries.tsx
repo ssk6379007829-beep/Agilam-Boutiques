@@ -10,7 +10,7 @@ import { fmt } from '@/data/demo';
 import {
   fetchAllCouriers, saveCourier, fetchDeliveryDisputes, resolveDeliveryDispute,
   fetchStalledShipments, buildTrackingUrl,
-  fetchShiprocketShops, saveBoutiqueShiprocket, saveBoutiqueShadowfax, saveBoutiqueDtdc,
+  fetchShiprocketShops, saveBoutiqueShiprocket, saveBoutiqueShadowfax,
   fetchPlatformSwitches, savePlatformSwitches,
   pickupAddressText, registerShiprocketPickup,
   type Courier, type DeliveryIssueRow, type StalledShipmentRow, type ShiprocketShopRow,
@@ -113,9 +113,6 @@ export function Deliveries() {
       // that does not have it, losing the pickup nickname too.
       if (shop.shadowfax_enabled !== undefined) {
         await saveBoutiqueShadowfax(shop.id, { shadowfax_enabled: shop.shadowfax_enabled });
-      }
-      if (shop.dtdc_enabled !== undefined) {
-        await saveBoutiqueDtdc(shop.id, { dtdc_enabled: shop.dtdc_enabled });
       }
       showToast(`${shop.name} saved`);
       setShop(null);
@@ -243,16 +240,16 @@ export function Deliveries() {
         )
     ) },
     { key: 'ready', header: 'BOOKING', width: '150px', render: (b) => {
-      // DTDC first, as the chain does. A shop on DTDC is "Ready" even with no
-      // Shiprocket pickup registered; the Shiprocket reasons only show when
-      // DTDC is not carrying for this shop.
-      const dtdcReady = Boolean(switches?.dtdc_enabled && b.dtdc_enabled && b.pincode);
+      // DTDC first, as the chain does. No per-shop approval (2026-11-14): when
+      // the platform switch is on, every shop with a pincode is ready on DTDC.
+      // The Shiprocket reasons only show when DTDC is not carrying for this shop.
+      const dtdcReady = Boolean(switches?.dtdc_enabled && b.pincode);
       const srReady = Boolean(switches?.shiprocket_enabled && b.shiprocket_enabled && b.shiprocket_pickup_location);
       const why = dtdcReady ? 'Ready · DTDC'
         : srReady ? 'Ready · Shiprocket'
-        : switches?.dtdc_enabled && b.dtdc_enabled && !b.pincode ? 'No pincode'
+        : switches?.dtdc_enabled && !b.pincode ? 'No pincode'
         : !switches?.shiprocket_enabled && !switches?.dtdc_enabled ? 'Platform off'
-        : !b.shiprocket_enabled && !b.dtdc_enabled ? 'Shop off'
+        : !b.shiprocket_enabled ? 'Shop off'
         : !b.shiprocket_pickup_location ? 'No pickup' : 'Shop off';
       return <StatusPill status={dtdcReady || srReady ? 'paid' : 'cod'} label={why} />;
     } },
@@ -571,28 +568,17 @@ export function Deliveries() {
           Turning this off leaves the shop on manual docket entry. Parcels already booked keep their tracking.
         </div>
 
-        {/* Hidden entirely when 0114 has not been applied: a checkbox that
-            cannot be saved is worse than no checkbox. */}
+        {/* DTDC has no per-shop switch (2026-11-14): it is the contracted
+            primary carrier and every shop can book on it once the platform
+            switch at the top of this tab is on. Nothing to approve here — the
+            booking sends the shop's own address and raises the pickup from it,
+            so the only requirement is a pincode on the shop (shown above). */}
         {shop?.dtdc_enabled !== undefined && (
-          <>
-            <div style={css('display:flex;align-items:center;gap:10px;margin-top:18px;')}>
-              <input
-                id="shop-dtdc"
-                type="checkbox"
-                checked={shop?.dtdc_enabled ?? false}
-                onChange={(e) => setShop((s) => (s ? { ...s, dtdc_enabled: e.target.checked } : s))}
-                style={css('width:18px;height:18px;accent-color:var(--ag-crimson);')}
-              />
-              <label htmlFor="shop-dtdc" style={css('font-size:13.5px;font-weight:700;cursor:pointer;')}>
-                Book with DTDC for this shop (tried first)
-              </label>
-            </div>
-            <div style={css(`font-size:12px;color:${T.muted};margin-top:6px;line-height:1.55;`)}>
-              Nothing to register — every booking sends this shop&rsquo;s own address and raises the pickup
-              from it, so check the address line and pincode above before turning this on.
-              {!shop?.pincode ? ' This shop has no pincode, so nothing can be booked for it yet.' : ''}
-            </div>
-          </>
+          <div style={css(`font-size:12px;color:${T.muted};margin-top:18px;line-height:1.55;background:var(--ag-surface-2);border-radius:10px;padding:10px 12px;`)}>
+            <strong style={css(`color:${T.ink};`)}>DTDC is available to this shop automatically.</strong> It needs no
+            per-shop approval — just the platform DTDC switch on, and a pickup pincode on the shop.
+            {!shop?.pincode ? ' This shop has no pincode, so nothing can be booked for it yet.' : ''}
+          </div>
         )}
 
         {/* Hidden entirely when 0110 has not been applied: a checkbox that

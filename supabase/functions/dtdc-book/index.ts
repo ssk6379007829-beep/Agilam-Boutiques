@@ -116,12 +116,14 @@ Deno.serve(async (req: Request) => {
     if (!shop) return json({ error: 'Boutique not found' }, 404);
     if (shop.owner_id !== user.id) return json({ error: 'Not your order' }, 403);
 
-    // Both switches. Checked AFTER ownership so an unauthorised caller learns
-    // nothing about our rollout state.
+    // The platform master switch ONLY. DTDC is the contracted primary carrier,
+    // so there is no per-shop approval (2026-11-14) — every shop can book on it
+    // once the platform turns it on. Checked AFTER ownership so an unauthorised
+    // caller learns nothing about our rollout state.
     const { data: settings } = await db
       .from('platform_settings').select('dtdc_enabled').eq('id', 1).maybeSingle();
-    if (!settings?.dtdc_enabled || !shop.dtdc_enabled) {
-      return decline('DTDC is not enabled for this shop');
+    if (!settings?.dtdc_enabled) {
+      return decline('DTDC booking is switched off platform-wide');
     }
 
     const pickupPin = (shop.pincode ?? '').replace(/\D/g, '');

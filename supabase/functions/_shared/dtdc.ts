@@ -65,17 +65,26 @@ export function hubCode(): string | null { return (Deno.env.get('DTDC_HUB_CODE')
 export function commodityId(): string | null { return (Deno.env.get('DTDC_COMMODITY_ID') ?? '').trim() || null; }
 
 /**
- * Buyer-facing tracking page for a DTDC AWB.
+ * External tracking page for a DTDC AWB — null by default, ON PURPOSE.
  *
- * The API returns no tracking URL of its own. DTDC's public tracker takes the
- * consignment number in the query string; overridable by env because a
- * marketing URL is not an API contract and should not need a redeploy.
+ * DTDC's API returns no tracking URL, and their public tracker does NOT accept
+ * a consignment number in the query string: every deep-link lands on a blank
+ * form the viewer has to retype the AWB into (confirmed 2026-11-14 — the old
+ * `tracking_results.asp?strCnno=` link just reopens the generic page). A link
+ * that needs the customer to re-enter the number is worse than no link, so we
+ * store none and rely on the app's own per-consignment timeline (the scan
+ * history we replay from `/track`), which shows the exact parcel's status in
+ * place rather than sending anyone to a courier page.
+ *
+ * Still overridable by env: if DTDC ever ships a real parameterised deep link,
+ * set DTDC_TRACKING_URL_TEMPLATE to it (with `{awb}`) and it is used as-is, no
+ * redeploy of the client needed.
  */
 export function trackingUrlFor(awb: string): string | null {
   const code = awb.trim();
   if (!code) return null;
-  const template = Deno.env.get('DTDC_TRACKING_URL_TEMPLATE')
-    ?? 'https://www.dtdc.in/tracking/tracking_results.asp?Ttype=awb_no&strCnno={awb}&TrkType2=awb_no';
+  const template = (Deno.env.get('DTDC_TRACKING_URL_TEMPLATE') ?? '').trim();
+  if (!template) return null;
   return template.replace('{awb}', encodeURIComponent(code));
 }
 

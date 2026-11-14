@@ -446,17 +446,19 @@ export async function fetchShadowfaxAvailability(boutiqueId: string): Promise<bo
   );
 }
 
-/** Is DTDC booking available for this shop right now? Both switches must be
- *  on (migration 0114), and the shop needs a pickup pincode — the booking
- *  sends the shop's own address inline, so there is nothing to register. */
+/** Is DTDC booking available for this shop right now? DTDC is the platform's
+ *  contracted primary carrier, so there is no per-shop approval (2026-11-14):
+ *  once the platform switch is on (migration 0114), EVERY shop with a valid
+ *  pickup pincode can book on it — the booking sends the shop's own address
+ *  inline, so there is nothing for an admin to register or approve. The
+ *  per-shop `dtdc_enabled` column is left in place but no longer gates here. */
 export async function fetchDtdcAvailability(boutiqueId: string): Promise<boolean> {
   const [{ data: settings }, { data: shop }] = await Promise.all([
     supabase.from('platform_settings').select('dtdc_enabled').eq('id', 1).maybeSingle(),
-    supabase.from('boutiques').select('dtdc_enabled, pincode').eq('id', boutiqueId).maybeSingle(),
+    supabase.from('boutiques').select('pincode').eq('id', boutiqueId).maybeSingle(),
   ]);
   return Boolean(
     (settings as { dtdc_enabled?: boolean } | null)?.dtdc_enabled &&
-    (shop as { dtdc_enabled?: boolean } | null)?.dtdc_enabled &&
     (shop as { pincode?: string | null } | null)?.pincode,
   );
 }

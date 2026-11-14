@@ -12,6 +12,7 @@ import { toOrderView } from '@/lib/orderView';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { ShipSheet, type BookPayload } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
+import { fetchBoutiquePrivate, updateBoutique, type BoutiquePatch } from '@/data/boutiques';
 import {
   bookParcel, cancelPickup, createShipment, fetchCouriers, fetchDtdcAvailability,
   fetchShadowfaxAvailability, fetchShipment, fetchShipmentEvents, fetchShiprocketAvailability,
@@ -136,6 +137,24 @@ export function OrderDetail() {
   );
   const canBookCourier = Boolean(
     courierAvailability?.dtdc || courierAvailability?.shadowfax || courierAvailability?.shiprocket,
+  );
+
+  // The shop's saved pickup address, prefilled into the ship sheet and editable
+  // there. The phone is private (migration 0073), so it comes from the private
+  // RPC rather than the boutique row; the rest is on the row.
+  const { data: pickupInfo } = useAsync(
+    async () => {
+      if (!boutique) return null;
+      const priv = await fetchBoutiquePrivate(boutique.id).catch(() => null);
+      return {
+        phone: priv?.phone ?? '',
+        addressLine: boutique.address_line ?? '',
+        city: boutique.city ?? boutique.district ?? '',
+        state: boutique.state ?? '',
+        pincode: boutique.pincode ?? '',
+      };
+    },
+    [boutique?.id],
   );
   // The carriers the seller may choose from, DTDC first (the contracted
   // primary). The ship sheet shows these in a dropdown.
@@ -263,9 +282,27 @@ export function OrderDetail() {
   const bookOrder = async (payload: BookPayload) => {
     setShipping(true);
     try {
+      // Persist any pickup-address edit the seller made in the sheet BEFORE
+      // booking — the booking reads the shop's address server-side, so the row
+      // has to carry the corrected values first. Only the changed fields are
+      // written, and only when they actually differ.
+      if (boutique && pickupInfo) {
+        const p = payload.pickup;
+        const patch: BoutiquePatch = {};
+        if (p.phone && p.phone !== pickupInfo.phone) patch.phone = p.phone;
+        if (p.addressLine !== pickupInfo.addressLine) patch.address_line = p.addressLine;
+        if (p.city !== pickupInfo.city) patch.city = p.city;
+        if (p.state !== pickupInfo.state) patch.state = p.state;
+        if (p.pincode !== pickupInfo.pincode) patch.pincode = p.pincode;
+        if (Object.keys(patch).length > 0) await updateBoutique(boutique.id, patch);
+      }
+
       // The seller chose the courier and the pickup slot; book-parcel honours
       // that choice and schedules the DTDC pickup rather than auto-picking.
-      const booked = await bookParcel(o.id, payload);
+      const booked = await bookParcel(o.id, {
+        carrier: payload.carrier, date: payload.date,
+        slotStart: payload.slotStart, slotEnd: payload.slotEnd,
+      });
 
       setShipOpen(false);
 
@@ -327,6 +364,13 @@ export function OrderDetail() {
   const canCancelPickup =
     shipment?.provider === 'dtdc' &&
     (!shipment.last_status || shipment.last_status === 'pickup_pending');
+
+  // A parcel we booked on a courier (DTDC/Shiprocket/Shadowfax) is marked
+  // delivered by the courier's own scan, not by the seller — so the manual
+  // "Mark delivered" button is hidden for it. A self-shipped parcel (provider
+  // 'manual', the seller typed a docket) still needs the button: nothing else
+  // can close it out.
+  const courierBooked = Boolean(shipment && shipment.provider && shipment.provider !== 'manual');
 
   const settled = o.isCod && o.paymentStatus === 'paid';
   const closed = o.rawStatus === 'rejected' || o.rawStatus === 'cancelled';
@@ -639,7 +683,12 @@ export function OrderDetail() {
               )}
             </div>
 
-            {(shipment.tracking_url || shipment.label_path || shipment.label_url) && (
+            {/* "Track shipment" links out only when the courier has a real
+                per-consignment page. DTDC has none — their public tracker lands
+                on a blank form you'd have to retype the AWB into — so for a DTDC
+                parcel we show no external link; the stage stepper and scan
+                history above ARE the exact tracking, in place. */}
+            {((shipment.tracking_url && shipment.provider !== 'dtdc') || shipment.label_path || shipment.label_url) && (
               <div style={css('display:flex;gap:10px;margin-top:12px;')}>
                 {/* The label is what gets stuck on the parcel before the courier
                     arrives, so it sits beside tracking rather than behind a
@@ -654,7 +703,7 @@ export function OrderDetail() {
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>print</span>
                   </button>
                 )}
-                {shipment.tracking_url && (
+                {shipment.tracking_url && shipment.provider !== 'dtdc' && (
                   <a
                     href={shipment.tracking_url}
                     target="_blank"
@@ -665,6 +714,18 @@ export function OrderDetail() {
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>open_in_new</span>
                   </a>
                 )}
+              </div>
+            )}
+
+            {/* Why there is no "Mark delivered" button: a booked courier closes
+                the order itself, on its delivery scan, which then releases the
+                payout. Shown while the parcel is still on its way. */}
+            {courierBooked && o.rawStatus === 'shipped' && (
+              <div style={css('margin-top:12px;display:flex;gap:9px;align-items:flex-start;background:var(--ag-surface-2);border-radius:12px;padding:11px 13px;')}>
+                <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;color:var(--ag-crimson);")}>auto_awesome</span>
+                <div style={css('font-size:12.5px;color:var(--ag-ink-2);line-height:1.5;')}>
+                  No action needed from you — the courier marks this delivered on its own scan, and your payout is released after that. You don’t mark it delivered yourself.
+                </div>
               </div>
             )}
 
@@ -733,7 +794,11 @@ export function OrderDetail() {
             : o.rawStatus === 'accepted'
               ? { status: 'shipped' as const, label: 'Mark shipped', msg: 'Marked as shipped' }
               : o.rawStatus === 'shipped'
-                ? { status: 'delivered' as const, label: 'Mark delivered', msg: 'Marked delivered' }
+                // A courier-booked parcel is marked delivered by the courier's
+                // own scan, so the seller is NOT offered a manual button for it
+                // (the auto-delivery note in the shipment card explains). Only a
+                // self-shipped parcel still needs the seller to close it out.
+                ? (courierBooked ? null : { status: 'delivered' as const, label: 'Mark delivered', msg: 'Marked delivered' })
                 : null;
 
         if (!forward && !canReject) return null;
@@ -807,6 +872,7 @@ export function OrderDetail() {
           // platform the money handler on an order it never took payment for.
           canBook={canBookCourier && !o.isCod && !manualOnly}
           bookCarriers={bookCarriers}
+          pickup={pickupInfo ?? undefined}
           onCancel={() => setShipOpen(false)}
           onConfirm={shipOrder}
           onBook={bookOrder}

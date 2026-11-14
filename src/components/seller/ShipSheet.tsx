@@ -36,13 +36,22 @@ const PICKUP_SLOTS: { start: string; end: string }[] = [
 ];
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-export type BookPayload = { carrier: string; date: string; slotStart: string; slotEnd: string };
+/** The shop's pickup address, confirmed (and editable) before every booking.
+ *  Prefilled from the shop profile; an edit is saved back to it. */
+export type PickupInfo = { phone: string; addressLine: string; city: string; state: string; pincode: string };
+
+export type BookPayload = {
+  carrier: string; date: string; slotStart: string; slotEnd: string;
+  /** The pickup address the parcel is collected from, as confirmed in the sheet. */
+  pickup: PickupInfo;
+};
 
 export function ShipSheet({
   couriers,
   busy,
   canBook = false,
   bookCarriers = [],
+  pickup,
   onCancel,
   onConfirm,
   onBook,
@@ -54,6 +63,8 @@ export function ShipSheet({
   /** The carriers the seller may choose from for a booked parcel, most-preferred
    *  first (DTDC leads). Empty falls back to a single automatic booking. */
   bookCarriers?: { id: string; label: string }[];
+  /** The shop's saved pickup address, prefilled into the booking form. */
+  pickup?: PickupInfo;
   onCancel: () => void;
   onConfirm: (v: { courierId: string | null; courierName: string; awb: string; trackingUrl: string | null }) => void;
   onBook?: (payload: BookPayload) => void;
@@ -73,6 +84,26 @@ export function ShipSheet({
   const [carrier, setCarrier] = useState(bookCarriers[0]?.id ?? '');
   const [pickupDate, setPickupDate] = useState(todayISO());
   const [slotIdx, setSlotIdx] = useState(0);
+  // The pickup address the courier collects from — prefilled from the shop and
+  // editable here (an edit is saved back to the shop profile). The shop phone
+  // is often blank, which is why the label has printed 0000000000; collecting
+  // it here fixes that at the point it matters.
+  const [editPickup, setEditPickup] = useState(false);
+  const [puPhone, setPuPhone] = useState('');
+  const [puAddress, setPuAddress] = useState('');
+  const [puCity, setPuCity] = useState('');
+  const [puState, setPuState] = useState('');
+  const [puPin, setPuPin] = useState('');
+  useEffect(() => {
+    setPuPhone(pickup?.phone ?? '');
+    setPuAddress(pickup?.addressLine ?? '');
+    setPuCity(pickup?.city ?? '');
+    setPuState(pickup?.state ?? '');
+    setPuPin(pickup?.pincode ?? '');
+  }, [pickup]);
+  const pin6 = puPin.replace(/\D/g, '').length === 6;
+  const phone10 = puPhone.replace(/\D/g, '').length >= 10;
+  const pickupReady = puAddress.trim().length > 0 && pin6 && phone10;
 
   const courier = useMemo(() => couriers.find((c) => c.id === courierKey), [couriers, courierKey]);
   const isOther = courierKey === OTHER;
@@ -150,9 +181,61 @@ export function ShipSheet({
               </div>
             </div>
 
+            {/* The pickup address the courier is sent to. Confirmed on every
+                booking because a wrong or incomplete one is a failed pickup, not
+                a wrong label — and the shop phone is often blank, which is why
+                the label has printed 0000000000. Prefilled; edits save back to
+                the shop profile. */}
+            {pickup && (
+              <div style={css('margin-top:14px;border:1px solid var(--ag-border);border-radius:14px;padding:13px 14px;')}>
+                <div style={css('display:flex;align-items:flex-start;justify-content:space-between;gap:10px;')}>
+                  <div style={css('flex:1;min-width:0;')}>
+                    <div style={css('font-size:11.5px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>PICKUP FROM</div>
+                    <div style={css('font-size:13px;color:var(--ag-ink);line-height:1.5;margin-top:4px;')}>
+                      {[puAddress, puCity, puState, puPin && `PIN ${puPin}`].filter(Boolean).join(', ') || 'No pickup address on file'}
+                    </div>
+                    <div style={css(`font-size:12.5px;margin-top:3px;font-variant-numeric:tabular-nums;color:${phone10 ? 'var(--ag-muted)' : 'var(--ag-danger-text)'};`)}>
+                      {puPhone.trim() ? `Contact ${puPhone}` : 'No contact phone — add one so the courier can reach you'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditPickup((v) => !v)}
+                    style={css('flex:none;height:34px;padding:0 12px;border-radius:10px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit;')}
+                  >
+                    {editPickup ? 'Done' : 'Edit'}
+                  </button>
+                </div>
+
+                {editPickup && (
+                  <div style={css('margin-top:12px;')}>
+                    <div style={css(label)}>CONTACT PHONE</div>
+                    <input value={puPhone} onChange={(e) => setPuPhone(e.target.value)} inputMode="tel" placeholder="10-digit mobile" style={css(field)} />
+                    <div style={css(label + 'margin-top:10px;')}>PICKUP ADDRESS</div>
+                    <input value={puAddress} onChange={(e) => setPuAddress(e.target.value)} placeholder="Door no, street, area" style={css(field)} />
+                    <div style={css('display:flex;gap:10px;margin-top:10px;')}>
+                      <div style={css('flex:1;min-width:0;')}>
+                        <div style={css(label)}>CITY / TOWN</div>
+                        <input value={puCity} onChange={(e) => setPuCity(e.target.value)} style={css(field)} />
+                      </div>
+                      <div style={css('flex:1;min-width:0;')}>
+                        <div style={css(label)}>STATE</div>
+                        <input value={puState} onChange={(e) => setPuState(e.target.value)} style={css(field)} />
+                      </div>
+                    </div>
+                    <div style={css(label + 'margin-top:10px;')}>PINCODE</div>
+                    <input value={puPin} onChange={(e) => setPuPin(e.target.value)} inputMode="numeric" placeholder="6-digit" style={css(field + 'font-variant-numeric:tabular-nums;')} />
+                    <div style={css('font-size:12px;color:var(--ag-muted);margin-top:7px;line-height:1.5;')}>
+                      Saved to your shop so you only set it once. The courier collects from here.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={css('margin-top:14px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:14px;padding:13px 14px;')}>
               <div style={css('font-size:12.5px;color:var(--ag-muted);line-height:1.55;')}>
-                The courier is asked to collect from your shop address in this slot, the tracking number comes
+                The courier is asked to collect from the pickup address above in this slot, the tracking number comes
                 back straight away, and the label is saved for you to print. The weight comes from your products
                 — set it on each item so the declared weight matches what the courier weighs.
               </div>
@@ -165,13 +248,22 @@ export function ShipSheet({
               >
                 Cancel
               </button>
-              <button
-                disabled={busy || !carrier}
-                onClick={() => onBook?.({ carrier, date: pickupDate, slotStart: PICKUP_SLOTS[slotIdx].start, slotEnd: PICKUP_SLOTS[slotIdx].end })}
-                style={css(`flex:1.4;height:50px;border:none;border-radius:13px;background:${busy || !carrier ? 'var(--ag-surface-2)' : 'linear-gradient(135deg,#D6336C,#B02454)'};color:${busy || !carrier ? 'var(--ag-muted)' : '#fff'};font-weight:800;cursor:${busy || !carrier ? 'default' : 'pointer'};font-family:inherit;`)}
-              >
-                {busy ? 'Scheduling…' : 'Schedule & ship'}
-              </button>
+              {(() => {
+                const blocked = busy || !carrier || (!!pickup && !pickupReady);
+                return (
+                  <button
+                    disabled={blocked}
+                    onClick={() => onBook?.({
+                      carrier, date: pickupDate,
+                      slotStart: PICKUP_SLOTS[slotIdx].start, slotEnd: PICKUP_SLOTS[slotIdx].end,
+                      pickup: { phone: puPhone.trim(), addressLine: puAddress.trim(), city: puCity.trim(), state: puState.trim(), pincode: puPin.trim() },
+                    })}
+                    style={css(`flex:1.4;height:50px;border:none;border-radius:13px;background:${blocked ? 'var(--ag-surface-2)' : 'linear-gradient(135deg,#D6336C,#B02454)'};color:${blocked ? 'var(--ag-muted)' : '#fff'};font-weight:800;cursor:${blocked ? 'default' : 'pointer'};font-family:inherit;`)}
+                  >
+                    {busy ? 'Scheduling…' : (!!pickup && !pickupReady) ? 'Add pickup phone & pincode' : 'Schedule & ship'}
+                  </button>
+                );
+              })()}
             </div>
           </>
         ) : (
