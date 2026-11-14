@@ -19,6 +19,7 @@ import {
   signedLabelUrl,
 } from '@/data/shipments';
 import { formatOrderDateTime, deliveryEstimate } from '@/lib/orderHistory';
+import { useSettings } from '@/data/settings';
 import { Skeleton, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { fetchReturnForOrder, resolveReturnRequest, RETURN_REASON_LABEL } from '@/data/returns';
 
@@ -56,6 +57,7 @@ export function OrderDetail() {
   const { showToast } = useShop();
 
   const { boutique } = useMyBoutique();
+  const { commission_pct: commissionPct, payout_sla_hours: slaHours } = useSettings();
   const orderId = decodeURIComponent(id ?? '');
   const { data: row, loading, error, reload } = useAsync(() => (orderId ? fetchOrder(orderId) : Promise.resolve(null)), [orderId]);
   const [confirmReject, setConfirmReject] = useState(false);
@@ -652,6 +654,55 @@ export function OrderDetail() {
             </div>
           )}
         </div>
+
+        {/* YOUR EARNINGS — the one number the seller actually cares about, with
+            the full math so there are no surprises. Prepaid only: a legacy COD
+            order settles by netting cash the seller already holds, which is a
+            different sum and is explained on the Earnings screen instead.
+            Commission is the platform's only cut — delivery goes to the platform
+            and the Razorpay charge is on the platform, NOT deducted here. */}
+        {!o.isCod && !closed && (() => {
+          const rate = commissionPct / 100;
+          const goods = o.amount;                 // item value the commission is taken on
+          const commissionAmt = goods * rate;
+          const payout = goods - commissionAmt;
+          const amt = 'font-weight:700;font-variant-numeric:tabular-nums;';
+          const row = 'display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-top:8px;';
+          return (
+            <div style={css('background:var(--ag-surface);border-radius:16px;padding:14px;margin-top:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
+              <div style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>YOUR EARNINGS</div>
+
+              <div style={css(row)}>
+                <span style={css('color:var(--ag-muted);')}>Item total</span>
+                <span style={css(amt + 'color:var(--ag-ink);')}>{fmt(goods)}</span>
+              </div>
+              <div style={css(row)}>
+                <span style={css('color:var(--ag-muted);')}>MangaiMart commission ({commissionPct}%)</span>
+                <span style={css(amt + 'color:var(--ag-danger-text);')}>− {fmt(commissionAmt)}</span>
+              </div>
+              <div style={css(row)}>
+                <span style={css('color:var(--ag-muted);')}>Payment / Razorpay charges</span>
+                <span style={css('font-weight:700;color:var(--ag-good);')}>Covered by us</span>
+              </div>
+              {o.shippingFee > 0 && (
+                <div style={css(row)}>
+                  <span style={css('color:var(--ag-muted);')}>Delivery (paid by customer)</span>
+                  <span style={css('font-weight:700;color:var(--ag-muted);')}>Not your charge</span>
+                </div>
+              )}
+
+              <div style={css('display:flex;justify-content:space-between;align-items:center;margin-top:11px;padding-top:11px;border-top:1px solid var(--ag-border-soft);')}>
+                <span style={css('font-weight:800;font-size:14px;')}>You receive</span>
+                <span style={css('font-weight:800;font-size:18px;color:var(--ag-crimson);font-variant-numeric:tabular-nums;')}>{fmt(payout)}</span>
+              </div>
+
+              <div style={css('font-size:11.5px;color:var(--ag-muted);line-height:1.55;margin-top:9px;')}>
+                The {commissionPct}% is all we take — Razorpay and payment-gateway fees are on us, nothing extra is deducted.
+                Paid to your bank after the order is delivered{slaHours ? `, within ${slaHours} hours of delivery` : ''}.
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Once dispatched, the docket is the thing the seller gets asked about
             on the phone — so it sits on the order, copyable, not buried. */}

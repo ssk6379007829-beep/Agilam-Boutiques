@@ -6,9 +6,11 @@ import { csvDocument } from '@/lib/csv';
 import { TONES, fmt, statusStyle } from '@/data/demo';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
 import { useAsync } from '@/hooks/useAsync';
-import { fetchOrdersForBoutique } from '@/data/orders';
-import { toOrderView } from '@/lib/orderView';
-import { printInvoice } from '@/lib/printInvoice';
+import { fetchOrdersForBoutique, fetchReceiptExtras } from '@/data/orders';
+import { toOrderView, type OrderView } from '@/lib/orderView';
+import { printReceipt } from '@/lib/printReceipt';
+import type { PlacedOrder } from '@/lib/orderHistory';
+import { useShop } from '@/state/ShopContext';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { SkeletonRows } from '@/components/ui/Skeleton';
 
@@ -37,7 +39,40 @@ export function Orders() {
   const [period, setPeriod] = useState<Period>('All time');
   const [search, setSearch] = useState('');
   const { boutique } = useMyBoutique();
+  const { showToast } = useShop();
   const { data: orderRows, loading, error, reload } = useAsync(() => (boutique ? fetchOrdersForBoutique(boutique.id) : Promise.resolve([])), [boutique?.id]);
+
+  /**
+   * Print the order's receipt — the SAME document the buyer downloads from their
+   * order page (src/lib/printReceipt.ts), so what the seller prints and puts in
+   * the parcel is exactly what the buyer received, down to the layout. Replaces
+   * the old separate seller invoice. The seller reads their own order, so
+   * fetchReceiptExtras returns the shop's "Bill From" address and the buyer's
+   * "Bill To" the same way it does on the buyer side.
+   */
+  const printOrderReceipt = async (o: OrderView) => {
+    const placed: PlacedOrder = {
+      id: o.number,
+      rowId: o.id,
+      orderNumber: o.number.replace(/^#/, ''),
+      placedAt: o.placedAt,
+      boutique: boutique?.name ?? 'Your boutique',
+      boutiqueId: boutique?.id ?? '',
+      status: o.rawStatus,
+      // Already what the buyer paid (goods + delivery + any COD fee − platform
+      // coupon); printReceipt works the line items back out from it.
+      total: o.grandTotal,
+      items: o.items.map((it) => ({
+        pid: it.product_id ?? '', title: it.title, tone: 0,
+        qty: it.qty, size: it.size ?? '', price: Number(it.price),
+      })),
+      codFee: o.codFee,
+      shippingFee: o.shippingFee,
+      platformDiscount: o.platformDiscount,
+    };
+    const extras = await fetchReceiptExtras(o.id).catch(() => null);
+    if (!printReceipt(placed, extras)) showToast('Allow pop-ups to download the receipt', 'warning');
+  };
 
   // Keep created_at alongside the display view so the date filter has a real
   // timestamp to work with (the view only carries a short display date).
@@ -214,10 +249,10 @@ export function Orders() {
               </button>
               <div style={css('display:flex;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--ag-border-soft);')}>
                 <button
-                  onClick={() => printInvoice(o, boutique?.name ?? 'Your boutique')}
+                  onClick={() => { void printOrderReceipt(o); }}
                   style={css('display:flex;align-items:center;gap:5px;height:34px;padding:0 12px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-crimson);border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;')}
                 >
-                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>print</span>Invoice
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:16px;")}>receipt_long</span>Receipt
                 </button>
               </div>
             </div>

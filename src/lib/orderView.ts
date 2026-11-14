@@ -26,6 +26,8 @@ export type OrderView = {
   status: string;   // Capitalised, for statusStyle()
   rawStatus: OrderWithDetails['status'];
   date: string;     // '15 Jul'
+  /** Raw ISO placed-at, for documents that need a real date (the receipt). */
+  placedAt: string;
   tone: number;
   items: OrderWithDetails['items'];
   channel: 'online' | 'offline';
@@ -100,6 +102,7 @@ export function toOrderView(o: OrderWithDetails, i = 0): OrderView {
     status: cap(o.status),
     rawStatus: o.status,
     date: fmtDate(o.created_at),
+    placedAt: o.created_at,
     tone: (o.boutique?.tone ?? i) % 8,
     items,
     channel: o.channel ?? 'online',
