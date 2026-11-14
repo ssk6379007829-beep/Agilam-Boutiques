@@ -90,6 +90,34 @@ export async function signedLabelUrl(labelPath: string): Promise<string | null> 
 }
 
 /**
+ * A fresh DTDC shipping-label URL, fetched on demand.
+ *
+ * Pulls the label straight from DTDC every call (via the `dtdc-label` Edge
+ * Function) rather than relying on the copy saved at booking — if that one
+ * best-effort fetch failed, `shipment.label_path` is null and the seller would
+ * otherwise have no label at all. The function re-stores it and returns a
+ * short-lived signed URL. Throws the real reason on a refusal.
+ */
+export async function dtdcLabelUrl(orderId: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('dtdc-label', { body: { orderId } });
+  if (error) {
+    let message = error.message;
+    const res = (error as { context?: Response }).context;
+    if (res && typeof res.json === 'function') {
+      try {
+        const body = await res.json();
+        if (body?.error) message = body.error as string;
+      } catch {
+        /* not JSON — keep the generic message */
+      }
+    }
+    throw new Error(message);
+  }
+  if (!data?.ok || !data?.url) throw new Error(data?.error ?? 'Could not get the label');
+  return data.url as string;
+}
+
+/**
  * Substitute the AWB into a courier's template.
  *
  * Returns null when there is no template — which is a real answer, not a

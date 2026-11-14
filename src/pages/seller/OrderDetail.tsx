@@ -14,7 +14,7 @@ import { ShipSheet, type BookPayload } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { fetchBoutiquePrivate, updateBoutique, type BoutiquePatch } from '@/data/boutiques';
 import {
-  bookParcel, cancelPickup, createShipment, fetchCouriers, fetchDtdcAvailability,
+  bookParcel, cancelPickup, createShipment, dtdcLabelUrl, fetchCouriers, fetchDtdcAvailability,
   fetchShadowfaxAvailability, fetchShipment, fetchShipmentEvents, fetchShiprocketAvailability,
   signedLabelUrl,
 } from '@/data/shipments';
@@ -164,23 +164,41 @@ export function OrderDetail() {
     courierAvailability?.shadowfax ? { id: 'shadowfax', label: 'Shadowfax' } : null,
   ].filter((c): c is { id: string; label: string } => c !== null);
 
+  const [labelBusy, setLabelBusy] = useState(false);
+
   /**
-   * Open the label PDF. A stored label (DTDC, migration 0114) lives in a
-   * private bucket, so a URL is signed on the click rather than embedded in
-   * the page; a carrier-hosted label (Shiprocket) is a plain link.
+   * Open the shipping label PDF for the seller to print and stick on the parcel.
+   *
+   * For a DTDC parcel we fetch it FRESH from DTDC every time (`dtdcLabelUrl`),
+   * not from the copy saved at booking — that booking-time save is best-effort,
+   * so relying on it means a seller whose save failed has no label at all. A
+   * Shiprocket label is a carrier-hosted public link; a stored label (older
+   * flows) is signed from the private bucket on the click.
    */
   const openLabel = async () => {
     if (!shipment) return;
-    if (shipment.label_path) {
-      const url = await signedLabelUrl(shipment.label_path);
-      if (!url) {
-        showToast('Could not open the label right now — try again in a moment', 'error');
+    setLabelBusy(true);
+    try {
+      if (shipment.provider === 'dtdc') {
+        const url = await dtdcLabelUrl(o.id);
+        window.open(url, '_blank', 'noopener,noreferrer');
         return;
       }
-      window.open(url, '_blank', 'noopener,noreferrer');
-      return;
+      if (shipment.label_path) {
+        const url = await signedLabelUrl(shipment.label_path);
+        if (!url) {
+          showToast('Could not open the label right now — try again in a moment', 'error');
+          return;
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (shipment.label_url) window.open(shipment.label_url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not open the label', 'error');
+    } finally {
+      setLabelBusy(false);
     }
-    if (shipment.label_url) window.open(shipment.label_url, '_blank', 'noopener,noreferrer');
   };
 
   // Set when both carriers decline, which drops the sheet onto the manual
@@ -688,18 +706,20 @@ export function OrderDetail() {
                 on a blank form you'd have to retype the AWB into — so for a DTDC
                 parcel we show no external link; the stage stepper and scan
                 history above ARE the exact tracking, in place. */}
-            {((shipment.tracking_url && shipment.provider !== 'dtdc') || shipment.label_path || shipment.label_url) && (
+            {((shipment.tracking_url && shipment.provider !== 'dtdc') || shipment.provider === 'dtdc' || shipment.label_path || shipment.label_url) && (
               <div style={css('display:flex;gap:10px;margin-top:12px;')}>
                 {/* The label is what gets stuck on the parcel before the courier
-                    arrives, so it sits beside tracking rather than behind a
-                    menu. Shown only when a booking actually captured one. */}
-                {(shipment.label_path || shipment.label_url) && (
+                    arrives, so it sits beside tracking. For a DTDC parcel it is
+                    always offered and fetched fresh from DTDC on the tap, so it
+                    works even if the booking-time save missed. */}
+                {(shipment.provider === 'dtdc' || shipment.label_path || shipment.label_url) && (
                   <button
                     type="button"
+                    disabled={labelBusy}
                     onClick={() => { void openLabel(); }}
-                    style={css('flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:44px;border-radius:13px;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;')}
+                    style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:44px;border-radius:13px;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13.5px;cursor:${labelBusy ? 'default' : 'pointer'};font-family:inherit;opacity:${labelBusy ? 0.6 : 1};`)}
                   >
-                    Print label
+                    {labelBusy ? 'Opening…' : 'Download label'}
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>print</span>
                   </button>
                 )}
