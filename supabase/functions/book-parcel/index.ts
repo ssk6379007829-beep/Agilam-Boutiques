@@ -158,8 +158,14 @@ Deno.serve(async (req: Request) => {
       attempts,
     });
   }
-  if (isTerminal(sfx.status, sfx.body)) {
-    return json(sfx.body ?? { error: 'Could not book this parcel' }, sfx.status);
+  // Shadowfax is the LAST carrier before the manual docket form. Only a parcel
+  // it actually booked and then failed to record (`booked: true`) should stop
+  // the chain here. Everything else — a decline, an error, or a 404 because
+  // shadowfax-book is not deployed — must fall through to the clean manual
+  // message below, NOT surface a raw function-not-found 404 that the seller
+  // console can only render as "Edge Function returned a non-2xx status code".
+  if (sfx.body?.booked === true) {
+    return json(sfx.body, sfx.status);
   }
   attempts.push({
     carrier: 'shadowfax',
