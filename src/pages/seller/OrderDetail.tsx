@@ -1028,6 +1028,7 @@ export function OrderDetail() {
           canBook={canBookCourier && !o.isCod && !manualOnly}
           bookCarriers={bookCarriers}
           pickup={pickupInfo ?? undefined}
+          cheapest={serviceLane?.cheapest ?? null}
           onCancel={() => setShipOpen(false)}
           onConfirm={shipOrder}
           onBook={bookOrder}

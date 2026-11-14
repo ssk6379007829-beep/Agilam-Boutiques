@@ -52,6 +52,7 @@ export function ShipSheet({
   canBook = false,
   bookCarriers = [],
   pickup,
+  cheapest,
   onCancel,
   onConfirm,
   onBook,
@@ -65,6 +66,9 @@ export function ShipSheet({
   bookCarriers?: { id: string; label: string }[];
   /** The shop's saved pickup address, prefilled into the booking form. */
   pickup?: PickupInfo;
+  /** The cheapest courier serving this lane (Shiprocket live rate), shown as a
+   *  hint. The rate is the platform's cost, not the seller's. */
+  cheapest?: { name: string | null; rate: number | null; days: string | null } | null;
   onCancel: () => void;
   onConfirm: (v: { courierId: string | null; courierName: string; awb: string; trackingUrl: string | null }) => void;
   onBook?: (payload: BookPayload) => void;
@@ -159,6 +163,20 @@ export function ShipSheet({
                 <select value={carrier} onChange={(e) => setCarrier(e.target.value)} style={css(field)}>
                   {bookCarriers.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
                 </select>
+                {/* Cheapest serviceable courier for this pincode (live rate). A
+                    hint only — DTDC stays the default. The rate is what the
+                    platform pays the courier, shown so the seller can pick the
+                    lower-cost option. */}
+                {cheapest?.name && cheapest.rate != null && (
+                  <div style={css('display:flex;align-items:center;gap:6px;margin-top:7px;font-size:12px;color:var(--ag-muted);line-height:1.5;')}>
+                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-good);")}>savings</span>
+                    <span>
+                      Cheapest for this pincode: <strong style={css('color:var(--ag-ink-2);')}>{cheapest.name}</strong>
+                      {' · '}<span style={css('font-variant-numeric:tabular-nums;')}>₹{Math.round(cheapest.rate)}</span>
+                      {cheapest.days ? ` · ~${cheapest.days} days` : ''}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 

@@ -101,7 +101,15 @@ export async function signedLabelUrl(labelPath: string): Promise<string | null> 
  * `serviceable: null` — "couldn't determine" — never `false`. A serviceability
  * outage must never block a sale; the booking chain still runs at ship time.
  */
-export type Serviceability = { serviceable: boolean | null; courierCount: number };
+/** The cheapest courier serving a lane, from Shiprocket's live rates. The rate
+ *  is the PLATFORM's cost (the seller never pays courier charges) — shown to the
+ *  seller only as a hint for which carrier to book. */
+export type ServiceabilityCourier = { name: string | null; rate: number | null; days: string | null };
+export type Serviceability = {
+  serviceable: boolean | null;
+  courierCount: number;
+  cheapest: ServiceabilityCourier | null;
+};
 
 export async function checkServiceability(
   originPincode: string,
@@ -110,18 +118,25 @@ export async function checkServiceability(
 ): Promise<Serviceability> {
   const o = (originPincode ?? '').replace(/\D/g, '');
   const d = (destPincode ?? '').replace(/\D/g, '');
-  if (o.length !== 6 || d.length !== 6) return { serviceable: null, courierCount: 0 };
+  if (o.length !== 6 || d.length !== 6) return { serviceable: null, courierCount: 0, cheapest: null };
   try {
     const { data, error } = await supabase.functions.invoke('courier-serviceability', {
       body: { originPincode: o, destPincode: d, weightKg },
     });
-    if (error || !data?.ok || data?.degraded) return { serviceable: null, courierCount: 0 };
+    if (error || !data?.ok || data?.degraded) return { serviceable: null, courierCount: 0, cheapest: null };
     return {
       serviceable: typeof data.serviceable === 'boolean' ? data.serviceable : null,
       courierCount: Number(data.courierCount ?? 0),
+      cheapest: data.cheapest
+        ? {
+            name: data.cheapest.name ?? null,
+            rate: Number.isFinite(Number(data.cheapest.rate)) ? Number(data.cheapest.rate) : null,
+            days: data.cheapest.days ?? null,
+          }
+        : null,
     };
   } catch {
-    return { serviceable: null, courierCount: 0 };
+    return { serviceable: null, courierCount: 0, cheapest: null };
   }
 }
 
