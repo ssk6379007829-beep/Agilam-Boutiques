@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useGoBack } from '@/hooks/useGoBack';
@@ -165,6 +165,43 @@ export function OrderDetail() {
   ].filter((c): c is { id: string; label: string } => c !== null);
 
   const [labelBusy, setLabelBusy] = useState(false);
+  // DTDC can only produce the label once it has finished "booking sync", a few
+  // minutes after the AWB is issued. When a tap comes too early we flip to
+  // 'preparing' and poll in the background until it is ready, then hold the URL
+  // so the seller can open it. The ref lets us cancel the poll on unmount.
+  const [labelPreparing, setLabelPreparing] = useState(false);
+  const [labelUrl, setLabelUrl] = useState<string | null>(null);
+  const labelPollRef = useRef<number | null>(null);
+  useEffect(() => () => { if (labelPollRef.current) window.clearTimeout(labelPollRef.current); }, []);
+
+  const openUrl = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
+
+  // Keep trying the DTDC label every 30s until it is ready (DTDC's sync is
+  // usually done within a few minutes), then open it and leave it on the button.
+  const pollForLabel = (attempt = 1) => {
+    labelPollRef.current = window.setTimeout(async () => {
+      try {
+        const url = await dtdcLabelUrl(o.id);
+        setLabelUrl(url);
+        setLabelPreparing(false);
+        showToast('Your label is ready.', 'success');
+        openUrl(url); // best-effort; the button is now "Open label" either way
+      } catch (e) {
+        const notReady = (e as { notReady?: boolean }).notReady;
+        if (notReady && attempt < 8) {
+          pollForLabel(attempt + 1);
+        } else {
+          setLabelPreparing(false);
+          showToast(
+            notReady
+              ? 'The label is still being prepared by DTDC. Tap Download label again in a few minutes.'
+              : (e instanceof Error ? e.message : 'Could not get the label'),
+            notReady ? 'warning' : 'error',
+          );
+        }
+      }
+    }, 30000);
+  };
 
   /**
    * Open the shipping label PDF for the seller to print and stick on the parcel.
@@ -177,11 +214,24 @@ export function OrderDetail() {
    */
   const openLabel = async () => {
     if (!shipment) return;
+    // Already fetched this session — just reopen it, no round trip.
+    if (labelUrl) { openUrl(labelUrl); return; }
     setLabelBusy(true);
     try {
       if (shipment.provider === 'dtdc') {
-        const url = await dtdcLabelUrl(o.id);
-        window.open(url, '_blank', 'noopener,noreferrer');
+        try {
+          const url = await dtdcLabelUrl(o.id);
+          setLabelUrl(url);
+          openUrl(url);
+        } catch (e) {
+          if ((e as { notReady?: boolean }).notReady) {
+            setLabelPreparing(true);
+            showToast('The label is being prepared — DTDC usually has it ready within a few minutes. We’ll open it automatically once it’s ready.', 'info');
+            pollForLabel();
+          } else {
+            showToast(e instanceof Error ? e.message : 'Could not open the label', 'error');
+          }
+        }
         return;
       }
       if (shipment.label_path) {
@@ -190,10 +240,10 @@ export function OrderDetail() {
           showToast('Could not open the label right now — try again in a moment', 'error');
           return;
         }
-        window.open(url, '_blank', 'noopener,noreferrer');
+        openUrl(url);
         return;
       }
-      if (shipment.label_url) window.open(shipment.label_url, '_blank', 'noopener,noreferrer');
+      if (shipment.label_url) openUrl(shipment.label_url);
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not open the label', 'error');
     } finally {
@@ -715,11 +765,11 @@ export function OrderDetail() {
                 {(shipment.provider === 'dtdc' || shipment.label_path || shipment.label_url) && (
                   <button
                     type="button"
-                    disabled={labelBusy}
+                    disabled={labelBusy || labelPreparing}
                     onClick={() => { void openLabel(); }}
-                    style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:44px;border-radius:13px;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13.5px;cursor:${labelBusy ? 'default' : 'pointer'};font-family:inherit;opacity:${labelBusy ? 0.6 : 1};`)}
+                    style={css(`flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:44px;border-radius:13px;border:none;background:var(--ag-surface-2);color:var(--ag-crimson);font-weight:800;font-size:13.5px;cursor:${labelBusy || labelPreparing ? 'default' : 'pointer'};font-family:inherit;opacity:${labelBusy || labelPreparing ? 0.6 : 1};`)}
                   >
-                    {labelBusy ? 'Opening…' : 'Download label'}
+                    {labelPreparing ? 'Preparing label…' : labelBusy ? 'Opening…' : labelUrl ? 'Open label' : 'Download label'}
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>print</span>
                   </button>
                 )}
@@ -734,6 +784,14 @@ export function OrderDetail() {
                     <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>open_in_new</span>
                   </a>
                 )}
+              </div>
+            )}
+
+            {/* What the label is for — the seller prints it and sticks it on the
+                parcel, barcode and all, before the courier collects it. */}
+            {(shipment.provider === 'dtdc' || shipment.label_path || shipment.label_url) && (
+              <div style={css('margin-top:7px;font-size:11.5px;color:var(--ag-muted);line-height:1.5;')}>
+                Print this label and stick it on the parcel before the courier collects it — the barcode is what they scan.
               </div>
             )}
 

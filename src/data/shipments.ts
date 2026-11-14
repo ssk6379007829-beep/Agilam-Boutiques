@@ -102,16 +102,23 @@ export async function dtdcLabelUrl(orderId: string): Promise<string> {
   const { data, error } = await supabase.functions.invoke('dtdc-label', { body: { orderId } });
   if (error) {
     let message = error.message;
+    // `notReady` = DTDC has not finished registering the consignment yet, so the
+    // label will exist in a few minutes. The caller distinguishes this from a
+    // real failure to keep polling rather than giving up.
+    let notReady = false;
     const res = (error as { context?: Response }).context;
     if (res && typeof res.json === 'function') {
       try {
         const body = await res.json();
         if (body?.error) message = body.error as string;
+        notReady = Boolean(body?.notReady);
       } catch {
         /* not JSON — keep the generic message */
       }
     }
-    throw new Error(message);
+    const err = new Error(message) as Error & { notReady?: boolean };
+    err.notReady = notReady;
+    throw err;
   }
   if (!data?.ok || !data?.url) throw new Error(data?.error ?? 'Could not get the label');
   return data.url as string;

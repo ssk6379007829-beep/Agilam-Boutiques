@@ -83,6 +83,17 @@ Deno.serve(async (req: Request) => {
     } catch (e) {
       if (e instanceof DtdcError) {
         console.error('dtdc-label DtdcError', e.status, e.message, e.body);
+        // DTDC can only generate the label once it has finished registering the
+        // consignment on its side ("booking sync"), which takes a few minutes
+        // after the AWB is issued. That is not a failure — it is "ask again
+        // shortly" — so it is flagged distinctly (notReady) and given a plain
+        // message, and the client keeps polling until the label appears.
+        if (/booking sync|cannot be generated|not\s*(yet)?\s*ready|in\s*process|processing/i.test(e.message)) {
+          return json({
+            notReady: true,
+            error: 'The label is being prepared — DTDC is still registering this parcel. It is usually ready within a few minutes of booking.',
+          }, 409);
+        }
         return json({ error: `DTDC could not produce the label: ${e.message}` }, 502);
       }
       throw e;
