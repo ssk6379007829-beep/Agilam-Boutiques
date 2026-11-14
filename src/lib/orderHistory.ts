@@ -83,8 +83,9 @@ export const STATUS_STAGE: Record<OrderStatus, number> = {
   cancelled: 0,
 };
 
-/** Normalised courier scan stage (migration 0067's `mapStage`). */
-export type ScanStage = 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
+/** Normalised courier scan stage (migration 0067's `mapStage`, widened by 0116
+ *  with `pickup_pending` for the booked-but-not-yet-collected phase). */
+export type ScanStage = 'pickup_pending' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
 
 /**
  * How far along the timeline this order actually is.

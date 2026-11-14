@@ -651,7 +651,7 @@ export async function savePlatformSwitches(patch: Partial<PlatformSwitches>): Pr
 export type ShipmentEvent = {
   id: string;
   raw_status: string;
-  stage: 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
+  stage: 'pickup_pending' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
   location: string | null;
   occurred_at: string | null;
   created_at: string;

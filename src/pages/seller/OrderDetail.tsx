@@ -17,10 +17,24 @@ import { ShipSheet } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import {
   bookParcel, createShipment, fetchCouriers, fetchDtdcAvailability, fetchShadowfaxAvailability,
-  fetchShipment, fetchShiprocketAvailability, signedLabelUrl,
+  fetchShipment, fetchShipmentEvents, fetchShiprocketAvailability, signedLabelUrl,
 } from '@/data/shipments';
+import { formatOrderDateTime } from '@/lib/orderHistory';
 import { Skeleton, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { fetchReturnForOrder, resolveReturnRequest, RETURN_REASON_LABEL } from '@/data/returns';
+
+/** Seller-facing label for a normalised courier scan stage (migration 0067,
+ *  0116). The courier's verbatim text is shown beside it; this is the fallback
+ *  and the header label when there are no scans yet. */
+const SELLER_SCAN_LABEL: Record<string, string> = {
+  pickup_pending: 'Awaiting courier pickup',
+  picked_up: 'Picked up',
+  in_transit: 'In transit',
+  out_for_delivery: 'Out for delivery',
+  delivered: 'Delivered',
+  rto: 'Returning to the shop',
+  failed: 'Delivery attempt failed',
+};
 
 export function OrderDetail() {
   const navigate = useNavigate();
@@ -73,6 +87,14 @@ export function OrderDetail() {
   const { data: shipment, reload: reloadShipment } = useAsync(
     () => (orderId ? fetchShipment(orderId) : Promise.resolve(null)),
     [orderId],
+  );
+  // The courier's own scans (migration 0067), newest first, so the seller can
+  // see where the parcel is rather than only a docket number. Empty is normal:
+  // a just-booked parcel has none until the courier collects it. Re-keyed on
+  // last_status so it refreshes when a new scan lands.
+  const { data: shipmentEvents } = useAsync(
+    () => (orderId ? fetchShipmentEvents(orderId) : Promise.resolve([])),
+    [orderId, shipment?.last_status],
   );
   // Both switches on and a registered pickup location, or the booking mode is
   // never offered. Failing closed matters: the alternative is a seller tapping
@@ -550,6 +572,42 @@ export function OrderDetail() {
                 <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:19px;color:var(--ag-crimson);")}>content_copy</span>
               </button>
             </div>
+
+            {/* Where the parcel actually is — the courier's own scans (0067),
+                newest first. Until the courier collects it there are none, so
+                say that plainly rather than leave the seller guessing. */}
+            <div style={css('margin-top:13px;border-top:1px solid var(--ag-border);padding-top:12px;')}>
+              <div style={css('display:flex;align-items:center;justify-content:space-between;gap:10px;')}>
+                <span style={css('font-size:12px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;')}>STATUS</span>
+                <span style={css('font-weight:800;font-size:13px;color:var(--ag-crimson);text-align:right;')}>
+                  {shipmentEvents?.[0]?.raw_status
+                    ?? (shipment.last_status ? (SELLER_SCAN_LABEL[shipment.last_status] ?? shipment.last_status) : 'Awaiting courier pickup')}
+                </span>
+              </div>
+              {shipmentEvents && shipmentEvents.length > 0 ? (
+                <div style={css('margin-top:12px;')}>
+                  {shipmentEvents.map((ev, i) => (
+                    <div key={ev.id} style={css('display:flex;gap:11px;')}>
+                      <div style={css('display:flex;flex-direction:column;align-items:center;')}>
+                        <span style={css(`width:9px;height:9px;flex:none;border-radius:50%;margin-top:4px;background:${i === 0 ? 'var(--ag-crimson)' : 'var(--ag-border)'};`)} />
+                        {i < shipmentEvents.length - 1 && <span style={css('flex:1;width:2px;background:var(--ag-border);margin:2px 0;')} />}
+                      </div>
+                      <div style={css('padding-bottom:13px;min-width:0;')}>
+                        <div style={css('font-weight:700;font-size:13px;line-height:1.35;')}>{ev.raw_status}</div>
+                        <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:1px;')}>
+                          {[ev.location, formatOrderDateTime(ev.occurred_at ?? ev.created_at)].filter(Boolean).join(' · ')}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={css('margin-top:8px;font-size:12.5px;color:var(--ag-muted);line-height:1.5;')}>
+                  The courier has the booking. Each scan — picked up, in transit, out for delivery, delivered — will appear here as it happens.
+                </div>
+              )}
+            </div>
+
             {(shipment.tracking_url || shipment.label_path || shipment.label_url) && (
               <div style={css('display:flex;gap:10px;margin-top:12px;')}>
                 {/* The label is what gets stuck on the parcel before the courier
