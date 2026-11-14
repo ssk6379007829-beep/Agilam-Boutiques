@@ -312,6 +312,60 @@ export async function fetchLabelPdf(awb: string): Promise<Uint8Array> {
   return bytes;
 }
 
+/* ── Pickup scheduling ──────────────────────────────────────────────────────
+ *
+ * DTDC's customer pickup API. After a consignment exists (softdata upload), the
+ * seller can ask DTDC to collect it on a chosen DATE and TIME SLOT from a
+ * chosen ADDRESS — the "Schedule for Pickup" screen in the DTDC portal. This is
+ * distinct from `action_type: single_pickup`, which raises an immediate pickup;
+ * here the seller picks when. Returns a pickupId on success. */
+
+export type PickupRequest = {
+  /** YYYY-MM-DD, today or later. */
+  date: string;
+  /** HH:mm, the slot DTDC offered. */
+  slotStart: string;
+  slotEnd: string;
+  /** The consignment to collect. */
+  reference: string;
+  pickup: {
+    name: string; phone: string; address: string; address2?: string | null;
+    pincode: string; city: string | null; state: string | null;
+  };
+  totalItems: number;
+  totalWeightKg: number;
+};
+
+export type PickupResult = { pickupId: string | null; failureReason: string | null };
+
+export async function schedulePickup(req: PickupRequest): Promise<PickupResult> {
+  const { body } = await dtdcFetch('/api/customer/integration/pickup/create', {
+    method: 'POST',
+    body: {
+      pickup_type: 'BUSINESS',
+      customer_code: customerCode(),
+      service_type_id: serviceTypeId(),
+      load_type: 'NON-DOCUMENT',
+      total_items: Math.max(1, Math.round(req.totalItems)),
+      total_weight: Math.max(0.1, Number(req.totalWeightKg) || 0.5),
+      pickup_slot: { start: req.slotStart, end: req.slotEnd, date: req.date },
+      pickup_address: {
+        name: req.pickup.name,
+        phone: req.pickup.phone,
+        address_line_1: req.pickup.address,
+        address_line_2: req.pickup.address2 ?? '',
+        pincode: req.pickup.pincode,
+        city: req.pickup.city ?? '',
+        state: req.pickup.state ?? '',
+        country: 'India',
+      },
+      reference_number_list: [req.reference],
+    },
+  });
+  const b = (body ?? {}) as { status?: string; data?: { pickupId?: string; failureReason?: string } };
+  return { pickupId: b.data?.pickupId ? String(b.data.pickupId) : null, failureReason: b.data?.failureReason || null };
+}
+
 /* ── Cancel ───────────────────────────────────────────────────────────────── */
 
 export type CancelResult = { cancelled: string[]; failed: { awb: string; message: string; reason: string }[] };
@@ -422,14 +476,17 @@ export function toIso(when: number | string | null | undefined): string | null {
  */
 export function mapEventStage(type: string): ScanStage | null {
   switch ((type ?? '').trim().toLowerCase()) {
-    // ── before the parcel exists in the network ──
-    case 'softdata_upload': case 'softdata_update':
+    // ── booked, not yet collected ──
+    // Recorded (migration 0116) so the seller and buyer see "Pickup requested"
+    // / "Awaiting pickup" before collection, matching the courier's own page.
+    // apply_shipment_scan() does not advance the order on this stage.
+    case 'softdata_upload':
     case 'pickup_scheduled': case 'pickup_awaited':
     case 'out_for_pickup': case 'pickup_started': case 'out_for_store_pickup':
-    case 'consignment_verification':
-      return null;
-    // Cancelled / revoked are administrative, not movements. Logged by the
-    // caller, never applied.
+      return 'pickup_pending';
+    // A softdata EDIT and a verification are not movements; cancelled / revoked
+    // are administrative. Logged by the caller, never applied.
+    case 'softdata_update': case 'consignment_verification':
     case 'cancelled': case 'revert_from_delivered': case 'revoke_rto':
       return null;
 

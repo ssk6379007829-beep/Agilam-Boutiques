@@ -51,6 +51,7 @@ export function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-/** The six stages `shipment_events.stage` accepts (migration 0067). */
+/** The scan stages `shipment_events.stage` accepts (migration 0067, widened by
+ *  0116 with `pickup_pending` for the booked-but-not-yet-collected phase). */
 export type ScanStage =
-  | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
+  | 'pickup_pending' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'rto' | 'failed';
