@@ -90,6 +90,42 @@ export async function signedLabelUrl(labelPath: string): Promise<string | null> 
 }
 
 /**
+ * Can a parcel be delivered to this pincode?
+ *
+ * Asks the `courier-serviceability` Edge Function, which uses Shiprocket's
+ * aggregated serviceability (the one real source — DTDC's own API can't answer
+ * it). Used at checkout (warn the buyer before they pay for an undeliverable
+ * address) and the seller's ship step.
+ *
+ * FAILS OPEN: any error, a degraded reply, or a pincode we can't form returns
+ * `serviceable: null` — "couldn't determine" — never `false`. A serviceability
+ * outage must never block a sale; the booking chain still runs at ship time.
+ */
+export type Serviceability = { serviceable: boolean | null; courierCount: number };
+
+export async function checkServiceability(
+  originPincode: string,
+  destPincode: string,
+  weightKg?: number,
+): Promise<Serviceability> {
+  const o = (originPincode ?? '').replace(/\D/g, '');
+  const d = (destPincode ?? '').replace(/\D/g, '');
+  if (o.length !== 6 || d.length !== 6) return { serviceable: null, courierCount: 0 };
+  try {
+    const { data, error } = await supabase.functions.invoke('courier-serviceability', {
+      body: { originPincode: o, destPincode: d, weightKg },
+    });
+    if (error || !data?.ok || data?.degraded) return { serviceable: null, courierCount: 0 };
+    return {
+      serviceable: typeof data.serviceable === 'boolean' ? data.serviceable : null,
+      courierCount: Number(data.courierCount ?? 0),
+    };
+  } catch {
+    return { serviceable: null, courierCount: 0 };
+  }
+}
+
+/**
  * A fresh DTDC shipping-label URL, fetched on demand.
  *
  * Pulls the label straight from DTDC every call (via the `dtdc-label` Edge

@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useShop } from '@/state/ShopContext';
 import { useCatalog } from '@/state/CatalogContext';
 import { usePageMeta } from '@/lib/pageMeta';
+import { checkServiceability } from '@/data/shipments';
 import { nameOk, phoneOk, pincodeOk } from '@/lib/buyerDetails';
 import { fmt } from '@/data/demo';
 import { deliveryEtaLabel, shopFulfilment } from '@/lib/fulfilment';
@@ -70,6 +71,37 @@ export function Checkout() {
   };
   const invalid = errors.name || errors.phone || errors.address || errors.city || errors.pincode;
 
+  /**
+   * Which boutiques in the bag no courier will deliver from, to this pincode.
+   *
+   * Checked against Shiprocket's aggregated serviceability (the only real
+   * source — DTDC's own API can't answer it). Fails OPEN: an outage or a shop
+   * with no origin pincode is treated as "can't tell", never as blocked, so a
+   * serviceability hiccup never stops a sale the couriers could actually carry.
+   */
+  const [courierBlockedShops, setCourierBlockedShops] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    const dest = (guest.pincode ?? '').replace(/\D/g, '');
+    if (dest.length !== 6 || cartBoutiques.length === 0) { setCourierBlockedShops([]); return; }
+    void (async () => {
+      const names = await Promise.all(
+        cartBoutiques.map(async (b) => {
+          const origin = (b.pincode ?? '').replace(/\D/g, '');
+          if (origin.length !== 6) return null; // no origin to check from → don't block
+          const r = await checkServiceability(origin, dest);
+          return r.serviceable === false ? b.name : null;
+        }),
+      );
+      if (live) setCourierBlockedShops(names.filter((n): n is string => !!n));
+    })();
+    return () => { live = false; };
+  }, [guest.pincode, cartBoutiques]);
+
+  const courierUndeliverable = courierBlockedShops.length > 0
+    ? `No courier delivers to PIN ${guest.pincode} from ${courierBlockedShops.join(', ')}. Please try a different delivery pincode.`
+    : null;
+
   const continueToPayment = () => {
     if (invalid) {
       setTouched(true);
@@ -81,6 +113,12 @@ export function Checkout() {
     // chosen how to pay, and the server refuses the same order anyway.
     if (undeliverable) {
       showToast(undeliverable, 'error');
+      return;
+    }
+    // No courier serves this lane — caught before payment, the same way the
+    // seller's own zone block is. Fails open: only a definite `false` blocks.
+    if (courierUndeliverable) {
+      showToast(courierUndeliverable, 'error');
       return;
     }
     navigate('/payment');
@@ -143,6 +181,15 @@ export function Checkout() {
                 <div style={css('display:flex;gap:11px;align-items:flex-start;margin-top:9px;padding:13px 15px;border-radius:15px;border:1.5px solid var(--ag-danger-text);background:var(--ag-surface-2);')}>
                   <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-danger-text);font-size:20px;")}>wrong_location</span>
                   <span style={css('flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--ag-danger-text);line-height:1.55;')}>{undeliverable}</span>
+                </div>
+              )}
+
+              {/* No courier serves this pincode (Shiprocket serviceability).
+                  Separate from the seller's own zone block above. */}
+              {!undeliverable && courierUndeliverable && (
+                <div style={css('display:flex;gap:11px;align-items:flex-start;margin-top:9px;padding:13px 15px;border-radius:15px;border:1.5px solid var(--ag-danger-text);background:var(--ag-surface-2);')}>
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-danger-text);font-size:20px;")}>local_shipping</span>
+                  <span style={css('flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--ag-danger-text);line-height:1.55;')}>{courierUndeliverable}</span>
                 </div>
               )}
 

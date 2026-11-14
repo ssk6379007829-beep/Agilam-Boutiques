@@ -14,9 +14,9 @@ import { ShipSheet, type BookPayload } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { fetchBoutiquePrivate, updateBoutique, type BoutiquePatch } from '@/data/boutiques';
 import {
-  bookParcel, cancelPickup, createShipment, dtdcLabelUrl, fetchCouriers, fetchDtdcAvailability,
-  fetchShadowfaxAvailability, fetchShipment, fetchShipmentEvents, fetchShiprocketAvailability,
-  signedLabelUrl,
+  bookParcel, cancelPickup, checkServiceability, createShipment, dtdcLabelUrl, fetchCouriers,
+  fetchDtdcAvailability, fetchShadowfaxAvailability, fetchShipment, fetchShipmentEvents,
+  fetchShiprocketAvailability, signedLabelUrl,
 } from '@/data/shipments';
 import { formatOrderDateTime, deliveryEstimate } from '@/lib/orderHistory';
 import { useSettings } from '@/data/settings';
@@ -139,6 +139,20 @@ export function OrderDetail() {
   );
   const canBookCourier = Boolean(
     courierAvailability?.dtdc || courierAvailability?.shadowfax || courierAvailability?.shiprocket,
+  );
+
+  // Can any courier deliver this order's lane (shop pincode → buyer pincode)?
+  // Shiprocket serviceability; fails open (null = couldn't tell). Only surfaced
+  // before the parcel ships, as a heads-up that booking may fall through to the
+  // manual docket.
+  const { data: serviceLane } = useAsync(
+    () => {
+      const origin = boutique?.pincode ?? '';
+      const dest = row?.guest_pincode ?? '';
+      if (!origin || !dest) return Promise.resolve(null);
+      return checkServiceability(origin, dest);
+    },
+    [boutique?.pincode, row?.guest_pincode],
   );
 
   // The shop's saved pickup address, prefilled into the ship sheet and editable
@@ -703,6 +717,18 @@ export function OrderDetail() {
             </div>
           );
         })()}
+
+        {/* No courier serves this lane — a heads-up BEFORE the seller tries to
+            book, so a parcel that would only bounce to the manual docket is
+            flagged early. Only a definite "no" shows (fails open). */}
+        {!shipment && (o.rawStatus === 'pending' || o.rawStatus === 'accepted') && serviceLane?.serviceable === false && (
+          <div style={css('margin-top:12px;border-radius:16px;padding:14px;border:1.5px solid var(--ag-warn-text);background:var(--ag-warn-bg);display:flex;gap:11px;align-items:flex-start;')}>
+            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';color:var(--ag-warn-text);")}>local_shipping</span>
+            <div style={css('font-size:12.5px;color:var(--ag-warn-text);font-weight:700;line-height:1.55;')}>
+              No courier currently delivers to PIN {o.pincode} from your shop pincode. Booking may fail — you can ship this one with your own courier and enter the docket number.
+            </div>
+          </div>
+        )}
 
         {/* Once dispatched, the docket is the thing the seller gets asked about
             on the phone — so it sits on the order, copyable, not buried. */}
