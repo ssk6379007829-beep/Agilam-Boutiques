@@ -448,7 +448,11 @@ export type ShiprocketShopRow = {
   // drawer to find an address — registering shop #12 should be paste, paste,
   // paste, not three screens and a guess.
   owner_name: string | null;
-  phone: string | null;
+  /** Optional: NOT granted to the authenticated role on `boutiques`, so the
+   *  admin console cannot read it client-side. Left off the query (see
+   *  SHOP_COLUMNS) — requesting it failed the WHOLE select and blanked the
+   *  list. The pickup registration function reads it server-side instead. */
+  phone?: string | null;
   address_line: string | null;
   district: string | null;
   state: string | null;
@@ -460,9 +464,11 @@ export type ShiprocketShopRow = {
   open_time: string | null;
   close_time: string | null;
   /** Migration 0068 — set when the address was created through the API rather
-   *  than pasted in by an admin, and the last failure if it was refused. */
-  shiprocket_pickup_registered_at: string | null;
-  shiprocket_pickup_error: string | null;
+   *  than pasted in by an admin, and the last failure if it was refused.
+   *  Optional for the same reason as `phone`: not granted to `authenticated`,
+   *  so they are left out of the client query to keep the select from failing. */
+  shiprocket_pickup_registered_at?: string | null;
+  shiprocket_pickup_error?: string | null;
   /** Migration 0110. Optional because the column list falls back when 0110 has
    *  not been applied — the admin console then shows the Shiprocket columns it
    *  always did rather than an empty table. */
@@ -471,10 +477,18 @@ export type ShiprocketShopRow = {
   dtdc_enabled?: boolean;
 };
 
+// IMPORTANT: every column here must be SELECT-granted to the `authenticated`
+// role. `boutiques` has column-level grants (CLAUDE.md rule 5), and naming a
+// column the role cannot read fails the WHOLE query — PostgREST returns a
+// permission error, the `.catch(() => [])` at the call site swallows it, and
+// the admin sees "No boutiques" even though shops exist. `phone`,
+// `shiprocket_pickup_registered_at` and `shiprocket_pickup_error` are NOT
+// granted, so they are deliberately absent: the table does not display them,
+// and the Shiprocket pickup function reads them server-side under the service
+// role. Do not add an ungranted column back here without granting it first.
 const SHOP_COLUMNS =
   'id, name, status, shiprocket_enabled, shiprocket_pickup_location, ' +
-  'owner_name, phone, address_line, district, state, pincode, map_url, open_time, close_time, ' +
-  'shiprocket_pickup_registered_at, shiprocket_pickup_error';
+  'owner_name, address_line, district, state, pincode, map_url, open_time, close_time';
 
 /**
  * Every boutique's booking readiness, for the admin console.
