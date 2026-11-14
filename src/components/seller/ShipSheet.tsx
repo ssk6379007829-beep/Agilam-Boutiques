@@ -24,22 +24,39 @@ import { buildTrackingUrl, type Courier } from '@/data/shipments';
 
 const OTHER = '__other__';
 
+/** The pickup slots DTDC offers (two-hour windows). Shown to the seller so they
+ *  choose when the courier collects, matching the "Schedule for Pickup" screen. */
+const PICKUP_SLOTS: { start: string; end: string }[] = [
+  { start: '12:00', end: '14:00' },
+  { start: '14:00', end: '16:00' },
+  { start: '16:00', end: '18:00' },
+  { start: '18:00', end: '20:00' },
+  { start: '20:00', end: '22:00' },
+  { start: '22:00', end: '23:59' },
+];
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+export type BookPayload = { carrier: string; date: string; slotStart: string; slotEnd: string };
+
 export function ShipSheet({
   couriers,
   busy,
   canBook = false,
+  bookCarriers = [],
   onCancel,
   onConfirm,
   onBook,
 }: {
   couriers: Courier[];
   busy: boolean;
-  /** Shiprocket is switched on platform-wide and for this shop, the shop has a
-   *  registered pickup location, and this order is prepaid. */
+  /** A courier the shop can book on is switched on, and this order is prepaid. */
   canBook?: boolean;
+  /** The carriers the seller may choose from for a booked parcel, most-preferred
+   *  first (DTDC leads). Empty falls back to a single automatic booking. */
+  bookCarriers?: { id: string; label: string }[];
   onCancel: () => void;
   onConfirm: (v: { courierId: string | null; courierName: string; awb: string; trackingUrl: string | null }) => void;
-  onBook?: () => void;
+  onBook?: (payload: BookPayload) => void;
 }) {
   // Booking is the default when it is available: it is fewer taps, and the AWB
   // it produces is one a courier scan can drive, which is what eventually
@@ -52,6 +69,10 @@ export function ShipSheet({
   // Once the seller edits the link themselves we stop overwriting it, or typing
   // the AWB would wipe what they pasted.
   const [linkTouched, setLinkTouched] = useState(false);
+  // Booking mode: the seller chooses the courier and schedules the pickup.
+  const [carrier, setCarrier] = useState(bookCarriers[0]?.id ?? '');
+  const [pickupDate, setPickupDate] = useState(todayISO());
+  const [slotIdx, setSlotIdx] = useState(0);
 
   const courier = useMemo(() => couriers.find((c) => c.id === courierKey), [couriers, courierKey]);
   const isOther = courierKey === OTHER;
@@ -101,16 +122,43 @@ export function ShipSheet({
 
         {mode === 'book' ? (
           <>
-            <div style={css('margin-top:16px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:14px;padding:14px;')}>
-              <div style={css('font-size:13.5px;font-weight:800;color:var(--ag-ink);')}>We’ll book the parcel for you</div>
-              <div style={css('font-size:12.5px;color:var(--ag-muted);margin-top:6px;line-height:1.55;')}>
-                A courier is picked on rate, the tracking number comes back straight away, and a pickup is
-                requested from your shop address. The weight comes from your products — set it on each item so
-                the declared weight matches what the courier weighs.
+            {bookCarriers.length > 0 && (
+              <div style={css('margin-top:16px;')}>
+                <div style={css(label)}>COURIER</div>
+                <select value={carrier} onChange={(e) => setCarrier(e.target.value)} style={css(field)}>
+                  {bookCarriers.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div style={css('display:flex;gap:10px;margin-top:12px;')}>
+              <div style={css('flex:1;min-width:0;')}>
+                <div style={css(label)}>PICKUP DATE</div>
+                <input
+                  type="date"
+                  value={pickupDate}
+                  min={todayISO()}
+                  onChange={(e) => setPickupDate(e.target.value)}
+                  style={css(field)}
+                />
+              </div>
+              <div style={css('flex:1;min-width:0;')}>
+                <div style={css(label)}>TIME SLOT</div>
+                <select value={slotIdx} onChange={(e) => setSlotIdx(Number(e.target.value))} style={css(field)}>
+                  {PICKUP_SLOTS.map((s, i) => <option key={i} value={i}>{s.start} – {s.end}</option>)}
+                </select>
               </div>
             </div>
 
-            <div style={css('display:flex;gap:10px;margin-top:20px;')}>
+            <div style={css('margin-top:14px;background:var(--ag-surface-2);border:1px solid var(--ag-border);border-radius:14px;padding:13px 14px;')}>
+              <div style={css('font-size:12.5px;color:var(--ag-muted);line-height:1.55;')}>
+                The courier is asked to collect from your shop address in this slot, the tracking number comes
+                back straight away, and the label is saved for you to print. The weight comes from your products
+                — set it on each item so the declared weight matches what the courier weighs.
+              </div>
+            </div>
+
+            <div style={css('display:flex;gap:10px;margin-top:18px;')}>
               <button
                 onClick={onCancel}
                 style={css('flex:1;height:50px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:13px;font-weight:800;cursor:pointer;font-family:inherit;')}
@@ -118,11 +166,11 @@ export function ShipSheet({
                 Cancel
               </button>
               <button
-                disabled={busy}
-                onClick={() => onBook?.()}
-                style={css(`flex:1.4;height:50px;border:none;border-radius:13px;background:${busy ? 'var(--ag-surface-2)' : 'linear-gradient(135deg,#D6336C,#B02454)'};color:${busy ? 'var(--ag-muted)' : '#fff'};font-weight:800;cursor:${busy ? 'default' : 'pointer'};font-family:inherit;`)}
+                disabled={busy || !carrier}
+                onClick={() => onBook?.({ carrier, date: pickupDate, slotStart: PICKUP_SLOTS[slotIdx].start, slotEnd: PICKUP_SLOTS[slotIdx].end })}
+                style={css(`flex:1.4;height:50px;border:none;border-radius:13px;background:${busy || !carrier ? 'var(--ag-surface-2)' : 'linear-gradient(135deg,#D6336C,#B02454)'};color:${busy || !carrier ? 'var(--ag-muted)' : '#fff'};font-weight:800;cursor:${busy || !carrier ? 'default' : 'pointer'};font-family:inherit;`)}
               >
-                {busy ? 'Booking…' : 'Book & ship'}
+                {busy ? 'Scheduling…' : 'Schedule & ship'}
               </button>
             </div>
           </>

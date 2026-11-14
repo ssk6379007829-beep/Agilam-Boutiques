@@ -356,9 +356,19 @@ export type ParcelBooking = ShipmentBooking & {
  * `canShipManually`, which the ship sheet uses to drop the seller onto the
  * manual docket form rather than leaving them stuck holding a packed parcel.
  */
-export async function bookParcel(orderId: string): Promise<ParcelBooking> {
+/** The seller's courier and pickup-slot choice, forwarded to the chain. */
+export type BookOptions = {
+  /** 'dtdc' | 'shiprocket' | 'shadowfax'. Omitted = auto-pick (legacy). */
+  carrier?: string;
+  /** Pickup schedule, YYYY-MM-DD + HH:mm. Honoured by DTDC's pickup API. */
+  date?: string;
+  slotStart?: string;
+  slotEnd?: string;
+};
+
+export async function bookParcel(orderId: string, opts?: BookOptions): Promise<ParcelBooking> {
   const { data, error } = await supabase.functions.invoke('book-parcel', {
-    body: { orderId },
+    body: { orderId, ...(opts ?? {}) },
   });
 
   if (error) {
@@ -384,6 +394,40 @@ export async function bookParcel(orderId: string): Promise<ParcelBooking> {
 
   if (!data?.ok) throw new Error(data?.error ?? 'Booking failed');
   return data as ParcelBooking;
+}
+
+/**
+ * Cancel a DTDC parcel the seller booked but the courier has NOT yet picked up.
+ *
+ * Reverses a booking: it cancels the consignment at DTDC, deletes the shipment
+ * row, and drops the order back to 'accepted' so the seller can re-book (a
+ * different slot, a different courier) or ship it by hand. The Edge Function
+ * refuses once a pickup scan exists — a parcel already in the courier's hands is
+ * cancelled through DTDC support, not a button.
+ *
+ * Returns the human reason on a refusal so the seller sees why, not an opaque
+ * "non-2xx".
+ */
+export async function cancelPickup(orderId: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('dtdc-cancel', {
+    body: { orderId },
+  });
+
+  if (error) {
+    let message = error.message;
+    const res = (error as { context?: Response }).context;
+    if (res && typeof res.json === 'function') {
+      try {
+        const body = await res.json();
+        if (body?.error) message = body.error as string;
+      } catch {
+        /* not JSON — keep the generic message */
+      }
+    }
+    throw new Error(message);
+  }
+
+  if (!data?.ok) throw new Error(data?.error ?? 'Could not cancel the pickup');
 }
 
 /** Is Shadowfax booking available for this shop right now? Both switches must

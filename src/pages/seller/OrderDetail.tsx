@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { useGoBack } from '@/hooks/useGoBack';
@@ -10,14 +10,12 @@ import { fetchOrder, updateOrderStatus, markOrderPacked } from '@/data/orders';
 import type { OrderStatus } from '@/data/types';
 import { toOrderView } from '@/lib/orderView';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
-import { buildWhatsAppLink, buildBillShareCaption } from '@/lib/whatsapp';
-import { shareOrDownloadBillImage, openPendingWhatsAppTab } from '@/lib/billImage';
-import { BillReceipt } from '@/components/seller/BillReceipt';
-import { ShipSheet } from '@/components/seller/ShipSheet';
+import { ShipSheet, type BookPayload } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import {
-  bookParcel, createShipment, fetchCouriers, fetchDtdcAvailability, fetchShadowfaxAvailability,
-  fetchShipment, fetchShipmentEvents, fetchShiprocketAvailability, signedLabelUrl,
+  bookParcel, cancelPickup, createShipment, fetchCouriers, fetchDtdcAvailability,
+  fetchShadowfaxAvailability, fetchShipment, fetchShipmentEvents, fetchShiprocketAvailability,
+  signedLabelUrl,
 } from '@/data/shipments';
 import { formatOrderDateTime, deliveryEstimate } from '@/lib/orderHistory';
 import { Skeleton, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
@@ -59,7 +57,6 @@ export function OrderDetail() {
   const { boutique } = useMyBoutique();
   const orderId = decodeURIComponent(id ?? '');
   const { data: row, loading, error, reload } = useAsync(() => (orderId ? fetchOrder(orderId) : Promise.resolve(null)), [orderId]);
-  const [sharing, setSharing] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
   const [shipOpen, setShipOpen] = useState(false);
   // The buyer's return request on this order, if any (migration 0074).
@@ -68,7 +65,10 @@ export function OrderDetail() {
   const [askingReject, setAskingReject] = useState(false);
   const [returnBusy, setReturnBusy] = useState(false);
   const [shipping, setShipping] = useState(false);
-  const receiptRef = useRef<HTMLDivElement>(null);
+  // Cancelling a booked-but-not-collected DTDC pickup (two taps — a booking
+  // undoes a real consignment at the courier, so it is confirmed first).
+  const [confirmCancelPickup, setConfirmCancelPickup] = useState(false);
+  const [cancellingPickup, setCancellingPickup] = useState(false);
 
   // Both read separately from the order (see src/data/shipments.ts): an
   // un-migrated deploy must degrade to "no tracking", never to a dead screen.
@@ -137,6 +137,13 @@ export function OrderDetail() {
   const canBookCourier = Boolean(
     courierAvailability?.dtdc || courierAvailability?.shadowfax || courierAvailability?.shiprocket,
   );
+  // The carriers the seller may choose from, DTDC first (the contracted
+  // primary). The ship sheet shows these in a dropdown.
+  const bookCarriers = [
+    courierAvailability?.dtdc ? { id: 'dtdc', label: 'DTDC' } : null,
+    courierAvailability?.shiprocket ? { id: 'shiprocket', label: 'Shiprocket' } : null,
+    courierAvailability?.shadowfax ? { id: 'shadowfax', label: 'Shadowfax' } : null,
+  ].filter((c): c is { id: string; label: string } => c !== null);
 
   /**
    * Open the label PDF. A stored label (DTDC, migration 0114) lives in a
@@ -253,12 +260,12 @@ export function OrderDetail() {
    * second one; the function returns an explicit "do not book again" in that
    * case and it is surfaced verbatim.
    */
-  const bookOrder = async () => {
+  const bookOrder = async (payload: BookPayload) => {
     setShipping(true);
     try {
-      // One call. The carrier chain runs server-side, so the seller never
-      // chooses a courier and never retries against a second button.
-      const booked = await bookParcel(o.id);
+      // The seller chose the courier and the pickup slot; book-parcel honours
+      // that choice and schedules the DTDC pickup rather than auto-picking.
+      const booked = await bookParcel(o.id, payload);
 
       setShipOpen(false);
 
@@ -291,44 +298,38 @@ export function OrderDetail() {
     }
   };
 
-  const settled = o.isCod && o.paymentStatus === 'paid';
-  const closed = o.rawStatus === 'rejected' || o.rawStatus === 'cancelled';
-
-  const shareBillImage = async () => {
-    if (!o.phone) {
-      showToast('No phone number on this order', 'warning');
-      return;
-    }
-    if (!receiptRef.current) return;
-    // Must open synchronously, still inside this click's user gesture — the
-    // bill render below is async, and a window.open() issued after an await
-    // gets silently blocked by the browser's popup blocker on most desktop
-    // browsers, which is why this button could look like it does nothing.
-    const pendingTab = openPendingWhatsAppTab();
-    setSharing(true);
+  /**
+   * Call off a DTDC pickup the seller booked by mistake — wrong slot, wrong
+   * day, or they would rather hand it to another courier. The Edge Function
+   * cancels the consignment at DTDC, deletes the shipment, and drops the order
+   * back to 'accepted' so the ship bar returns. It refuses once the courier has
+   * scanned the parcel (a collected parcel is cancelled through DTDC support),
+   * and that refusal is surfaced verbatim.
+   */
+  const cancelParcelPickup = async () => {
+    setCancellingPickup(true);
     try {
-      const caption = buildBillShareCaption({
-        boutiqueName: boutique?.name ?? 'MangaiMart Boutique',
-        boutiqueSlug: boutique?.slug,
-        buyerName: o.customer,
-        billNumber: o.number,
-        total: o.grandTotal,
-      });
-      const result = await shareOrDownloadBillImage(receiptRef.current, `Bill-${o.number.replace('#', '')}.png`, caption);
-      if (result === 'downloaded') {
-        showToast('Bill image saved — attach it in the WhatsApp chat that just opened');
-        if (pendingTab) pendingTab.location.href = buildWhatsAppLink(o.phone, caption);
-      } else {
-        pendingTab?.close();
-        if (result === 'shared') showToast('Bill shared');
-      }
+      await cancelPickup(o.id);
+      setConfirmCancelPickup(false);
+      showToast('Pickup cancelled — the order is back to accepted, ready to re-book');
+      reloadShipment();
+      reload();
     } catch (e) {
-      pendingTab?.close();
-      showToast(e instanceof Error ? e.message : 'Could not generate the bill image', 'error');
+      showToast(e instanceof Error ? e.message : 'Could not cancel the pickup', 'error');
     } finally {
-      setSharing(false);
+      setCancellingPickup(false);
     }
   };
+
+  // A booked DTDC parcel the courier has not yet collected can still be called
+  // off from here. Once there is any pickup scan beyond "awaiting", it is in the
+  // courier's hands and only DTDC support can cancel it.
+  const canCancelPickup =
+    shipment?.provider === 'dtdc' &&
+    (!shipment.last_status || shipment.last_status === 'pickup_pending');
+
+  const settled = o.isCod && o.paymentStatus === 'paid';
+  const closed = o.rawStatus === 'rejected' || o.rawStatus === 'cancelled';
 
   return (
     <div style={css('min-height:100%;background:var(--ag-bg);display:flex;flex-direction:column;')}>
@@ -434,14 +435,12 @@ export function OrderDetail() {
                   <>
                     <span>·</span>
                     <a
-                      href={buildWhatsAppLink(o.phone, '')}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={`tel:${o.phone}`}
                       onClick={(e) => e.stopPropagation()}
-                      style={css('display:inline-flex;align-items:center;gap:3px;color:var(--ag-good);font-weight:700;text-decoration:none;')}
+                      style={css('display:inline-flex;align-items:center;gap:3px;color:var(--ag-crimson);font-weight:700;text-decoration:none;')}
                     >
                       {o.phone}
-                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>open_in_new</span>
+                      <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:14px;")}>call</span>
                     </a>
                   </>
                 )}
@@ -465,32 +464,6 @@ export function OrderDetail() {
             </div>
           )}
 
-          <button onClick={shareBillImage} disabled={sharing} style={css(`width:100%;margin-top:12px;height:44px;border:none;border-radius:13px;background:linear-gradient(135deg,var(--ag-good),#1E8A57);color:#fff;font-weight:800;font-size:13.5px;cursor:${sharing ? 'default' : 'pointer'};opacity:${sharing ? 0.7 : 1};display:flex;align-items:center;justify-content:center;gap:7px;`)}>
-            <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:18px;")}>share</span>{sharing ? 'Preparing…' : 'Share bill via WhatsApp'}
-          </button>
-        </div>
-
-        {/* Hidden premium bill card, captured to an image on demand — never shown
-            to the seller directly. Kept within normal viewport coordinates
-            (opacity 0, not translated far off-screen) because html2canvas can
-            fail to capture elements positioned way outside the viewport. */}
-        <div style={css('position:absolute;top:0;left:0;opacity:0;pointer-events:none;z-index:-1;')} aria-hidden="true">
-          <BillReceipt
-            ref={receiptRef}
-            boutiqueName={boutique?.name ?? 'MangaiMart Boutique'}
-            boutiquePhone={boutique?.phone}
-            billNumber={o.number}
-            date={o.date}
-            buyerName={o.customer}
-            buyerPhone={o.phone ?? undefined}
-            items={o.items.map((it) => ({ title: it.title, qty: it.qty, price: Number(it.price) }))}
-            discount={o.platformDiscount}
-            shippingFee={o.shippingFee}
-            codFee={o.codFee}
-            total={o.grandTotal}
-            paymentMethod={o.paymentMethod}
-            amountDue={o.collectAmount}
-          />
         </div>
 
         <div style={css('background:var(--ag-surface);border-radius:16px;padding:14px;margin-top:12px;box-shadow:0 10px 26px -22px rgba(107,20,54,.6);')}>
@@ -694,6 +667,44 @@ export function OrderDetail() {
                 )}
               </div>
             )}
+
+            {/* Cancel a booked-but-not-collected DTDC pickup. Only offered while
+                the courier has no scan on it yet; once collected, this is gone
+                and a cancellation goes through DTDC support. */}
+            {canCancelPickup && (
+              confirmCancelPickup ? (
+                <div style={css('margin-top:12px;background:var(--ag-bad-bg);border:1px solid var(--ag-border);border-radius:14px;padding:13px 15px;')}>
+                  <div style={css('font-size:12.5px;font-weight:700;color:var(--ag-danger-text);line-height:1.5;')}>
+                    Cancel this pickup? The DTDC booking is called off and the order returns to “accepted”, so you can book it again — a different slot, day, or courier.
+                  </div>
+                  <div style={css('display:flex;gap:10px;margin-top:11px;')}>
+                    <button
+                      disabled={cancellingPickup}
+                      onClick={() => setConfirmCancelPickup(false)}
+                      style={css('flex:1;height:46px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-label);border-radius:12px;font-weight:800;cursor:pointer;font-family:inherit;')}
+                    >
+                      Keep pickup
+                    </button>
+                    <button
+                      disabled={cancellingPickup}
+                      onClick={() => { void cancelParcelPickup(); }}
+                      style={css(`flex:1;height:46px;border:none;background:var(--ag-danger-text);color:#fff;border-radius:12px;font-weight:800;cursor:${cancellingPickup ? 'default' : 'pointer'};font-family:inherit;opacity:${cancellingPickup ? 0.6 : 1};`)}
+                    >
+                      {cancellingPickup ? 'Cancelling…' : 'Cancel pickup'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmCancelPickup(true)}
+                  style={css('width:100%;margin-top:10px;height:44px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:13px;border:1.5px solid var(--ag-border);background:var(--ag-surface);color:var(--ag-danger-text);font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;')}
+                >
+                  <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:17px;")}>cancel</span>
+                  Cancel pickup
+                </button>
+              )
+            )}
           </div>
         )}
 
@@ -795,6 +806,7 @@ export function OrderDetail() {
           // collected cash to the account holder — us — which would make the
           // platform the money handler on an order it never took payment for.
           canBook={canBookCourier && !o.isCod && !manualOnly}
+          bookCarriers={bookCarriers}
           onCancel={() => setShipOpen(false)}
           onConfirm={shipOrder}
           onBook={bookOrder}

@@ -104,11 +104,38 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  const { orderId } = await req.json().catch(() => ({ orderId: null }));
+  const { orderId, carrier, date, slotStart, slotEnd } = await req.json().catch(() => ({ orderId: null }));
   if (!orderId) return json({ error: 'orderId is required' }, 400);
 
   const authHeader = req.headers.get('Authorization') ?? '';
   if (!authHeader.startsWith('Bearer ')) return json({ error: 'Not signed in' }, 401);
+
+  // The pickup slot the seller chose in the ship sheet, forwarded to the carrier
+  // (DTDC schedules the collection for it).
+  const pickup = (date && slotStart && slotEnd) ? { date, slotStart, slotEnd } : {};
+
+  /* ── Seller chose a carrier: honour it, no auto-fallback ─────────────────── */
+  // "Seller picks the courier" (2026-11-14). When the ship sheet names a
+  // carrier we book that one and surface its refusal, rather than quietly
+  // trying another — the seller decided, and switching couriers under them
+  // would be a surprise.
+  if (carrier) {
+    const fn = carrier === 'dtdc' ? 'dtdc-book'
+      : carrier === 'shiprocket' ? 'shiprocket-book'
+      : carrier === 'shadowfax' ? 'shadowfax-book' : null;
+    if (!fn) return json({ error: `Unknown courier: ${carrier}` }, 400);
+    const r = await tryCarrier(fn, orderId, authHeader, { ...pickup, skipFallback: true });
+    if (r.ok) return json({ ...r.body, provider: carrier });
+    if (r.body?.booked === true) return json(r.body, r.status);
+    if (r.status === 401 || r.status === 403 || r.status === 404) {
+      return json(r.body ?? { error: 'Could not book this parcel' }, r.status);
+    }
+    const reason = String(r.body?.reason ?? r.body?.error ?? `HTTP ${r.status}`);
+    return json({
+      error: `${carrier.toUpperCase()} could not book this parcel: ${reason}. Ship it with your own courier and enter the docket number.`,
+      canShipManually: true,
+    }, 409);
+  }
 
   const attempts: Attempt[] = [];
 
@@ -117,7 +144,7 @@ Deno.serve(async (req: Request) => {
   // shop, an unserviceable lane, a rejected field. A configuration or transport
   // fault arrives as `{ error }` instead; both advance the chain, but the
   // function logs the second kind as a fault so it gets found.
-  const dt = await tryCarrier('dtdc-book', orderId, authHeader);
+  const dt = await tryCarrier('dtdc-book', orderId, authHeader, pickup);
   if (dt.ok) {
     return json({ ...dt.body, provider: 'dtdc', attempts });
   }

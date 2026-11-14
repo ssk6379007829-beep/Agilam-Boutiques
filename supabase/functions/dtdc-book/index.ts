@@ -40,7 +40,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { CORS, json, serviceClient } from '../_shared/courier.ts';
-import { DtdcError, createConsignment, fetchLabelPdf, type BookingRequest } from '../_shared/dtdc.ts';
+import { DtdcError, createConsignment, fetchLabelPdf, schedulePickup, type BookingRequest } from '../_shared/dtdc.ts';
 
 type OrderRow = {
   id: string; order_number: string; boutique_id: string; status: string;
@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   try {
-    const { orderId } = await req.json().catch(() => ({ orderId: null }));
+    const { orderId, date, slotStart, slotEnd } = await req.json().catch(() => ({ orderId: null }));
     if (!orderId) return json({ error: 'orderId is required' }, 400);
 
     const authHeader = req.headers.get('Authorization') ?? '';
@@ -264,6 +264,33 @@ Deno.serve(async (req: Request) => {
       }, 500);
     }
 
+    // Schedule the collection for the slot the seller chose. Best-effort: the
+    // consignment is already booked and single_pickup raises a pickup anyway,
+    // so a scheduling hiccup must never fail a parcel that already exists.
+    let pickupScheduled = false;
+    if (date && slotStart && slotEnd) {
+      try {
+        const pk = await schedulePickup({
+          date, slotStart, slotEnd,
+          reference: order.order_number,
+          pickup: {
+            name: shop.name,
+            phone: (shop.phone ?? '').replace(/\D/g, '').slice(-10),
+            address: pickupAddress,
+            pincode: pickupPin,
+            city: shop.city ?? shop.district ?? null,
+            state: shop.state ?? null,
+          },
+          totalItems: 1,
+          totalWeightKg: Number(metrics.weight_kg),
+        });
+        pickupScheduled = Boolean(pk.pickupId) && !pk.failureReason;
+        console.log('dtdc pickup scheduled', { awb: booking.awb, pickupId: pk.pickupId, failure: pk.failureReason });
+      } catch (e) {
+        console.warn('dtdc pickup scheduling failed', { awb: booking.awb, error: (e as Error).message });
+      }
+    }
+
     return json({
       ok: true,
       provider: 'dtdc',
@@ -271,6 +298,7 @@ Deno.serve(async (req: Request) => {
       courierName: 'DTDC',
       labelUrl: null,
       labelPath,
+      pickupScheduled,
       freightCharge: null,
       weightKg: metrics.weight_kg,
       // The seller carries any weight-discrepancy charge, so they are told when
