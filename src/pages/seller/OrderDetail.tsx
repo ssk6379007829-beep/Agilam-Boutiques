@@ -19,7 +19,7 @@ import {
   bookParcel, createShipment, fetchCouriers, fetchDtdcAvailability, fetchShadowfaxAvailability,
   fetchShipment, fetchShipmentEvents, fetchShiprocketAvailability, signedLabelUrl,
 } from '@/data/shipments';
-import { formatOrderDateTime } from '@/lib/orderHistory';
+import { formatOrderDateTime, deliveryEstimate } from '@/lib/orderHistory';
 import { Skeleton, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { fetchReturnForOrder, resolveReturnRequest, RETURN_REASON_LABEL } from '@/data/returns';
 
@@ -34,6 +34,20 @@ const SELLER_SCAN_LABEL: Record<string, string> = {
   delivered: 'Delivered',
   rto: 'Returning to the shop',
   failed: 'Delivery attempt failed',
+};
+
+/** The horizontal stage stepper, mirroring the courier's own tracking page:
+ *  booked → picked up → in transit → out for delivery → delivered. */
+const TRACK_STEPS = [
+  { key: 'pickup', label: 'Awaiting pickup', icon: 'inventory_2' },
+  { key: 'picked_up', label: 'Picked up', icon: 'package_2' },
+  { key: 'in_transit', label: 'In transit', icon: 'local_shipping' },
+  { key: 'out_for_delivery', label: 'Out for delivery', icon: 'moped' },
+  { key: 'delivered', label: 'Delivered', icon: 'check_circle' },
+];
+/** Which step the shipment's latest scan sits on. */
+const STEP_INDEX: Record<string, number> = {
+  pickup_pending: 0, picked_up: 1, in_transit: 2, out_for_delivery: 3, delivered: 4,
 };
 
 export function OrderDetail() {
@@ -96,6 +110,9 @@ export function OrderDetail() {
     () => (orderId ? fetchShipmentEvents(orderId) : Promise.resolve([])),
     [orderId, shipment?.last_status],
   );
+  const lastStatus = shipment?.last_status ?? null;
+  const stepIdx = lastStatus ? (STEP_INDEX[lastStatus] ?? 0) : 0;
+  const rtoShipment = lastStatus === 'rto' || lastStatus === 'failed';
   // Both switches on and a registered pickup location, or the booking mode is
   // never offered. Failing closed matters: the alternative is a seller tapping
   // "Book & ship" and getting a refusal from the Edge Function instead.
@@ -584,6 +601,47 @@ export function OrderDetail() {
                     ?? (shipment.last_status ? (SELLER_SCAN_LABEL[shipment.last_status] ?? shipment.last_status) : 'Awaiting courier pickup')}
                 </span>
               </div>
+
+              {/* Stage stepper — the parcel's progress at a glance, like the
+                  courier's own tracking page. */}
+              <div style={css('display:flex;align-items:flex-start;margin-top:16px;')}>
+                {TRACK_STEPS.map((step, i) => {
+                  const done = !rtoShipment && i <= stepIdx;
+                  const current = !rtoShipment && i === stepIdx;
+                  return (
+                    <div key={step.key} style={css('flex:1;display:flex;flex-direction:column;align-items:center;position:relative;min-width:0;')}>
+                      {i > 0 && (
+                        <span style={css(`position:absolute;top:13px;right:50%;width:100%;height:2px;background:${!rtoShipment && i <= stepIdx ? 'var(--ag-crimson)' : 'var(--ag-border)'};`)} />
+                      )}
+                      <span style={css(`position:relative;z-index:1;width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${done ? 'var(--ag-crimson)' : 'var(--ag-surface-2)'};border:2px solid ${done || current ? 'var(--ag-crimson)' : 'var(--ag-border)'};`)}>
+                        <span aria-hidden="true" style={css(`font-family:'Material Symbols Outlined';font-size:15px;color:${done ? '#fff' : 'var(--ag-muted)'};`)}>{step.icon}</span>
+                      </span>
+                      <span style={css(`font-size:9px;font-weight:700;margin-top:5px;text-align:center;line-height:1.2;color:${done || current ? 'var(--ag-ink)' : 'var(--ag-muted)'};`)}>{step.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {rtoShipment && (
+                <div style={css('margin-top:12px;font-size:12.5px;font-weight:700;color:var(--ag-warn-text);line-height:1.5;')}>
+                  {shipment.last_status === 'rto'
+                    ? 'The parcel is being returned to your shop.'
+                    : 'The courier reported a problem delivering this parcel.'}
+                </div>
+              )}
+
+              <div style={css('display:flex;gap:22px;margin-top:16px;')}>
+                <div>
+                  <div style={css('font-size:10.5px;font-weight:800;color:var(--ag-muted);letter-spacing:.04em;')}>BOOKED ON</div>
+                  <div style={css('font-size:12.5px;font-weight:700;margin-top:2px;')}>{formatOrderDateTime(shipment.shipped_at) || '—'}</div>
+                </div>
+                <div>
+                  <div style={css('font-size:10.5px;font-weight:800;color:var(--ag-muted);letter-spacing:.04em;')}>EST. DELIVERY</div>
+                  <div style={css('font-size:12.5px;font-weight:700;margin-top:2px;')}>{deliveryEstimate(shipment.shipped_at) || '—'}</div>
+                </div>
+              </div>
+
+              <div style={css('font-size:11px;font-weight:800;color:var(--ag-muted);letter-spacing:.05em;margin-top:16px;margin-bottom:2px;')}>SCAN HISTORY</div>
               {shipmentEvents && shipmentEvents.length > 0 ? (
                 <div style={css('margin-top:12px;')}>
                   {shipmentEvents.map((ev, i) => (
