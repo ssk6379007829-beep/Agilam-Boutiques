@@ -174,6 +174,26 @@ export function BoutiqueProfile() {
     };
   }, [BOUTIQUES, ab]);
 
+  /**
+   * "You may also like" — related pieces from OTHER boutiques, so the page is a
+   * doorway into the rest of the marketplace rather than a dead end once a buyer
+   * has seen this shop's shelf. Matched on the categories this shop sells,
+   * best-rated and in-stock first; it widens to any other shop's pieces when the
+   * categories have nothing elsewhere yet (a young-marketplace fallback, like
+   * `nearby`). Every card is an internal product link, which is also what threads
+   * the catalogue together for a crawler landing on this shop by name.
+   */
+  const related = useMemo(() => {
+    if (!ab) return [];
+    const myCats = new Set(PRODUCTS.filter((p) => p.boutique === ab.name).map((p) => p.cat));
+    const other = PRODUCTS.filter((p) => p.boutique !== ab.name && p.stock !== 0);
+    const matched = myCats.size ? other.filter((p) => myCats.has(p.cat)) : other;
+    const pool = matched.length ? matched : other;
+    return [...pool]
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0) || (b.reviews || 0) - (a.reviews || 0))
+      .slice(0, 12);
+  }, [PRODUCTS, ab]);
+
   if (!ab) {
     return (
       <div style={css('min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--ag-muted);')}>
@@ -475,6 +495,56 @@ export function BoutiqueProfile() {
           </div>
         </div>
         <BoutiqueReviews boutiqueId={ab.id} />
+
+        {/* ---------- You may also like (pieces from other boutiques) ---------- */}
+        {related.length > 0 && (
+          <>
+            <div style={css("font-family:var(--ag-display);font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.1;margin-top:38px;")}>
+              You may also like
+            </div>
+            <div className="agx-scroll" style={css('display:flex;gap:12px;overflow-x:auto;padding:16px 0 8px;')}>
+              {related.map((p) => (
+                <CardLink
+                  key={p.id}
+                  to={routes.product(p)}
+                  label={`${p.title} — ${p.boutique}`}
+                  className="agx-lift"
+                  style={css('flex:none;width:158px;')}
+                >
+                  <div className="agx-prod-media agx-zoom" style={css(`background:${TONES[p.tone]};`)}>
+                    <ImageSlot src={p.image} placeholder={p.title} className="agx-prod-fill" />
+                    <WishButton
+                      wished={!!wishlist[p.id]}
+                      title={p.title}
+                      onToggle={(e) => { e.stopPropagation(); toggleWish(p.id); }}
+                      className="agx-card-wish"
+                    />
+                    {p.stock === 0 && (
+                      <div style={css('position:absolute;inset:0;background:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;')}>
+                        <span style={css('background:#241019;color:#fff;font-size:11px;font-weight:800;padding:5px 12px;border-radius:999px;')}>Sold out</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={css('padding:10px 2px 0;')}>
+                    <div className="agx-card-title" style={css('font-size:13.5px;font-weight:700;')}>{p.title}</div>
+                    <div style={css('font-size:11.5px;color:var(--ag-muted);font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;')}>
+                      {p.boutique}
+                    </div>
+                    <div style={css('display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;')}>
+                      <span style={css("font-variant-numeric:tabular-nums;font-weight:700;color:var(--ag-crimson);font-size:17px;")}>{fmt(p.price)}</span>
+                      {showsRating(p.rating, p.reviews) && (
+                        <span style={css('display:flex;align-items:center;gap:3px;font-size:12px;font-weight:700;color:var(--ag-ink-2);')}>
+                          <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-star);")}>star</span>
+                          {p.rating}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </CardLink>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* ---------- Other boutiques ---------- */}
         {nearby.length > 0 && (

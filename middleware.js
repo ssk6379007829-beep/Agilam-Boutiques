@@ -1225,23 +1225,23 @@ const STATIC_META = {
   // facing line in src/pages/sell \u2014 see the note at the top of sellContent.ts.
   "/sell": {
     title: "Sell on MangaiMart \u2014 Open Your Boutique Online",
-    description: "Open your boutique to buyers across India. Free to join and free to list, a small platform fee only when an order is delivered, every order paid online before you pack, and delivery stays in your hands."
+    description: "Sell sarees, kurtis, lehengas and ethnic wear online from anywhere in India. Open your boutique on MangaiMart: free to join and list, a small platform fee only when an order is delivered, every order paid online before you pack, and delivery stays in your hands."
   },
   "/sell/how-it-works": {
     title: "How Selling on MangaiMart Works \u2014 Step by Step",
-    description: "From creating your login to money reaching your bank: every step of selling on MangaiMart, what you do, what we do, and how long each part takes."
+    description: "How to sell sarees and ethnic wear online on MangaiMart, step by step: from creating your login to money reaching your bank, what you do, what we do, and how long each part takes."
   },
   "/sell/pricing": {
     title: "Seller Pricing \u2014 Free to List, Pay Only on Delivery",
-    description: "What it costs to sell on MangaiMart: nothing to join, nothing to list, no monthly fee. One small platform fee on delivered orders, worked out on real prices so you can see it clearly."
+    description: "What it costs to sell online on MangaiMart: nothing to join, nothing to list, no monthly fee. One small platform fee on delivered orders, worked out on real prices so a boutique can see it clearly."
   },
   "/sell/delivery-and-payouts": {
     title: "Delivery & Payouts for Sellers \u2014 How Both Work",
-    description: "You set four delivery rates by distance, your own dispatch window and your own return window. MangaiMart collects the money up front and transfers it after delivery."
+    description: "Delivery and payouts for boutiques selling online across India: set four delivery rates by distance, your own dispatch and return windows, and get paid to your bank after each delivery."
   },
   "/sell/faq": {
     title: "Seller Questions \u2014 GST, Fees, Payouts, Delivery",
-    description: "Straight answers for boutique owners: whether you need GST to sell, what it costs, when you are paid, who delivers the parcel, and what happens with returns."
+    description: "Straight answers for boutiques selling online in India: whether you need GST, what it costs, when you are paid, who delivers the parcel, and how returns work."
   },
   // \u2500\u2500 The written pages \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   // These are in the sitemap, so crawlers ask for them \u2014 but they had no entry
@@ -1880,8 +1880,70 @@ async function topBoutiquesPrerender(origin) {
   );
 }
 
+/**
+ * The crawlable body for the /sell pages, served in <noscript>.
+ *
+ * The seller site is the highest-intent search on the domain ("how to sell
+ * sarees online in Tamil Nadu") and it is a client-rendered React app, so an
+ * AI-search bot that does not run JS would read an empty #root. This is the same
+ * geography, garment keywords and answers the pages show, in plain HTML the bots
+ * can quote — the GEO half of the seller SEO. No rate appears here: the
+ * platform fee is a live admin row (see the note on STATIC_META's /sell block),
+ * and a number frozen into a crawl body is a number that goes stale unseen.
+ *
+ * Mirrors the visible `SellReach` section in src/pages/sell/SellHome.tsx; the
+ * garment slugs are the live `/collections/<slug>` routes.
+ */
+const SELL_PRERENDER_HEADINGS = {
+  "/sell": "Sell on MangaiMart — open your boutique online in India",
+  "/sell/how-it-works": "How selling on MangaiMart works, step by step",
+  "/sell/pricing": "What it costs to sell online on MangaiMart",
+  "/sell/delivery-and-payouts": "Delivery and payouts for boutiques selling online in India",
+  "/sell/faq": "Selling on MangaiMart — boutique owner questions answered"
+};
+
+function sellPrerender(origin, path) {
+  const h1 = SELL_PRERENDER_HEADINGS[path] || SELL_PRERENDER_HEADINGS["/sell"];
+  const garments = [
+    ["sarees", "sarees"], ["kurtis", "kurtis"], ["kurta sets", "kurta-sets"],
+    ["lehengas", "lehengas"], ["salwar suits", "salwar-suits"], ["anarkali suits", "anarkali-suits"],
+    ["half sarees", "half-sarees"], ["blouses", "blouses"]
+  ];
+  const garmentLinks = garments
+    .map(([l, s]) => `<a href="${origin}/collections/${s}">Sell ${l} online</a>`)
+    .join(" \xB7 ");
+  const pageLinks = [
+    ["/sell/how-it-works", "How selling works"],
+    ["/sell/pricing", "What it costs"],
+    ["/sell/delivery-and-payouts", "Delivery and payouts"],
+    ["/sell/faq", "Seller questions"]
+  ]
+    .filter(([p]) => p !== path)
+    .map(([p, t]) => `<a href="${origin}${p}">${t}</a>`)
+    .join(" \xB7 ");
+  return `<noscript>
+<h1>${h1}</h1>
+<p>${SITE_NAME} is a marketplace for independent Indian boutiques. List your pieces, reach buyers across India, and keep running your shop exactly as you do now. It is free to join and free to list, there is one small platform fee charged only when an order is delivered, every order is paid online before you pack (there is no cash on delivery), and delivery stays in your hands.</p>
+<p>Boutiques sell on ${SITE_NAME} from every corner of India — from Coimbatore, Chennai, Erode, Tiruppur, Madurai and Salem across Tamil Nadu to Bengaluru, Hyderabad, Kochi, Mumbai and Delhi, and the towns in between. Your shop's address only sets your delivery zones; it never decides whether you can join.</p>
+<h2>What boutiques sell here</h2>
+<p>${garmentLinks}.</p>
+<h2>Common questions from boutique owners</h2>
+<p><strong>Do I need a GST number to sell online?</strong> No. You can register, list, sell and be paid without a GST number; add it later if you register.</p>
+<p><strong>What does it cost to sell?</strong> Nothing to join, nothing to list and no monthly fee — one small platform fee, charged only on an order that is actually delivered.</p>
+<p><strong>When am I paid?</strong> After the order is delivered, straight to the bank account you registered. Every order is prepaid online, so you never chase a payment.</p>
+<p><strong>Who delivers the order?</strong> You do, and you decide how — book a courier and print the label from your dashboard, or hand a local order to your own delivery person.</p>
+<p><strong>Can I sell from anywhere in India?</strong> Yes. ${SITE_NAME} is open to boutiques anywhere in India; your address only sets your delivery zones.</p>
+<p>${pageLinks}.</p>
+</noscript>`;
+}
+
 const HUB_PRERENDERERS = {
   "/": homeHubPrerender,
+  "/sell": (origin) => sellPrerender(origin, "/sell"),
+  "/sell/how-it-works": (origin) => sellPrerender(origin, "/sell/how-it-works"),
+  "/sell/pricing": (origin) => sellPrerender(origin, "/sell/pricing"),
+  "/sell/delivery-and-payouts": (origin) => sellPrerender(origin, "/sell/delivery-and-payouts"),
+  "/sell/faq": (origin) => sellPrerender(origin, "/sell/faq"),
   "/shop": shopHubPrerender,
   "/collections": collectionsHubPrerender,
   "/new-arrivals": (origin) => newestHubPrerender(origin, "/new-arrivals", "New Arrivals"),

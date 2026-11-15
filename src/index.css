@@ -1510,6 +1510,10 @@ span[style*="Material Symbols Outlined"] {
 .agx-sell-menu-signin { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
 
 @media (max-width: 939px) {
+  /* The 80px desktop bar is too tall once it carries only a wordmark and a
+     hamburger — trim it so the hero starts higher up the phone screen. */
+  .agx-sell-headbar { height: 62px !important; }
+  .agx-sell-light .agx-brand-mark { height: 40px !important; width: 128px !important; }
   .agx-sell-nav { display: none !important; }
   .agx-sell-actions { display: none !important; }
   .agx-sell-burger { display: inline-flex; }
@@ -1521,6 +1525,19 @@ span[style*="Material Symbols Outlined"] {
   .agx-sell-menu.open { max-height: 480px; }
 }
 @media (max-width: 540px) { .agx-sell-forsellers { display: none; } }
+
+/* Keyword links on /sell — "Sell sarees online" etc. Quiet pills that read as a
+   list a seller scans, not a tag cloud. Each links to a live collection page. */
+.agx-sell-tagrow { display: flex; flex-wrap: wrap; gap: 10px; }
+.agx-sell-tag {
+  display: inline-flex; align-items: center; min-height: 40px;
+  padding: 8px 15px; border-radius: 999px;
+  border: 1px solid var(--ag-border); background: var(--ag-surface);
+  color: var(--ag-ink-2); text-decoration: none;
+  font-size: 14px; line-height: 1.2; white-space: nowrap;
+  transition: border-color var(--sell-t-fast) var(--sell-ease), color var(--sell-t-fast) var(--sell-ease);
+}
+.agx-sell-tag:hover { border-color: var(--ag-ink); color: var(--ag-ink); }
 
 /* ── The seller site's components ───────────────────────────────────────────
    States, structure and the one animation. These live here rather than inline
@@ -1694,7 +1711,7 @@ span[style*="Material Symbols Outlined"] {
   min-height: clamp(360px, 52vw, 560px);
 }
 .agx-sell-hero-panel {
-  position: absolute; z-index: 0; inset: 9% 2% 5% 16%;
+  position: absolute; z-index: 0; inset: 9% 2% 0 16%;
   border-radius: 28px;
   background: linear-gradient(155deg, var(--ag-crimson), var(--ag-deep));
   box-shadow: 0 44px 90px -34px color-mix(in srgb, var(--ag-crimson) 60%, transparent);

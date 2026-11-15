@@ -89,6 +89,7 @@ function SellHeader({ pathname }: { pathname: string }) {
       )}
     >
       <div
+        className="agx-sell-headbar"
         style={css(
           'max-width:1280px;margin:0 auto;padding:0 clamp(16px,3vw,24px);height:80px;' +
             'display:flex;align-items:center;gap:clamp(14px,3vw,32px);',

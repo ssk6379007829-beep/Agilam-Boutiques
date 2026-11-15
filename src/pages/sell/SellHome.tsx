@@ -82,6 +82,7 @@ export function SellHome() {
       <Division />
       <SellerVoices />
       <WhatYouNeed />
+      <SellReach />
       <ClosingBand />
     </>
   );
@@ -315,6 +316,58 @@ function HeroParticles() {
  * worried about - the buyer who changes her mind, the piece she cannot make in
  * time - and every one of them costs her nothing.
  */
+/* ── Reach: the searches that bring a seller here (SEO + GEO surface) ──────── */
+
+/** Garment types this marketplace actually carries, each linking to its live
+ *  collection page. Labels are rendered as "Sell <x> online" — the exact phrase
+ *  a boutique owner searches. Nothing here is a keyword without a page behind it
+ *  (rule 2 of sellContent.ts). Slugs match the buyer collection routes. */
+const SELL_GARMENTS: Array<[string, string]> = [
+  ['sarees', 'sarees'],
+  ['kurtis', 'kurtis'],
+  ['kurta sets', 'kurta-sets'],
+  ['lehengas', 'lehengas'],
+  ['salwar suits', 'salwar-suits'],
+  ['anarkali suits', 'anarkali-suits'],
+  ['half sarees', 'half-sarees'],
+  ['blouses', 'blouses'],
+];
+
+/**
+ * A real, crawlable surface for the intent that brings a boutique owner here —
+ * "how to sell sarees online", "sell kurtis online in Tamil Nadu". The garments
+ * link to live collection pages (so a seller sees the demand); the geography is
+ * named in prose. The same content is mirrored into the `/sell` crawl body in
+ * middleware.js, for the AI-search bots that never run the React app.
+ */
+function SellReach() {
+  return (
+    <Band tone="panel">
+      <Wrap wide>
+        <Eyebrow>Sell online from anywhere in India</Eyebrow>
+        <Display>From a boutique in your town to buyers across the country.</Display>
+        <Lede>
+          Boutiques open on MangaiMart from every corner of India &mdash; from Coimbatore, Chennai,
+          Erode, Tiruppur, Madurai and Salem across Tamil Nadu to Bengaluru, Hyderabad, Kochi,
+          Mumbai and Delhi, and the towns in between. Your shop&rsquo;s address only sets your
+          delivery zones; it never decides whether you can join.
+        </Lede>
+
+        <div style={css('margin-top:40px;')}>
+          <h3 style={css(`${LABEL}color:var(--ag-muted);margin:0 0 16px;`)}>What boutiques sell here</h3>
+          <div className="agx-sell-tagrow">
+            {SELL_GARMENTS.map(([label, slug]) => (
+              <Link key={slug} to={`/collections/${slug}`} className="agx-sell-tag">
+                Sell {label} online
+              </Link>
+            ))}
+          </div>
+        </div>
+      </Wrap>
+    </Band>
+  );
+}
+
 function TheDeal({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
   return (
     <Band>
