@@ -25,9 +25,11 @@ import { CORS, SrError, getToken, json, serviceClient, srFetch } from '../_share
 type ServiceabilityResponse = {
   data?: {
     available_courier_companies?: {
+      courier_company_id?: number | string;
       courier_name?: string;
       rate?: number;
       estimated_delivery_days?: string;
+      etd?: string;
     }[];
   };
 };
@@ -66,9 +68,20 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, degraded: true, origin, dest, serviceable: null, courierCount: 0, cheapest: null });
     }
 
-    const cheapest = couriers.length
-      ? couriers.reduce((a, b) => (Number(b.rate) < Number(a.rate) ? b : a))
-      : null;
+    // The full list the seller picks from — each real courier with its live
+    // rate (the PLATFORM's cost) and ETA. Sorted cheapest-first; the cheapest
+    // is flagged so the UI can tag and pre-highlight it.
+    const list = couriers
+      .map((c) => ({
+        courierId: c.courier_company_id != null ? String(c.courier_company_id) : null,
+        name: c.courier_name ?? null,
+        rate: Number.isFinite(Number(c.rate)) ? Number(c.rate) : null,
+        days: c.estimated_delivery_days ?? c.etd ?? null,
+      }))
+      .filter((c) => c.courierId && c.name)
+      .sort((a, b) => (a.rate ?? Infinity) - (b.rate ?? Infinity));
+
+    const cheapest = list.length ? list[0] : null;
 
     return json({
       ok: true,
@@ -76,11 +89,8 @@ Deno.serve(async (req: Request) => {
       dest,
       serviceable: couriers.length > 0,
       courierCount: couriers.length,
-      // Carried for later use (the "recommend cheapest" idea); callers ignore it
-      // for now, since this release is serviceability only.
-      cheapest: cheapest
-        ? { name: cheapest.courier_name ?? null, rate: Number(cheapest.rate) || null, days: cheapest.estimated_delivery_days ?? null }
-        : null,
+      couriers: list,
+      cheapest,
     });
   } catch (e) {
     console.error('courier-serviceability failed', e);

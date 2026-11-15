@@ -54,7 +54,10 @@ Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
   try {
-    const { orderId } = await req.json().catch(() => ({ orderId: null }));
+    // `courierId` (optional) is a Shiprocket courier_company_id — when the seller
+    // picked a specific courier in the ship sheet, assign that one instead of
+    // letting Shiprocket auto-choose.
+    const { orderId, courierId } = await req.json().catch(() => ({ orderId: null }));
     if (!orderId) return json({ error: 'orderId is required' }, 400);
 
     // ── Who is asking ───────────────────────────────────────────────────────
@@ -210,7 +213,12 @@ Deno.serve(async (req: Request) => {
       response?: { data?: { awb_code?: string; courier_name?: string; freight_charges?: number } };
     }>(token, '/courier/assign/awb', {
       method: 'POST',
-      body: { shipment_id: created.shipment_id },
+      body: {
+        shipment_id: created.shipment_id,
+        // Honour the seller's courier choice when they made one; otherwise
+        // Shiprocket assigns by its own rules (usually cheapest).
+        ...(courierId ? { courier_id: Number(courierId) } : {}),
+      },
     });
 
     const awb = awbRes?.response?.data?.awb_code;

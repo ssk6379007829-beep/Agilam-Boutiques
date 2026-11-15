@@ -41,18 +41,32 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 export type PickupInfo = { phone: string; addressLine: string; city: string; state: string; pincode: string };
 
 export type BookPayload = {
-  carrier: string; date: string; slotStart: string; slotEnd: string;
+  carrier: string;
+  /** Shiprocket courier_company_id when a specific courier was picked. */
+  courierId?: string;
+  date: string; slotStart: string; slotEnd: string;
   /** The pickup address the parcel is collected from, as confirmed in the sheet. */
   pickup: PickupInfo;
+};
+
+/** One bookable courier in the picker. DTDC (our contracted account) has no
+ *  live rate; each Shiprocket courier carries its live rate (the platform's
+ *  cost) and ETA. */
+export type CourierOption = {
+  key: string;
+  provider: 'dtdc' | 'shiprocket' | 'shadowfax';
+  courierId?: string;
+  label: string;
+  rate: number | null;
+  days: string | null;
 };
 
 export function ShipSheet({
   couriers,
   busy,
   canBook = false,
-  bookCarriers = [],
+  courierOptions = [],
   pickup,
-  cheapest,
   onCancel,
   onConfirm,
   onBook,
@@ -61,14 +75,11 @@ export function ShipSheet({
   busy: boolean;
   /** A courier the shop can book on is switched on, and this order is prepaid. */
   canBook?: boolean;
-  /** The carriers the seller may choose from for a booked parcel, most-preferred
-   *  first (DTDC leads). Empty falls back to a single automatic booking. */
-  bookCarriers?: { id: string; label: string }[];
+  /** The couriers the seller may pick from, DTDC first then Shiprocket couriers
+   *  cheapest-first. Empty falls back to the manual form. */
+  courierOptions?: CourierOption[];
   /** The shop's saved pickup address, prefilled into the booking form. */
   pickup?: PickupInfo;
-  /** The cheapest courier serving this lane (Shiprocket live rate), shown as a
-   *  hint. The rate is the platform's cost, not the seller's. */
-  cheapest?: { name: string | null; rate: number | null; days: string | null } | null;
   onCancel: () => void;
   onConfirm: (v: { courierId: string | null; courierName: string; awb: string; trackingUrl: string | null }) => void;
   onBook?: (payload: BookPayload) => void;
@@ -84,8 +95,22 @@ export function ShipSheet({
   // Once the seller edits the link themselves we stop overwriting it, or typing
   // the AWB would wipe what they pasted.
   const [linkTouched, setLinkTouched] = useState(false);
-  // Booking mode: the seller chooses the courier and schedules the pickup.
-  const [carrier, setCarrier] = useState(bookCarriers[0]?.id ?? '');
+  // Booking mode: the seller picks a courier (card) and schedules the pickup.
+  // DTDC is first in the list and the default; the seller can switch to any
+  // Shiprocket courier. Re-synced if the options arrive/refresh after mount.
+  const [selectedKey, setSelectedKey] = useState(courierOptions[0]?.key ?? '');
+  useEffect(() => {
+    if (courierOptions.length && !courierOptions.some((c) => c.key === selectedKey)) {
+      setSelectedKey(courierOptions[0].key);
+    }
+  }, [courierOptions, selectedKey]);
+  const selected = courierOptions.find((c) => c.key === selectedKey) ?? null;
+  // The lowest live rate across the options — tagged "Cheapest" in the list.
+  const cheapestKey = useMemo(() => {
+    const priced = courierOptions.filter((c) => c.rate != null);
+    if (!priced.length) return null;
+    return priced.reduce((a, b) => ((b.rate ?? Infinity) < (a.rate ?? Infinity) ? b : a)).key;
+  }, [courierOptions]);
   const [pickupDate, setPickupDate] = useState(todayISO());
   const [slotIdx, setSlotIdx] = useState(0);
   // The pickup address the courier collects from — prefilled from the shop and
@@ -157,26 +182,57 @@ export function ShipSheet({
 
         {mode === 'book' ? (
           <>
-            {bookCarriers.length > 0 && (
+            {courierOptions.length > 0 && (
               <div style={css('margin-top:16px;')}>
-                <div style={css(label)}>COURIER</div>
-                <select value={carrier} onChange={(e) => setCarrier(e.target.value)} style={css(field)}>
-                  {bookCarriers.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-                </select>
-                {/* Cheapest serviceable courier for this pincode (live rate). A
-                    hint only — DTDC stays the default. The rate is what the
-                    platform pays the courier, shown so the seller can pick the
-                    lower-cost option. */}
-                {cheapest?.name && cheapest.rate != null && (
-                  <div style={css('display:flex;align-items:center;gap:6px;margin-top:7px;font-size:12px;color:var(--ag-muted);line-height:1.5;')}>
-                    <span aria-hidden="true" style={css("font-family:'Material Symbols Outlined';font-size:15px;color:var(--ag-good);")}>savings</span>
-                    <span>
-                      Cheapest for this pincode: <strong style={css('color:var(--ag-ink-2);')}>{cheapest.name}</strong>
-                      {' · '}<span style={css('font-variant-numeric:tabular-nums;')}>₹{Math.round(cheapest.rate)}</span>
-                      {cheapest.days ? ` · ~${cheapest.days} days` : ''}
-                    </span>
-                  </div>
-                )}
+                <div style={css(label)}>CHOOSE A COURIER</div>
+                {/* A card per courier. DTDC (our account) is first and the
+                    default; each Shiprocket courier shows its live rate (the
+                    platform's cost) and ETA, cheapest tagged. The seller taps to
+                    pick. */}
+                <div style={css('display:flex;flex-direction:column;gap:8px;')}>
+                  {courierOptions.map((c) => {
+                    const on = c.key === selectedKey;
+                    const isCheapest = c.key === cheapestKey;
+                    return (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => setSelectedKey(c.key)}
+                        style={css(`display:flex;align-items:center;gap:11px;text-align:left;padding:12px 13px;border-radius:13px;border:1.5px solid ${on ? '#D6336C' : 'var(--ag-border)'};background:${on ? 'var(--ag-surface-2)' : 'var(--ag-surface)'};cursor:pointer;font-family:inherit;`)}
+                      >
+                        <span style={css(`width:18px;height:18px;flex:none;border-radius:50%;border:2px solid ${on ? 'var(--ag-crimson)' : 'var(--ag-border)'};display:flex;align-items:center;justify-content:center;`)}>
+                          {on && <span style={css('width:8px;height:8px;border-radius:50%;background:var(--ag-crimson);')} />}
+                        </span>
+                        <div style={css('flex:1;min-width:0;')}>
+                          <div style={css('display:flex;align-items:center;gap:7px;flex-wrap:wrap;')}>
+                            <span style={css('font-weight:800;font-size:13.5px;color:var(--ag-ink);')}>{c.label}</span>
+                            {c.provider === 'dtdc' && (
+                              <span style={css('font-size:10px;font-weight:800;color:var(--ag-crimson);background:var(--ag-surface-3);border-radius:6px;padding:2px 6px;letter-spacing:.03em;')}>OUR COURIER</span>
+                            )}
+                            {isCheapest && (
+                              <span style={css('font-size:10px;font-weight:800;color:var(--ag-good);background:var(--ag-good-bg);border-radius:6px;padding:2px 6px;letter-spacing:.03em;')}>CHEAPEST</span>
+                            )}
+                          </div>
+                          <div style={css('font-size:11.5px;color:var(--ag-muted);margin-top:2px;')}>
+                            {c.provider === 'dtdc'
+                              ? 'Contracted rate · pickup from your shop'
+                              : `${c.days ? `~${c.days} days` : 'Delivery time varies'}`}
+                          </div>
+                        </div>
+                        <div style={css('flex:none;text-align:right;')}>
+                          {c.rate != null ? (
+                            <span style={css('font-weight:800;font-size:14px;color:var(--ag-ink);font-variant-numeric:tabular-nums;')}>₹{Math.round(c.rate)}</span>
+                          ) : (
+                            <span style={css('font-size:11.5px;color:var(--ag-muted);font-weight:700;')}>—</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={css('font-size:11px;color:var(--ag-muted);margin-top:7px;line-height:1.5;')}>
+                  Prices are the delivery cost (paid by MangaiMart, not deducted from you). DTDC is on our own account.
+                </div>
               </div>
             )}
 
@@ -267,12 +323,14 @@ export function ShipSheet({
                 Cancel
               </button>
               {(() => {
-                const blocked = busy || !carrier || (!!pickup && !pickupReady);
+                const blocked = busy || !selected || (!!pickup && !pickupReady);
                 return (
                   <button
                     disabled={blocked}
-                    onClick={() => onBook?.({
-                      carrier, date: pickupDate,
+                    onClick={() => selected && onBook?.({
+                      carrier: selected.provider,
+                      courierId: selected.courierId,
+                      date: pickupDate,
                       slotStart: PICKUP_SLOTS[slotIdx].start, slotEnd: PICKUP_SLOTS[slotIdx].end,
                       pickup: { phone: puPhone.trim(), addressLine: puAddress.trim(), city: puCity.trim(), state: puState.trim(), pincode: puPin.trim() },
                     })}

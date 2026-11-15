@@ -104,10 +104,18 @@ export async function signedLabelUrl(labelPath: string): Promise<string | null> 
 /** The cheapest courier serving a lane, from Shiprocket's live rates. The rate
  *  is the PLATFORM's cost (the seller never pays courier charges) — shown to the
  *  seller only as a hint for which carrier to book. */
-export type ServiceabilityCourier = { name: string | null; rate: number | null; days: string | null };
+export type ServiceabilityCourier = {
+  /** Shiprocket courier_company_id — null for the cheapest summary when absent. */
+  courierId?: string | null;
+  name: string | null;
+  rate: number | null;
+  days: string | null;
+};
 export type Serviceability = {
   serviceable: boolean | null;
   courierCount: number;
+  /** Every courier serving the lane, cheapest first (Shiprocket). */
+  couriers: ServiceabilityCourier[];
   cheapest: ServiceabilityCourier | null;
 };
 
@@ -118,25 +126,27 @@ export async function checkServiceability(
 ): Promise<Serviceability> {
   const o = (originPincode ?? '').replace(/\D/g, '');
   const d = (destPincode ?? '').replace(/\D/g, '');
-  if (o.length !== 6 || d.length !== 6) return { serviceable: null, courierCount: 0, cheapest: null };
+  if (o.length !== 6 || d.length !== 6) return { serviceable: null, courierCount: 0, couriers: [], cheapest: null };
   try {
     const { data, error } = await supabase.functions.invoke('courier-serviceability', {
       body: { originPincode: o, destPincode: d, weightKg },
     });
-    if (error || !data?.ok || data?.degraded) return { serviceable: null, courierCount: 0, cheapest: null };
+    if (error || !data?.ok || data?.degraded) return { serviceable: null, courierCount: 0, couriers: [], cheapest: null };
+    const norm = (c: { courierId?: unknown; name?: unknown; rate?: unknown; days?: unknown }): ServiceabilityCourier => ({
+      courierId: c.courierId != null ? String(c.courierId) : null,
+      name: (c.name as string) ?? null,
+      rate: Number.isFinite(Number(c.rate)) ? Number(c.rate) : null,
+      days: (c.days as string) ?? null,
+    });
+    const couriers = Array.isArray(data.couriers) ? data.couriers.map(norm) : [];
     return {
       serviceable: typeof data.serviceable === 'boolean' ? data.serviceable : null,
       courierCount: Number(data.courierCount ?? 0),
-      cheapest: data.cheapest
-        ? {
-            name: data.cheapest.name ?? null,
-            rate: Number.isFinite(Number(data.cheapest.rate)) ? Number(data.cheapest.rate) : null,
-            days: data.cheapest.days ?? null,
-          }
-        : null,
+      couriers,
+      cheapest: data.cheapest ? norm(data.cheapest) : (couriers[0] ?? null),
     };
   } catch {
-    return { serviceable: null, courierCount: 0, cheapest: null };
+    return { serviceable: null, courierCount: 0, couriers: [], cheapest: null };
   }
 }
 
@@ -446,6 +456,9 @@ export type ParcelBooking = ShipmentBooking & {
 export type BookOptions = {
   /** 'dtdc' | 'shiprocket' | 'shadowfax'. Omitted = auto-pick (legacy). */
   carrier?: string;
+  /** A Shiprocket courier_company_id — the specific courier the seller picked.
+   *  Only meaningful when carrier is 'shiprocket'. */
+  courierId?: string;
   /** Pickup schedule, YYYY-MM-DD + HH:mm. Honoured by DTDC's pickup API. */
   date?: string;
   slotStart?: string;

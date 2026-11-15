@@ -10,7 +10,7 @@ import { fetchOrder, updateOrderStatus, markOrderPacked } from '@/data/orders';
 import type { OrderStatus } from '@/data/types';
 import { toOrderView } from '@/lib/orderView';
 import { useMyBoutique } from '@/hooks/useMyBoutique';
-import { ShipSheet, type BookPayload } from '@/components/seller/ShipSheet';
+import { ShipSheet, type BookPayload, type CourierOption } from '@/components/seller/ShipSheet';
 import { ImageSlot } from '@/components/ui/ImageSlot';
 import { fetchBoutiquePrivate, updateBoutique, type BoutiquePatch } from '@/data/boutiques';
 import {
@@ -172,13 +172,27 @@ export function OrderDetail() {
     },
     [boutique?.id],
   );
-  // The carriers the seller may choose from, DTDC first (the contracted
-  // primary). The ship sheet shows these in a dropdown.
-  const bookCarriers = [
-    courierAvailability?.dtdc ? { id: 'dtdc', label: 'DTDC' } : null,
-    courierAvailability?.shiprocket ? { id: 'shiprocket', label: 'Shiprocket' } : null,
-    courierAvailability?.shadowfax ? { id: 'shadowfax', label: 'Shadowfax' } : null,
-  ].filter((c): c is { id: string; label: string } => c !== null);
+  // The couriers the seller picks from in the ship sheet: DTDC first (our
+  // contracted account, no live price), then each Shiprocket courier serving
+  // this lane with its live rate + ETA. Shiprocket couriers are only offered
+  // when the shop can actually book on Shiprocket (enabled + pickup location).
+  const courierOptions: CourierOption[] = [
+    ...(courierAvailability?.dtdc
+      ? [{ key: 'dtdc', provider: 'dtdc' as const, label: 'DTDC', rate: null, days: null }]
+      : []),
+    ...(courierAvailability?.shiprocket
+      ? (serviceLane?.couriers ?? [])
+          .filter((c) => c.courierId && c.name)
+          .map((c) => ({
+            key: `sr:${c.courierId}`,
+            provider: 'shiprocket' as const,
+            courierId: c.courierId as string,
+            label: c.name as string,
+            rate: c.rate,
+            days: c.days,
+          }))
+      : []),
+  ];
 
   const [labelBusy, setLabelBusy] = useState(false);
   // DTDC can only produce the label once it has finished "booking sync", a few
@@ -384,8 +398,8 @@ export function OrderDetail() {
       // The seller chose the courier and the pickup slot; book-parcel honours
       // that choice and schedules the DTDC pickup rather than auto-picking.
       const booked = await bookParcel(o.id, {
-        carrier: payload.carrier, date: payload.date,
-        slotStart: payload.slotStart, slotEnd: payload.slotEnd,
+        carrier: payload.carrier, courierId: payload.courierId,
+        date: payload.date, slotStart: payload.slotStart, slotEnd: payload.slotEnd,
       });
 
       setShipOpen(false);
@@ -1026,9 +1040,8 @@ export function OrderDetail() {
           // collected cash to the account holder — us — which would make the
           // platform the money handler on an order it never took payment for.
           canBook={canBookCourier && !o.isCod && !manualOnly}
-          bookCarriers={bookCarriers}
+          courierOptions={courierOptions}
           pickup={pickupInfo ?? undefined}
-          cheapest={serviceLane?.cheapest ?? null}
           onCancel={() => setShipOpen(false)}
           onConfirm={shipOrder}
           onBook={bookOrder}

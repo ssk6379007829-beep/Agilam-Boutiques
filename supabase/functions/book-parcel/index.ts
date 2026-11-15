@@ -104,7 +104,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  const { orderId, carrier, date, slotStart, slotEnd } = await req.json().catch(() => ({ orderId: null }));
+  const { orderId, carrier, date, slotStart, slotEnd, courierId } = await req.json().catch(() => ({ orderId: null }));
   if (!orderId) return json({ error: 'orderId is required' }, 400);
 
   const authHeader = req.headers.get('Authorization') ?? '';
@@ -124,7 +124,10 @@ Deno.serve(async (req: Request) => {
       : carrier === 'shiprocket' ? 'shiprocket-book'
       : carrier === 'shadowfax' ? 'shadowfax-book' : null;
     if (!fn) return json({ error: `Unknown courier: ${carrier}` }, 400);
-    const r = await tryCarrier(fn, orderId, authHeader, { ...pickup, skipFallback: true });
+    // A Shiprocket courier_company_id the seller picked in the ship sheet is
+    // forwarded so shiprocket-book assigns that exact courier.
+    const extra = carrier === 'shiprocket' && courierId ? { courierId } : {};
+    const r = await tryCarrier(fn, orderId, authHeader, { ...pickup, ...extra, skipFallback: true });
     if (r.ok) return json({ ...r.body, provider: carrier });
     if (r.body?.booked === true) return json(r.body, r.status);
     if (r.status === 401 || r.status === 403 || r.status === 404) {
