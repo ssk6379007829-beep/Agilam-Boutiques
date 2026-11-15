@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { Icon } from '@/components/ui/Icon';
@@ -78,6 +78,9 @@ function useLightOnly() {
 const LIGHT_BG = '#F5F2EB';
 
 function SellHeader({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+  // Close the mobile menu whenever the route changes.
+  useEffect(() => { setOpen(false); }, [pathname]);
   return (
     <header
       style={css(
@@ -103,6 +106,7 @@ function SellHeader({ pathname }: { pathname: string }) {
             style={css('display:block;width:132px;height:53px;object-fit:contain;object-position:left center;')}
           />
           <span
+            className="agx-sell-forsellers"
             style={css(
               `${LABEL}font-size:10px;` +
                 // Ink, not crimson. Crimson is money; a tag beside the wordmark
@@ -139,7 +143,7 @@ function SellHeader({ pathname }: { pathname: string }) {
           ))}
         </nav>
 
-        <div style={css('display:flex;align-items:center;gap:10px;margin-left:auto;flex:none;')}>
+        <div className="agx-sell-actions" style={css('display:flex;align-items:center;gap:10px;margin-left:auto;flex:none;')}>
           <Link
             to={SELLER_SIGNIN}
             className="agx-hide-sm"
@@ -156,37 +160,59 @@ function SellHeader({ pathname }: { pathname: string }) {
             Start selling
           </Link>
         </div>
+
+        {/* Below 940px the nav and the inline actions move into the panel below;
+            this button is what opens it. A stacked menu is easier to hit on a
+            phone than the old sideways-scrolling rail. */}
+        <button
+          type="button"
+          className="agx-sell-burger"
+          aria-expanded={open}
+          aria-controls="sell-mobile-menu"
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <Icon name={open ? 'close' : 'menu'} style={css('font-size:27px;')} />
+        </button>
       </div>
 
-      {/* Below 940px the nav drops out of the bar and becomes this scrollable
-          rail, which keeps all five destinations reachable on a phone without a
-          hamburger nobody opens. */}
-      <div
-        className="agx-sell-rail agx-scroll"
-        style={css(
-          'display:none;overflow-x:auto;border-top:1px solid var(--ag-border-soft);' +
-            'padding:0 clamp(14px,4vw,20px);gap:18px;',
-        )}
-      >
-        {SELL_NAV.map((item) => {
-          const active = item.to === '/sell' ? pathname === '/sell' : pathname.startsWith(item.to);
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              style={css(
-                // 44px tall on a phone, where this rail IS the navigation.
-                `${CONTROL}text-decoration:none;white-space:nowrap;` +
-                  'display:inline-flex;align-items:center;min-height:44px;' +
-                  (active
-                    ? 'color:var(--ag-ink);box-shadow:inset 0 -2px 0 var(--ag-ink);'
-                    : 'color:var(--ag-muted);'),
-              )}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
+      {/* The mobile menu: five destinations, sign in, and the one CTA, in a
+          panel that slides down from the sticky bar. */}
+      <div id="sell-mobile-menu" className={`agx-sell-menu${open ? ' open' : ''}`}>
+        <nav className="agx-sell-menu-nav">
+          {SELL_NAV.map((item) => {
+            const active = item.to === '/sell' ? pathname === '/sell' : pathname.startsWith(item.to);
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="agx-sell-menu-link"
+                aria-current={active ? 'page' : undefined}
+                style={css(`${CONTROL}color:${active ? 'var(--ag-ink)' : 'var(--ag-muted)'};`)}
+              >
+                {item.label}
+                {active && <span className="agx-sell-menu-dot" aria-hidden="true" />}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="agx-sell-menu-foot">
+          <Link
+            to={SELLER_SIGNIN}
+            className="agx-sell-menu-signin"
+            style={css(`${CONTROL}color:var(--ag-muted);`)}
+          >
+            Sign in
+          </Link>
+          <Link
+            to={START_SELLING}
+            className="agx-sell-btn"
+            style={css(`${CONTROL}width:100%;justify-content:center;`)}
+          >
+            Start selling
+            <Icon name="arrow_forward" style={css('font-size:18px;')} />
+          </Link>
+        </div>
       </div>
     </header>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { css } from '@/lib/css';
 import { usePageMeta } from '@/lib/pageMeta';
@@ -6,7 +6,6 @@ import { graph, organizationSchema, breadcrumbSchema } from '@/lib/schema';
 import { useCatalog } from '@/state/CatalogContext';
 import { BoutiqueLogo } from '@/components/buyer/BoutiqueLogo';
 import { Icon } from '@/components/ui/Icon';
-import { fmtInr } from '@/lib/tokens';
 import {
   ArrowLink,
   Band,
@@ -17,9 +16,7 @@ import {
   Eyebrow,
   GhostCta,
   IconPoint,
-  Ledger,
   Lede,
-  LedgerRow,
   Point,
   PointList,
   PrimaryCta,
@@ -28,7 +25,7 @@ import {
   Text,
   Wrap,
 } from './parts';
-import { BODY, FACE, HEADING_SM, LABEL, SUBHEAD } from './type';
+import { FACE, HEADING_SM, LABEL, SUBHEAD } from './type';
 import { SELLER_STORIES, START_SELLING, WHAT_YOU_NEED } from './sellContent';
 import { useSellerTerms } from './useSellerTerms';
 
@@ -128,11 +125,17 @@ function Hero({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
     // crimson is money — a berry hero would be the loudest thing on the page
     // and it would not be a number. Ink gives the same weight, none of the
     // meaning, and lets the bill beside it be the only colour that counts.
-    <Band style={css('position:relative;overflow:hidden;background:var(--ag-ink);color:var(--ag-bg);')}>
+    <Band
+      style={css(
+        'position:relative;overflow:hidden;background:var(--ag-ink);color:var(--ag-bg);' +
+          'min-height:clamp(560px,86svh,900px);display:flex;flex-direction:column;justify-content:center;',
+      )}
+    >
+      <HeroParticles />
       <Wrap
         wide
         style={css(
-          'position:relative;padding-top:clamp(40px,5vw,72px);padding-bottom:clamp(40px,5vw,64px);',
+          'position:relative;z-index:1;padding-top:clamp(28px,3.5vw,52px);padding-bottom:clamp(28px,3.5vw,52px);',
         )}
       >
         <div className="agx-sell-hero">
@@ -182,212 +185,119 @@ function Hero({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
                 See how it works
               </GhostCta>
             </div>
+
+            <HeroStats terms={terms} />
           </div>
 
-          <Reckoning terms={terms} />
+          {/* The stage — the seller on the ink field, lifted off a berry accent
+              panel with a soft glow, two truthful proof chips overlapping her.
+              Panel + glow are decorative (aria-hidden); the figure is the hero's
+              LCP (145KB transparent WebP, eager). */}
+          <div className="agx-sell-hero-stage">
+            <div className="agx-sell-hero-panel" aria-hidden="true" />
+            <div className="agx-sell-hero-glow" aria-hidden="true" />
+            <img
+              className="agx-sell-hero-figure-img"
+              src="/sell-hero.webp"
+              alt="A boutique owner in her shop, ready to sell her collection across India on MangaiMart"
+              width={675}
+              height={1300}
+              loading="eager"
+              decoding="async"
+            />
+            <div className="agx-sell-hero-chip agx-sell-hero-chip--a">
+              <Icon name="verified_user" style={css('font-size:20px;color:var(--ag-good-text);flex:none;')} />
+              <div>
+                <strong>Paid before you pack</strong>
+                <span>Every order is prepaid &mdash; there is no cash on delivery.</span>
+              </div>
+            </div>
+            <div className="agx-sell-hero-chip agx-sell-hero-chip--b">
+              <Icon name="savings" style={css('font-size:20px;color:var(--ag-gold-text);flex:none;')} />
+              <div>
+                <strong>Cancelled or returned? &#8377;0</strong>
+                <span>The fee lands only on an order that actually arrives.</span>
+              </div>
+            </div>
+          </div>
         </div>
-
-        <HeroFooterLine terms={terms} />
       </Wrap>
     </Band>
   );
 }
 
-/* -- The reckoning --------------------------------------------------------- */
-
-/** What the bill opens on. A mid-range saree - recognisable, not aspirational. */
-const DEFAULT_PRICE = 2400;
+/* ── Hero stat tiles ──────────────────────────────────────────────────────── */
 
 /**
- * The bill, and the one interactive thing on the seller site.
- *
- * She types a price; the fee and the take-home resolve under it as she types.
- * Every figure comes from `useSellerTerms`, so this cannot drift from what
- * `settle_boutique_payout` actually pays her - `netOf` is the same rounding the
- * payout row uses.
- *
- * The input is deliberately not styled as a form field. No box, no chrome, just
- * the rupee sign and a gold rule under the digits: a form field on a marketing
- * page reads as a signup step, and this is meant to read as a number written on
- * a bill. It is still a real `<input>` with a real `<label>`, so it focuses,
- * tabs and reads out properly, and the result carries `aria-live` so a screen
- * reader hears the new figure rather than silently missing it.
+ * Three real figures under the hero copy, in gold. Every one is true and
+ * checkable: nothing to join, the single live platform fee, and that every
+ * order is prepaid (there is no cash on delivery — migration 0085). No seller
+ * count and no GMV — rule 2 of sellContent.ts still stands.
  */
-function Reckoning({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
-  const [raw, setRaw] = useState(String(DEFAULT_PRICE));
-
-  // An empty field is 0 rather than NaN, so the bill stays readable while she
-  // has cleared it to type a new number. Six digits is the cap, which is a
-  // 9,99,999 saree - past any real one, and the point where the line wraps.
-  const price = Number(raw) || 0;
-  const fee = terms.cutOf(price);
-  const net = terms.netOf(price);
-
-  // The one animated moment on the site: the take-home counts up once on load
-  // and never again - see `useCountUp`. `settled` gates the live region below.
-  const [shownNet, settled] = useCountUp(net);
-
+function HeroStats({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
+  const stats: Array<[string, string]> = [
+    ['₹0', 'to join, to list, to stay'],
+    [`${terms.commissionPct}%`, 'one fee, only on delivery'],
+    ['100%', 'prepaid before you pack'],
+  ];
   return (
-    <div className="agx-sell-reckoning">
-      {/* One white bill, on the ink field. This wrapper is not decoration: the
-          price figure is `--ag-deep` and the label `--ag-ink-2`, which on ink
-          measure 2.06:1 and worse. On paper they are 7.8:1 and 8.8:1. Paper on
-          cloth is also the only real contrast the hero has, now that the field
-          behind it is a flat ink rather than a gradient. */}
-      <div className="agx-sell-bill">
-        <label className="agx-sell-price-row" htmlFor="sell-price">
-          <span style={css(`${LABEL}color:var(--ag-muted);`)}>What you&rsquo;d take home</span>
-          <div style={css(`margin-top:8px;${BODY}font-size:15px;color:var(--ag-ink-2);`)}>
-            A saree, priced by you at
-          </div>
-          <span
-            className="agx-sell-price"
+    <div className="agx-sell-hero-stats">
+      {stats.map(([n, label]) => (
+        <div key={label} className="agx-sell-hero-stat">
+          <div
+            className="agx-sell-hero-stat-n"
             style={css(
-              `font-family:${FACE};font-variation-settings:'wdth' 112,'wght' 600;` +
-                "font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;" +
-                'font-size:clamp(38px,5vw,50px);line-height:1.1;color:var(--ag-deep);',
+              `font-family:${FACE};font-variation-settings:'wdth' 110,'wght' 640;` +
+                "font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;",
             )}
           >
-            <span aria-hidden="true">&#8377;</span>
-            <input
-              id="sell-price"
-              value={raw}
-              onChange={(e) => setRaw(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              // `inputMode` rather than `type="number"`: this is read on a phone,
-              // where the numeric keypad is the whole benefit — while the spinners,
-              // and scroll-wheel-changes-the-value, are not.
-              inputMode="numeric"
-              autoComplete="off"
-              // No `aria-label`. One would override the `<label>` and leave the
-              // accessible name saying something different from the words on
-              // screen, which is the Label-in-Name failure exactly.
-              size={6}
-            />
-          </span>
-        </label>
-
-        {/* The live region is switched OFF until the intro count-up has finished.
-            A polite region announces every mutation, and the settle mutates this
-            figure on every frame for 520ms — armed through that, it would fire a
-            few dozen announcements before the page had settled. After it, it is
-            armed for the rest of the session, which is the part that matters: she
-            types a price and hears what she would be left with. */}
-        <div aria-live={settled ? 'polite' : 'off'}>
-          <Ledger style={css('margin-top:20px;')}>
-            <LedgerRow
-              label="Into your bank"
-              value={fmtInr(shownNet)}
-              strong
-              note={`After the ${terms.commissionPct}% platform fee of ${fmtInr(fee)} — the only deduction, and nothing else comes off.`}
-            />
-          </Ledger>
+            {n}
+          </div>
+          <div className="agx-sell-hero-stat-l">{label}</div>
         </div>
-
-        <p
-          style={css(
-            `margin:14px 0 0;${BODY}font-size:13px;color:var(--ag-muted);max-width:44ch;`,
-          )}
-        >
-          Sent {terms.holdDays} days after it is delivered, straight to the account you registered.
-          Delivery is billed to your buyer separately, on top &mdash; never part of this sum.
-        </p>
-      </div>
+      ))}
     </div>
   );
 }
 
-/**
- * Counts a figure up from zero, once, the first time it is worth showing.
- *
- * Only the FIRST non-zero value animates. Every value after that - every
- * keystroke in the price field - lands immediately, because a number that
- * tweens on each keystroke is unreadable while you type and reads as lag.
- *
- * Honours `prefers-reduced-motion`, in which case nothing ever tweens.
- *
- * Returns the figure and whether the intro has finished. The caller needs the
- * second one to keep an `aria-live` region quiet while the number is mid-tween.
- */
-function useCountUp(value: number, ms = 520): [number, boolean] {
-  const [shown, setShown] = useState(0);
-  const [settled, setSettled] = useState(false);
-  const done = useRef(false);
-
-  useEffect(() => {
-    // Settings load a moment after mount, so the first value through here is
-    // usually the default-terms one; `done` is set on the first non-zero value
-    // and every later one is applied flat.
-    if (done.current || value === 0) {
-      setShown(value);
-      if (value !== 0) done.current = true;
-      return;
-    }
-    done.current = true;
-
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      setShown(value);
-      setSettled(true);
-      return;
-    }
-
-    let frame = 0;
-    const started = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min((now - started) / ms, 1);
-      // easeOutCubic: quick off the mark, settles rather than stops.
-      setShown(Math.round(value * (1 - Math.pow(1 - t, 3))));
-      if (t < 1) frame = requestAnimationFrame(tick);
-      else setSettled(true);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [value, ms]);
-
-  return [shown, settled];
-}
+/* ── Hero backdrop particles ──────────────────────────────────────────────── */
 
 /**
- * The line along the foot of the hero - what the catch is, before she goes
- * looking for it.
- *
- * This replaced two separate four-up grids of big figures: the hero's own strip
- * and the `Mechanics` band below it. Both were the same shape, a screen apart,
- * and between them they said less than this sentence does.
- *
- * Set as running text rather than as cards, on purpose. These are the answers
- * to "what else are you going to charge me" - and a reader scanning for the
- * catch reads a sentence, where a grid of figures is the thing she has learned
- * to skip.
- *
- * Every zero here is real: nothing to join (there are no plans), nothing on an
- * order that did not arrive (the fee is charged on delivery), and nothing on the
- * counter sales she bills herself (they never enter a payout).
- *
- * The delivery charge is deliberately NOT claimed as hers here. See the OPEN
- * DECISION note in SellPricing.tsx: `settle_boutique_payout` pays `total - fee`
- * and only RECORDS `shipping_fee` - it does not add the delivery charge to her
- * payout - so "the delivery charge stays yours in full" was false today. This
- * line stays on what is certainly true until the owner settles where delivery
- * lands, and the bill's footnote above matches /sell/pricing: delivery is billed
- * to the buyer separately, on top, and is never part of the payout sum.
+ * Decorative only — `aria-hidden`. A sparse scatter of petals and dots in gold
+ * and berry on the ink field; the two soft glows behind them come from CSS.
+ * Pure SVG, no animation that could cost a frame on a cheap phone.
  */
-function HeroFooterLine({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
-  // Paper-white rather than crimson: these are zeros on an ink field, and
-  // crimson is reserved for the amounts in the bill beside them. Emphasis here
-  // is weight and width, not colour.
-  const zero = css(
-    `font-family:${FACE};font-variation-settings:'wdth' 108,'wght' 600;` +
-      "font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;" +
-      'font-size:1.15em;color:var(--ag-bg);',
-  );
+function HeroParticles() {
+  const petal = 'M0 0 C 11 -15 11 -36 0 -50 C -11 -36 -11 -15 0 0 Z';
   return (
-    <p className="agx-sell-hero-foot">
-      <span style={zero}>&#8377;0</span> to join, to list, and every month.{' '}
-      <span style={zero}>&#8377;0</span> on an order that is cancelled or comes back.{' '}
-      <span style={zero}>0%</span> on the counter sales you bill yourself &mdash; those never enter a payout.
-      The {terms.commissionPct}% above is the whole of what we take, and only once she has it in her
-      hands. About fifteen minutes to open the shop, on your phone.
-    </p>
+    <div className="agx-sell-hero-particles" aria-hidden="true">
+      <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <path id="sell-petal" d={petal} />
+        </defs>
+        <g fill="var(--ag-gold)">
+          <circle cx="110" cy="150" r="3.5" opacity=".55" />
+          <circle cx="330" cy="80" r="2.5" opacity=".4" />
+          <circle cx="1290" cy="120" r="4" opacity=".5" />
+          <circle cx="1390" cy="430" r="2.5" opacity=".45" />
+          <circle cx="620" cy="60" r="2" opacity=".35" />
+          <circle cx="90" cy="520" r="2.5" opacity=".4" />
+          <circle cx="1180" cy="780" r="3" opacity=".4" />
+        </g>
+        <g fill="var(--ag-bg)">
+          <circle cx="210" cy="300" r="2" opacity=".25" />
+          <circle cx="1360" cy="260" r="2.5" opacity=".22" />
+          <circle cx="470" cy="820" r="2" opacity=".2" />
+          <circle cx="980" cy="150" r="2" opacity=".22" />
+        </g>
+        <g>
+          <use href="#sell-petal" transform="translate(250 650) rotate(28) scale(1.8)" fill="var(--ag-crimson)" opacity=".5" />
+          <use href="#sell-petal" transform="translate(1320 600) rotate(-18) scale(1.5)" fill="var(--ag-gold)" opacity=".3" />
+          <use href="#sell-petal" transform="translate(160 760) rotate(10) scale(1.2)" fill="var(--ag-gold)" opacity=".35" />
+          <use href="#sell-petal" transform="translate(1250 320) rotate(-40) scale(1.1)" fill="var(--ag-crimson)" opacity=".4" />
+        </g>
+      </svg>
+    </div>
   );
 }
 

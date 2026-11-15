@@ -1487,10 +1487,40 @@ span[style*="Material Symbols Outlined"] {
 
 /* Header: the inline nav above 940px, a scrollable rail below it. Swapped
    rather than hidden behind a hamburger — five destinations is not a menu. */
+/* Header: the hamburger and the slide-down mobile menu that replace the nav and
+   the inline actions below 940px. Desktop hides the burger and the menu. */
+.agx-sell-burger {
+  display: none; margin-left: auto; align-items: center; justify-content: center;
+  width: 44px; height: 44px; flex: none; padding: 0; border: 0; background: none;
+  color: var(--ag-ink); cursor: pointer; border-radius: 10px;
+}
+.agx-sell-burger:hover { background: var(--ag-surface-2); }
+.agx-sell-menu { display: none; }
+.agx-sell-menu-nav { display: flex; flex-direction: column; padding: 2px clamp(16px, 4vw, 22px) 0; }
+.agx-sell-menu-link {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 54px; text-decoration: none; border-bottom: 1px solid var(--ag-border-soft);
+}
+.agx-sell-menu-link:last-child { border-bottom: 0; }
+.agx-sell-menu-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ag-ink); flex: none; }
+.agx-sell-menu-foot {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 14px clamp(16px, 4vw, 22px) 20px; border-top: 1px solid var(--ag-border-soft);
+}
+.agx-sell-menu-signin { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
+
 @media (max-width: 939px) {
   .agx-sell-nav { display: none !important; }
-  .agx-sell-rail { display: flex !important; }
+  .agx-sell-actions { display: none !important; }
+  .agx-sell-burger { display: inline-flex; }
+  .agx-sell-menu {
+    display: block; overflow: hidden; max-height: 0;
+    background: var(--ag-surface); border-top: 1px solid var(--ag-border-soft);
+    transition: max-height .3s var(--sell-ease);
+  }
+  .agx-sell-menu.open { max-height: 480px; }
 }
+@media (max-width: 540px) { .agx-sell-forsellers { display: none; } }
 
 /* ── The seller site's components ───────────────────────────────────────────
    States, structure and the one animation. These live here rather than inline
@@ -1653,6 +1683,79 @@ span[style*="Material Symbols Outlined"] {
 .agx-sell-reckoning { max-width: 440px; width: 100%; margin-inline: auto; }
 @media (min-width: 1024px) { .agx-sell-reckoning { margin-inline: auto 0; } }
 
+/* ── Hero stage — full-screen premium layout (replaced the take-home bill) ──
+   The seller is a transparent cutout lifted off a berry accent panel with a
+   soft glow and two frosted proof chips, on an ink field dusted with particles.
+   Every colour is an --ag-* token; soft fills use color-mix so no literal hex is
+   introduced (CLAUDE.md rule 4). color-mix degrades to no-fill on old engines. */
+.agx-sell-hero-stage {
+  position: relative; min-width: 0;
+  display: flex; align-items: flex-end; justify-content: center;
+  min-height: clamp(360px, 52vw, 560px);
+}
+.agx-sell-hero-panel {
+  position: absolute; z-index: 0; inset: 9% 2% 5% 16%;
+  border-radius: 28px;
+  background: linear-gradient(155deg, var(--ag-crimson), var(--ag-deep));
+  box-shadow: 0 44px 90px -34px color-mix(in srgb, var(--ag-crimson) 60%, transparent);
+}
+.agx-sell-hero-glow {
+  position: absolute; z-index: 0; left: 50%; top: 40%;
+  width: 72%; aspect-ratio: 1; transform: translate(-50%, -50%);
+  border-radius: 50%; filter: blur(32px);
+  background: radial-gradient(circle, color-mix(in srgb, var(--ag-gold) 32%, transparent), transparent 62%);
+}
+.agx-sell-hero-figure-img {
+  position: relative; z-index: 1;
+  display: block; width: auto; height: auto; max-width: 100%;
+  max-height: clamp(340px, 52vw, 560px); object-fit: contain;
+  filter: drop-shadow(0 26px 50px color-mix(in srgb, var(--ag-ink) 72%, transparent));
+}
+.agx-sell-hero-chip {
+  position: absolute; z-index: 2;
+  display: flex; align-items: flex-start; gap: 10px;
+  max-width: 234px; padding: 11px 14px;
+  background: var(--ag-surface); color: var(--ag-ink);
+  border: 1px solid var(--ag-frost-border); border-radius: 14px;
+  box-shadow: 0 20px 42px -20px color-mix(in srgb, var(--ag-ink) 66%, transparent);
+}
+.agx-sell-hero-chip strong { display: block; font-size: 13.5px; font-weight: 700; line-height: 1.3; color: var(--ag-ink); }
+.agx-sell-hero-chip span { display: block; margin-top: 3px; font-size: 11.5px; line-height: 1.45; color: var(--ag-muted); }
+.agx-sell-hero-chip--a { top: 5%; left: 0; }
+.agx-sell-hero-chip--b { bottom: 5%; left: 0; }
+
+.agx-sell-hero-stats {
+  display: flex; flex-wrap: wrap; gap: clamp(20px, 4vw, 44px);
+  margin-top: clamp(22px, 3vw, 34px); padding-top: clamp(16px, 2.2vw, 22px);
+  border-top: 1px solid color-mix(in srgb, var(--ag-bg) 22%, transparent);
+}
+.agx-sell-hero-stat-n { font-size: clamp(30px, 3.4vw, 40px); line-height: 1; color: var(--ag-gold); }
+.agx-sell-hero-stat-l { margin-top: 7px; font-size: 12.5px; line-height: 1.4; max-width: 15ch; color: color-mix(in srgb, var(--ag-bg) 78%, transparent); }
+
+.agx-sell-hero-particles { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.agx-sell-hero-particles svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.agx-sell-hero-particles::before, .agx-sell-hero-particles::after { content: ""; position: absolute; border-radius: 50%; filter: blur(64px); }
+.agx-sell-hero-particles::before {
+  width: 46vw; height: 46vw; right: -8vw; top: -12vw;
+  background: radial-gradient(circle, color-mix(in srgb, var(--ag-crimson) 50%, transparent), transparent 70%);
+}
+.agx-sell-hero-particles::after {
+  width: 34vw; height: 34vw; left: -8vw; bottom: -14vw;
+  background: radial-gradient(circle, color-mix(in srgb, var(--ag-gold) 20%, transparent), transparent 70%);
+}
+
+@media (min-width: 1024px) {
+  .agx-sell-hero-stage { justify-content: flex-end; align-self: stretch; min-height: 0; }
+  .agx-sell-hero-panel { inset: 6% -4% 0 20%; }
+  .agx-sell-hero-figure-img { max-height: 600px; }
+  .agx-sell-hero-chip--a { top: 15%; left: -5%; }
+  .agx-sell-hero-chip--b { bottom: 10%; left: -7%; }
+}
+@media (max-width: 680px) {
+  .agx-sell-hero-chip { max-width: 182px; padding: 9px 11px; }
+  .agx-sell-hero-chip span { display: none; }
+}
+
 /* The catch, in running text along the foot of the hero. A reader scanning for
    it reads a sentence; a grid of figures is the thing she has learned to skip. */
 .agx-sell-hero-foot {
@@ -1776,7 +1879,7 @@ span[style*="Material Symbols Outlined"] {
 .agx-sell-navlink::after { content: ''; position: absolute; inset: -11px 0; }
 
 html:has(.agx-sell-light) { scroll-padding-top: 96px; }
-@media (max-width: 939px) { html:has(.agx-sell-light) { scroll-padding-top: 140px; } }
+@media (max-width: 939px) { html:has(.agx-sell-light) { scroll-padding-top: 96px; } }
 
 /* ── The seller CONSOLE's controls ──────────────────────────────────────────
    Not to be confused with `.agx-sell-*` above, which dresses the public
