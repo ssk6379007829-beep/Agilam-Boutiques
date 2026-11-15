@@ -275,12 +275,11 @@ function Reckoning({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
         <div aria-live={settled ? 'polite' : 'off'}>
           <Ledger style={css('margin-top:20px;')}>
             <LedgerRow
-              label={`Platform fee (${terms.commissionPct}%)`}
-              value={`− ${fmtInr(fee)}`}
-              negative
-              note="The only deduction. Nothing else comes off."
+              label="Into your bank"
+              value={fmtInr(shownNet)}
+              strong
+              note={`After the ${terms.commissionPct}% platform fee of ${fmtInr(fee)} — the only deduction, and nothing else comes off.`}
             />
-            <LedgerRow label="Into your bank" value={fmtInr(shownNet)} strong />
           </Ledger>
         </div>
 
@@ -289,8 +288,8 @@ function Reckoning({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
             `margin:14px 0 0;${BODY}font-size:13px;color:var(--ag-muted);max-width:44ch;`,
           )}
         >
-          Sent {terms.holdDays} days after it is delivered, straight to the account you registered
-          &mdash; and your delivery charge sits on top of this, in full.
+          Sent {terms.holdDays} days after it is delivered, straight to the account you registered.
+          Delivery is billed to your buyer separately, on top &mdash; never part of this sum.
         </p>
       </div>
     </div>
@@ -361,9 +360,16 @@ function useCountUp(value: number, ms = 520): [number, boolean] {
  * to skip.
  *
  * Every zero here is real: nothing to join (there are no plans), nothing on an
- * order that did not arrive (the fee is charged on delivery), and not a rupee
- * of the delivery charge she sets herself (0076/0077) - which is precisely the
- * line the "0% commission" marketplaces take their own margin on.
+ * order that did not arrive (the fee is charged on delivery), and nothing on the
+ * counter sales she bills herself (they never enter a payout).
+ *
+ * The delivery charge is deliberately NOT claimed as hers here. See the OPEN
+ * DECISION note in SellPricing.tsx: `settle_boutique_payout` pays `total - fee`
+ * and only RECORDS `shipping_fee` - it does not add the delivery charge to her
+ * payout - so "the delivery charge stays yours in full" was false today. This
+ * line stays on what is certainly true until the owner settles where delivery
+ * lands, and the bill's footnote above matches /sell/pricing: delivery is billed
+ * to the buyer separately, on top, and is never part of the payout sum.
  */
 function HeroFooterLine({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
   // Paper-white rather than crimson: these are zeros on an ink field, and
@@ -378,7 +384,7 @@ function HeroFooterLine({ terms }: { terms: ReturnType<typeof useSellerTerms> })
     <p className="agx-sell-hero-foot">
       <span style={zero}>&#8377;0</span> to join, to list, and every month.{' '}
       <span style={zero}>&#8377;0</span> on an order that is cancelled or comes back.{' '}
-      <span style={zero}>0%</span> of the delivery charge you set &mdash; that stays yours in full.
+      <span style={zero}>0%</span> on the counter sales you bill yourself &mdash; those never enter a payout.
       The {terms.commissionPct}% above is the whole of what we take, and only once she has it in her
       hands. About fifteen minutes to open the shop, on your phone.
     </p>
@@ -416,6 +422,12 @@ function TheDeal({ terms }: { terms: ReturnType<typeof useSellerTerms> }) {
             <Text>
               No fee on a sale that did not happen has always seemed to us like the only fair way to
               do this. It also means the risk of a quiet month sits with us, not with you.
+            </Text>
+            <Text>
+              You will see marketplaces advertise 0% commission. None of them run for free — it comes
+              back as a charge to list, paid placement you have to buy just to be seen, or a slice of
+              every delivery. Here it is one fee, only on an order that arrives, and that is the whole
+              of what we take.
             </Text>
             <div style={css('margin-top:32px;')}>
               <ArrowLink to="/sell/pricing">

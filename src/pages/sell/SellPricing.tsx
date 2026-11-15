@@ -114,7 +114,8 @@ export function SellPricing() {
             <Card>
               <div style={css(`${LABEL}color:var(--ag-muted);`)}>Worked out</div>
               <div style={css('margin-top:8px;font-size:14px;line-height:1.6;color:var(--ag-muted);')}>
-                What reaches your bank on three ordinary orders. No small print under it.
+                What reaches your bank on three ordinary orders — your share first, the one fee
+                named in plain sight under it.
               </div>
 
               {EXAMPLES.map((price) => (
@@ -128,11 +129,11 @@ export function SellPricing() {
                     A piece at {fmtInr(price)}
                   </div>
                   <LedgerRow
-                    label={`Platform fee (${terms.commissionPct}%)`}
-                    value={`− ${fmtInr(terms.cutOf(price))}`}
-                    negative
+                    label="You keep"
+                    value={fmtInr(terms.netOf(price))}
+                    strong
+                    note={`After the ${terms.commissionPct}% platform fee of ${fmtInr(terms.cutOf(price))} — the only deduction.`}
                   />
-                  <LedgerRow label="Yours" value={fmtInr(terms.netOf(price))} strong />
                 </div>
               ))}
             </Card>

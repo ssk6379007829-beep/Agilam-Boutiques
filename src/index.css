@@ -1289,6 +1289,14 @@ img {
   direction: ltr;
   -webkit-font-feature-settings: 'liga';
   font-feature-settings: 'liga';
+  /* An icon is a ligature: the span holds the literal word "arrow_forward" and
+     the font draws the glyph over it. Inherited letter-spacing or
+     text-transform:uppercase from a parent (a tracked, capitalised button, e.g.
+     /sell's CTAs) stops the ligature forming — the raw word is laid out instead
+     and the 1em box below clips it to a single stray letter ("F", "C"). Reset
+     both so an icon shapes correctly inside ANY container. */
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 /* ---------- Icon boxes: hold the glyph's space before the font arrives -------
@@ -1325,6 +1333,11 @@ span[style*="Material Symbols Outlined"] {
   height: 1em;
   flex: none;
   overflow: hidden;
+  /* Keep the ligature intact for the ~450 inline-style icons too: a parent's
+     tracking or uppercasing would otherwise clip the fallback word to a stray
+     letter (see the note on `.msymbol` above). */
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 /* Visually hidden, still announced. Used where a screen needs a heading or a
